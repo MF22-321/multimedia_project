@@ -2,7 +2,7 @@ from dataclasses import dataclass, field
 
 @dataclass
 class CameraConfig:
-    index: int = 0
+    index: int = 1
     width: int = 1280
     height: int = 720
     use_dshow: bool = True
