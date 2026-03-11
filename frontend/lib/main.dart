@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:frontend/features/personalize/presentation/page/personalize_page.dart';
+import 'package:window_manager/window_manager.dart';
+
 import 'package:frontend/features/auth/presentation/page/add_driver_page.dart';
 import 'package:frontend/features/auth/presentation/page/driver_select_page.dart';
 import 'package:frontend/features/home/presentation/page/home_page.dart';
@@ -11,14 +14,40 @@ import 'features/boot/presentation/pages/boot_page.dart';
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
+  /// Init window manager
+  await windowManager.ensureInitialized();
+
   /// Lock orientation ke Landscape (Headunit Mode)
   await SystemChrome.setPreferredOrientations([
     DeviceOrientation.landscapeLeft,
     DeviceOrientation.landscapeRight,
   ]);
 
-  /// Full immersive mode (hilang status bar)
+  /// Hilangkan status bar
   SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
+
+  /// Window options (Fullscreen Headunit)
+  WindowOptions windowOptions = const WindowOptions(
+    fullScreen: true,
+    skipTaskbar: true,
+    titleBarStyle: TitleBarStyle.hidden,
+  );
+
+windowManager.waitUntilReadyToShow(windowOptions, () async {
+
+  await windowManager.show();
+  await windowManager.focus();
+
+  /// pindah ke monitor kedua
+  await windowManager.setPosition(const Offset(1920, 0));
+
+  /// resolusi monitor kedua
+  await windowManager.setSize(const Size(2560, 1600));
+
+  /// fullscreen
+  await windowManager.setFullScreen(true);
+
+});
 
   runApp(const MyApp());
 }
@@ -53,13 +82,11 @@ class MyApp extends StatelessWidget {
             "/odd-even": (context) => const OddEvenPage(),
             "/driver-select": (context) => const DriverSelectPage(),
             "/add-driver": (context) => const AddDriverPage(),
+            "/personalize": (context) => const PersonalizePage(),
             "/home": (context) => const HomePage(),
-            
           },
         );
       },
     );
   }
 }
-
-
