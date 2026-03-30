@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:frontend/features/personalize/presentation/page/personalize_page.dart';
+import 'package:media_kit/media_kit.dart';
 import 'package:window_manager/window_manager.dart';
+import 'package:provider/provider.dart';
 
 import 'package:frontend/features/auth/presentation/page/add_driver_page.dart';
 import 'package:frontend/features/auth/presentation/page/driver_select_page.dart';
@@ -11,8 +13,11 @@ import 'package:frontend/features/odd_even/presentation/pages/odd_event_page.dar
 import 'package:frontend/features/warning/presentation/pages/warning_page.dart';
 import 'features/boot/presentation/pages/boot_page.dart';
 
+import 'package:frontend/features/video/provider/video_provider.dart';
+
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+      MediaKit.ensureInitialized(); // ⬅️ WAJIB
 
   /// Init window manager
   await windowManager.ensureInitialized();
@@ -33,21 +38,19 @@ Future<void> main() async {
     titleBarStyle: TitleBarStyle.hidden,
   );
 
-windowManager.waitUntilReadyToShow(windowOptions, () async {
+  windowManager.waitUntilReadyToShow(windowOptions, () async {
+    await windowManager.show();
+    await windowManager.focus();
 
-  await windowManager.show();
-  await windowManager.focus();
+    /// pindah ke monitor kedua
+    await windowManager.setPosition(const Offset(1920, 0));
 
-  /// pindah ke monitor kedua
-  await windowManager.setPosition(const Offset(1920, 0));
+    /// resolusi monitor kedua
+    await windowManager.setSize(const Size(2560, 1600));
 
-  /// resolusi monitor kedua
-  await windowManager.setSize(const Size(2560, 1600));
-
-  /// fullscreen
-  await windowManager.setFullScreen(true);
-
-});
+    /// fullscreen
+    await windowManager.setFullScreen(true);
+  });
 
   runApp(const MyApp());
 }
@@ -57,36 +60,44 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ScreenUtilInit(
-      designSize: const Size(1280, 720), // Headunit standard
-      minTextAdapt: true,
-      splitScreenMode: true,
-      builder: (context, child) {
-        return MaterialApp(
-          debugShowCheckedModeBanner: false,
-          title: "Toyota Multimedia System",
 
-          /// Theme global
-          theme: ThemeData(
-            brightness: Brightness.dark,
-            scaffoldBackgroundColor: Colors.black,
-            fontFamily: 'Roboto',
-            useMaterial3: true,
-          ),
+    return MultiProvider(
+      providers: [
+        /// 🔥 VIDEO PROVIDER (AUTO INIT LAN)
+        ChangeNotifierProvider(
+          create: (_) => VideoProvider(),
+        ),
+      ],
+      child: ScreenUtilInit(
+        designSize: const Size(1280, 720),
+        minTextAdapt: true,
+        splitScreenMode: true,
+        builder: (context, child) {
+          return MaterialApp(
+            debugShowCheckedModeBanner: false,
+            title: "Toyota Multimedia System",
 
-          initialRoute: "/",
+            theme: ThemeData(
+              brightness: Brightness.dark,
+              scaffoldBackgroundColor: Colors.black,
+              fontFamily: 'Roboto',
+              useMaterial3: true,
+            ),
 
-          routes: {
-            "/": (context) => const BootPage(),
-            "/warning": (context) => const WarningPage(),
-            "/odd-even": (context) => const OddEvenPage(),
-            "/driver-select": (context) => const DriverSelectPage(),
-            "/add-driver": (context) => const AddDriverPage(),
-            "/personalize": (context) => const PersonalizePage(),
-            "/home": (context) => const HomePage(),
-          },
-        );
-      },
+            initialRoute: "/",
+
+            routes: {
+              "/": (context) => const BootPage(),
+              "/warning": (context) => const WarningPage(),
+              "/odd-even": (context) => const OddEvenPage(),
+              "/driver-select": (context) => const DriverSelectPage(),
+              "/add-driver": (context) => const AddDriverPage(),
+              "/personalize": (context) => const PersonalizePage(),
+              "/home": (context) => const HomePage(),
+            },
+          );
+        },
+      ),
     );
   }
 }
