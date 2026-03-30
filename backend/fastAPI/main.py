@@ -1,8 +1,3 @@
-import sys
-import os
-sys.path.append(os.path.dirname(os.path.dirname(__file__)))
-
-from pathlib import Path
 import threading
 import time
 
@@ -12,17 +7,21 @@ from fastapi import FastAPI, UploadFile, File, Form
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse, Response
 
-from faceid import FaceID
-from faceid.labels_store import load_labels, ensure_label
-from faceid.lbph_model import train_lbph
-from engine.camera_stream import (
+from backend.faceid import FaceID
+from backend.faceid.config import DATASET_DIR
+from backend.faceid.labels_store import load_labels, ensure_label
+from backend.faceid.lbph_model import train_lbph
+from backend.fastAPI.routes.drowsiness_routes import router as drowsiness_router
+
+from backend.engine.camera_stream import (
     camera_loop,
     get_latest_frame,
-    driver_status,
+    get_driver_status,
     reload_recognizer,
 )
 
 app = FastAPI(title="FaceID Backend")
+app.include_router(drowsiness_router)
 
 app.add_middleware(
     CORSMiddleware,
@@ -32,8 +31,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-DATASET_DIR = Path("dataset")
-DATASET_DIR.mkdir(exist_ok=True)
+DATASET_DIR.mkdir(parents=True, exist_ok=True)
 
 faceid = None
 
@@ -42,12 +40,12 @@ def get_faceid():
     global faceid
     if faceid is None:
         faceid = FaceID(
-            conf_threshold=0.45,
+            conf_threshold=0.50,
             vote_window_sec=1.5,
             vote_min_ratio=0.60,
             vote_min_samples=6,
         )
-        print("API recognizer initialized")
+        print("[API] recognizer initialized")
     return faceid
 
 
@@ -61,12 +59,12 @@ def reload_faceid():
         pass
 
     faceid = FaceID(
-        conf_threshold=0.30,
+        conf_threshold=0.5,
         vote_window_sec=1.5,
         vote_min_ratio=0.60,
         vote_min_samples=6,
     )
-    print("API recognizer reloaded")
+    print("[API] recognizer reloaded")
 
 
 def decode_image(file_bytes: bytes):
@@ -75,9 +73,68 @@ def decode_image(file_bytes: bytes):
     return img
 
 
+def save_face_samples_from_live_camera(
+    driver_name: str,
+    duration_sec: float = 5.0,
+    target_samples: int = 40,
+    interval_sec: float = 0.12,
+):
+    """
+    Capture multiple face crops directly from live camera for a certain duration.
+    Saves only valid detected face ROIs.
+    """
+    recognizer = get_faceid()
+
+    out_dir = DATASET_DIR / driver_name
+    out_dir.mkdir(parents=True, exist_ok=True)
+
+    start_idx = len(list(out_dir.glob("*.jpg")))
+    saved_paths = []
+
+    start_time = time.time()
+    last_save_time = 0.0
+    sample_idx = start_idx
+
+    while (time.time() - start_time) < duration_sec and len(saved_paths) < target_samples:
+        now = time.time()
+
+        if now - last_save_time < interval_sec:
+            time.sleep(0.01)
+            continue
+
+        frame = get_latest_frame()
+        if frame is None:
+            time.sleep(0.01)
+            continue
+
+        roi, bbox = recognizer.cropper.crop(frame)
+
+        if roi is None:
+            time.sleep(0.01)
+            continue
+
+        h, w = roi.shape[:2]
+        if h < 80 or w < 80:
+            time.sleep(0.01)
+            continue
+
+        out_path = out_dir / f"{sample_idx:04d}.jpg"
+        ok = cv2.imwrite(str(out_path), roi)
+
+        if ok:
+            saved_paths.append(str(out_path))
+            sample_idx += 1
+            last_save_time = now
+            print(f"[BURST] saved {out_path}")
+
+        time.sleep(0.01)
+
+    return saved_paths
+
+
 @app.on_event("startup")
 def start_camera():
-    print("Starting camera thread...")
+    print("[SYSTEM] Starting camera thread...")
     thread = threading.Thread(target=camera_loop, daemon=True)
     thread.start()
 
@@ -131,8 +188,8 @@ def capture_face():
 
 
 @app.get("/driver_status")
-def get_driver_status():
-    return driver_status
+def driver_status():
+    return get_driver_status()
 
 
 @app.post("/recognize")
@@ -152,7 +209,7 @@ async def recognize(image: UploadFile = File(...)):
     last_bbox = recognizer.last_bbox
 
     if raw_name is not None:
-        print(f"/recognize -> registered: {raw_name} ({raw_conf})")
+        print(f"[/recognize] registered: {raw_name} ({raw_conf})")
         return {
             "success": True,
             "status": "registered",
@@ -162,7 +219,7 @@ async def recognize(image: UploadFile = File(...)):
             "bbox": last_bbox,
         }
 
-    print("/recognize -> unknown")
+    print("[/recognize] unknown")
     return {
         "success": True,
         "status": "unknown",
@@ -178,6 +235,11 @@ async def enroll(
     driver_name: str = Form(...),
     image: UploadFile = File(...),
 ):
+    driver_name = driver_name.strip()
+
+    if not driver_name:
+        return {"success": False, "message": "Driver name is required"}
+
     contents = await image.read()
     frame = decode_image(contents)
 
@@ -209,13 +271,10 @@ async def enroll(
             "saved_path": str(out_path),
         }
 
-    # Reload recognizer untuk endpoint API
     reload_faceid()
-
-    # Reload recognizer untuk live camera loop
     reload_recognizer()
 
-    print(f"/enroll -> success: {driver_name}, saved to {out_path}")
+    print(f"[/enroll] success: {driver_name} -> {out_path}")
 
     return {
         "success": True,
@@ -224,3 +283,81 @@ async def enroll(
         "label_id": label_id,
         "saved_path": str(out_path),
     }
+
+
+@app.post("/enroll_live_burst")
+async def enroll_live_burst(
+    driver_name: str = Form(...),
+    duration_sec: float = Form(8.0),
+    target_samples: int = Form(60),
+):
+    try:
+        driver_name = driver_name.strip()
+
+        if not driver_name:
+            return {
+                "success": False,
+                "message": "Driver name is required",
+            }
+
+        labels = load_labels()
+        label_id = ensure_label(labels, driver_name)
+
+        print(
+            f"[/enroll_live_burst] start | "
+            f"name={driver_name}, duration={duration_sec}, target={target_samples}"
+        )
+
+        saved_paths = save_face_samples_from_live_camera(
+            driver_name=driver_name,
+            duration_sec=duration_sec,
+            target_samples=target_samples,
+            interval_sec=0.12,
+        )
+
+        print(f"[/enroll_live_burst] saved_paths count = {len(saved_paths)}")
+
+        if len(saved_paths) == 0:
+            return {
+                "success": False,
+                "message": "No face samples captured from live camera",
+                "driver_name": driver_name,
+                "saved_count": 0,
+            }
+
+        rec = train_lbph(labels)
+        print(f"[/enroll_live_burst] train_lbph result = {rec}")
+
+        if rec is None:
+            return {
+                "success": False,
+                "message": "Training failed after burst capture",
+                "driver_name": driver_name,
+                "saved_count": len(saved_paths),
+                "saved_paths": saved_paths,
+            }
+
+        reload_faceid()
+        reload_recognizer()
+
+        print(
+            f"[/enroll_live_burst] success | "
+            f"name={driver_name}, saved_count={len(saved_paths)}"
+        )
+
+        return {
+            "success": True,
+            "message": "Driver enrolled from live burst successfully",
+            "driver_name": driver_name,
+            "label_id": label_id,
+            "saved_count": len(saved_paths),
+            "saved_paths": saved_paths,
+        }
+
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return {
+            "success": False,
+            "message": f"Burst enroll exception: {str(e)}"
+        }
