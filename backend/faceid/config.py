@@ -1,11 +1,18 @@
 from pathlib import Path
 
-DATASET_DIR = Path("dataset")
-MODELS_DIR = Path("models")
+# backend/faceid/config.py
+# parent     = backend/faceid
+# parent.parent = backend
+BASE_DIR = Path(__file__).resolve().parent.parent
+
+DATASET_DIR = BASE_DIR / "dataset"
+MODELS_DIR = BASE_DIR / "models"
+PROFILES_DIR = BASE_DIR / "profiles"
 
 LABELS_PATH = MODELS_DIR / "labels.json"
 LBPH_MODEL_PATH = MODELS_DIR / "lbph_model.yml"
 LANDMARKER_PATH = MODELS_DIR / "face_landmarker.task"
+BLAZE_FACE_PATH = MODELS_DIR / "blaze_face_short_range.tflite"
 
 FACE_SIZE = (200, 200)
 
@@ -15,7 +22,7 @@ CAPTURE_INTERVAL_SEC = 0.25
 MIN_FACE_PX = 120
 
 # identify defaults
-CONF_THRESHOLD = 0.35
+CONF_THRESHOLD = 0.5
 
 # stabilizer (voting)
 VOTE_WINDOW_SEC = 1.5

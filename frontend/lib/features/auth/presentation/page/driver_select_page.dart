@@ -76,7 +76,7 @@ class DriverSelectPage extends StatelessWidget {
                       isAddButton: true,
                       onTap: () {
                         // nanti bisa ke halaman register
-                        Navigator.pushReplacementNamed(context, "/add-driver");
+                        Navigator.pushNamed(context, "/add-driver");
                       },
                     ),
                   ],

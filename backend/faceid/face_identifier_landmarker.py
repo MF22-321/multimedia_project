@@ -34,7 +34,7 @@ class FaceIdentifierLandmarker:
 
     def __init__(
         self,
-        conf_threshold: float = 0.30,         # you found 0.30 works; ok for prototype
+        conf_threshold: float = 0.50,         # you found 0.30 works; ok for prototype
         min_face_px: int = 120,
         vote_window_sec: float = 1.5,         # duration of history used for voting
         vote_min_ratio: float = 0.60,         # winner must occupy >= 60% votes

@@ -2,7 +2,7 @@ from dataclasses import dataclass, field
 
 @dataclass
 class CameraConfig:
-    index: int = 2
+    index: int = 0
     width: int = 1280
     height: int = 720
     use_dshow: bool = False
@@ -10,7 +10,7 @@ class CameraConfig:
 @dataclass
 class FaceIDConfig:
     enable: bool = True
-    conf_threshold: float = 0.30
+    conf_threshold: float = 0.35
     vote_window_sec: float = 1.5
     vote_min_ratio: float = 0.60
     vote_min_samples: int = 6
@@ -29,11 +29,11 @@ class EnrollConfig:
 
 @dataclass
 class DrowsyConfig:
-    calib_seconds: float = 3.0
-    min_baseline: float = 0.12
+    calib_seconds: float = 5.0
+    min_baseline: float = 0.08
     thresh_ratio_display: float = 0.75
 
-    mar_threshold: float = 0.65
+    mar_threshold: float = 0.45
     consec_frames_yawn: int = 6
     yawn_cooldown_sec: float = 2.0
     yawn_window_sec: float = 120.0
