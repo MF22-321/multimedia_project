@@ -2,21 +2,97 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+
+import 'package:frontend/core/navigation/driver_session.dart';
+import 'package:frontend/core/services/drive_pref_service.dart';
+import 'package:frontend/core/storage/driver_preference.dart';
+
 import 'package:frontend/core/themes/car_theme.dart';
 import 'package:frontend/core/themes/futuristic_particle_background.dart';
 import 'package:frontend/core/themes/playful_background.dart';
 import 'package:frontend/core/themes/retro_background.dart';
+
 import 'package:frontend/features/auth/presentation/widget/profile_setting_panel.dart';
 
-class PersonalizePage extends StatelessWidget {
+class PersonalizePage extends StatefulWidget {
   const PersonalizePage({super.key});
+
+  @override
+  State<PersonalizePage> createState() => _PersonalizePageState();
+}
+
+class _PersonalizePageState extends State<PersonalizePage> {
+  int selectedCartridge = 2;
+  int fanLevel = 3;
+  int temperature = 19;
+  int selectedTheme = 0;
+
+  String? driverName;
+
+  @override
+  void initState() {
+    super.initState();
+    _initDriver();
+  }
+
+  /// ================= INIT DRIVER =================
+  Future<void> _initDriver() async {
+    final name = DriverSession.currentDriver;
+
+    setState(() {
+      driverName = name;
+    });
+
+    if (name == null) return;
+
+    final pref = await DriverPrefService.load(name);
+
+    if (pref != null) {
+      setState(() {
+        selectedCartridge = pref.cartridge;
+        fanLevel = pref.fanLevel;
+        temperature = pref.temperature;
+        selectedTheme = pref.themeIndex;
+      });
+
+      /// 🔥 APPLY THEME
+      CarThemes.currentTheme.value =
+          CarThemeType.values[pref.themeIndex];
+    }
+  }
+
+  /// ================= SAVE =================
+  Future<void> _savePreference() async {
+    if (driverName == null) {
+      debugPrint("❌ No driver");
+      return;
+    }
+
+    await DriverPrefService.save(
+      DriverPreference(
+        name: driverName!,
+        fanLevel: fanLevel,
+        temperature: temperature,
+        cartridge: selectedCartridge,
+        themeIndex: selectedTheme,
+      ),
+    );
+
+    /// 🔥 APPLY THEME
+    CarThemes.currentTheme.value =
+        CarThemeType.values[selectedTheme];
+
+    debugPrint("✅ Saved preference for $driverName");
+
+    Navigator.pop(context);
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       body: Stack(
         children: [
-          /// BACKGROUND (LIVE THEME PREVIEW)
+          /// ================= BACKGROUND =================
           ValueListenableBuilder(
             valueListenable: CarThemes.currentTheme,
             builder: (context, themeType, _) {
@@ -24,7 +100,6 @@ class PersonalizePage extends StatelessWidget {
 
               return Stack(
                 children: [
-                  /// BASE GRADIENT
                   AnimatedContainer(
                     duration: const Duration(milliseconds: 400),
                     decoration: BoxDecoration(
@@ -42,24 +117,23 @@ class PersonalizePage extends StatelessWidget {
                     ),
                   ),
 
-                  /// FUTURISTIC PARTICLES
                   if (themeType == CarThemeType.futuristic)
                     const Positioned.fill(
-                      child: FuturisticParticlesBackground(),
-                    ),
+                        child: FuturisticParticlesBackground()),
 
-                  /// RETRO
                   if (themeType == CarThemeType.retro)
-                    const Positioned.fill(child: RetroParticlesBackground()),
+                    const Positioned.fill(
+                        child: RetroParticlesBackground()),
 
-                  /// PLAYFUL
                   if (themeType == CarThemeType.playful)
-                    const Positioned.fill(child: PlayfulParticlesBackground()),
+                    const Positioned.fill(
+                        child: PlayfulParticlesBackground()),
                 ],
               );
             },
           ),
 
+          /// ================= CONTENT =================
           Row(
             children: [
               /// LEFT PANEL
@@ -69,26 +143,18 @@ class PersonalizePage extends StatelessWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      /// BACK BUTTON
+                      /// BACK
                       GestureDetector(
-                        onTap: () {
-                          Navigator.pop(context);
-                        },
+                        onTap: () => Navigator.pop(context),
                         child: Row(
                           children: [
-                            Icon(
-                              Icons.arrow_back_ios,
-                              color: Colors.white,
-                              size: 20.sp,
-                            ),
+                            Icon(Icons.arrow_back_ios,
+                                color: Colors.white, size: 20.sp),
                             SizedBox(width: 8.w),
-                            Text(
-                              "Back",
-                              style: TextStyle(
-                                color: Colors.white70,
-                                fontSize: 16.sp,
-                              ),
-                            ),
+                            Text("Back",
+                                style: TextStyle(
+                                    color: Colors.white70,
+                                    fontSize: 16.sp)),
                           ],
                         ),
                       ),
@@ -118,7 +184,7 @@ class PersonalizePage extends StatelessWidget {
                         },
                       ),
 
-                      /// CENTER CONTENT
+                      /// CONTENT
                       Expanded(
                         child: Center(
                           child: SizedBox(
@@ -127,17 +193,16 @@ class PersonalizePage extends StatelessWidget {
                               mainAxisSize: MainAxisSize.min,
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                /// HELLO
                                 Text(
                                   "Hello,",
                                   style: TextStyle(
-                                    fontSize: 32.sp,
-                                    color: Colors.white,
-                                  ),
+                                      fontSize: 32.sp,
+                                      color: Colors.white),
                                 ),
 
+                                /// 🔥 DRIVER NAME
                                 Text(
-                                  "Guest",
+                                  driverName ?? "Guest",
                                   style: TextStyle(
                                     fontSize: 70.sp,
                                     fontWeight: FontWeight.bold,
@@ -147,52 +212,43 @@ class PersonalizePage extends StatelessWidget {
 
                                 SizedBox(height: 20.h),
 
-                                /// SUBTEXT
                                 Row(
                                   children: [
                                     Text(
-                                      "Personalized your settings",
+                                      "Personalize your settings",
                                       style: TextStyle(
-                                        color: Colors.white70,
-                                        fontSize: 18.sp,
-                                      ),
+                                          color: Colors.white70,
+                                          fontSize: 18.sp),
                                     ),
                                     SizedBox(width: 10.w),
-                                    Icon(
-                                      Icons.arrow_forward,
-                                      color: Colors.white70,
-                                      size: 20.sp,
-                                    ),
+                                    Icon(Icons.arrow_forward,
+                                        color: Colors.white70,
+                                        size: 20.sp),
                                   ],
                                 ),
 
                                 SizedBox(height: 60.h),
 
-                                /// SAVE BUTTON (LIVE THEME)
+                                /// SAVE BUTTON
                                 GestureDetector(
-                                  onTap: () {
-                                    Navigator.pop(context);
-                                  },
+                                  onTap: _savePreference,
                                   child: ValueListenableBuilder(
-                                    valueListenable: CarThemes.currentTheme,
+                                    valueListenable:
+                                        CarThemes.currentTheme,
                                     builder: (context, themeType, _) {
-                                      final theme = CarThemes.getTheme(
-                                        themeType,
-                                      );
+                                      final theme =
+                                          CarThemes.getTheme(themeType);
 
                                       return AnimatedContainer(
                                         duration: const Duration(
-                                          milliseconds: 250,
-                                        ),
+                                            milliseconds: 250),
                                         padding: EdgeInsets.symmetric(
-                                          horizontal: 40.w,
-                                          vertical: 16.h,
-                                        ),
+                                            horizontal: 40.w,
+                                            vertical: 16.h),
                                         decoration: BoxDecoration(
                                           color: theme.buttonColor,
-                                          borderRadius: BorderRadius.circular(
-                                            30.r,
-                                          ),
+                                          borderRadius:
+                                              BorderRadius.circular(30.r),
                                           boxShadow: [
                                             BoxShadow(
                                               color: theme.buttonColor
@@ -206,11 +262,13 @@ class PersonalizePage extends StatelessWidget {
                                           style: TextStyle(
                                             color:
                                                 themeType ==
-                                                        CarThemeType.comfort ||
-                                                    themeType ==
-                                                        CarThemeType.futuristic
-                                                ? Colors.black
-                                                : Colors.white,
+                                                            CarThemeType
+                                                                .comfort ||
+                                                        themeType ==
+                                                            CarThemeType
+                                                                .futuristic
+                                                    ? Colors.black
+                                                    : Colors.white,
                                             fontSize: 18.sp,
                                             fontWeight: FontWeight.bold,
                                           ),
@@ -230,7 +288,34 @@ class PersonalizePage extends StatelessWidget {
               ),
 
               /// RIGHT PANEL
-              const Expanded(child: ProfileSettingsPanel()),
+              Expanded(
+                child: ProfileSettingsPanel(
+                  selectedCartridge: selectedCartridge,
+                  fanLevel: fanLevel,
+                  temperature: temperature,
+                  selectedTheme: selectedTheme,
+
+                  onCartridgeChanged: (v) {
+                    setState(() => selectedCartridge = v);
+                  },
+
+                  onFanPlus: () => setState(() => fanLevel++),
+                  onFanMinus: () => setState(() => fanLevel--),
+
+                  onTempPlus: () => setState(() => temperature++),
+                  onTempMinus: () => setState(() => temperature--),
+
+                  /// 🔥 THEME CHANGE (REALTIME)
+                  onThemeChanged: (index) {
+                    setState(() {
+                      selectedTheme = index;
+                    });
+
+                    CarThemes.currentTheme.value =
+                        CarThemeType.values[index];
+                  },
+                ),
+              ),
             ],
           ),
         ],

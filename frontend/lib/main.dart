@@ -1,8 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
-import 'package:frontend/features/face_recognition/presentation/pages/add_driver_page.dart';
-import 'package:frontend/features/face_recognition/presentation/pages/face_scan_page.dart';
 import 'package:frontend/features/personalize/presentation/page/personalize_page.dart';
 import 'package:media_kit/media_kit.dart';
 import 'package:window_manager/window_manager.dart';

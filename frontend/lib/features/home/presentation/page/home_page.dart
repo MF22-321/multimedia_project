@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:frontend/core/navigation/driver_session.dart';
+import 'package:frontend/core/services/drive_pref_service.dart';
 import 'package:provider/provider.dart';
 
 import 'package:frontend/core/navigation/app_navigation.dart';
@@ -29,18 +31,73 @@ class HomePage extends StatefulWidget {
 
 class _HomePageState extends State<HomePage> {
 
+  /// 🔥 LOADING STATE (WAJIB)
+  bool isReady = false;
+
   @override
   void initState() {
     super.initState();
 
-    /// 🔥 INIT LAN + OVERLAY SYSTEM
+    _init(); // 🔥 INIT TERPUSAT
+
     Future.microtask(() {
       context.read<VideoProvider>().init(context);
     });
   }
 
+  /// 🔥 INIT SEMUA DISINI
+  Future<void> _init() async {
+    await _applyDriverPreference();
+
+    setState(() {
+      isReady = true;
+    });
+  }
+
+  /// 🔥 APPLY DRIVER PREF
+  Future<void> _applyDriverPreference() async {
+    final driver = DriverSession.currentDriver;
+
+    debugPrint("🔥 Driver aktif di Home: $driver");
+
+    if (driver == null) {
+      /// 🔥 GUEST MODE
+      CarThemes.currentTheme.value = CarThemeType.comfort;
+      debugPrint("👤 Guest mode → comfort");
+      return;
+    }
+
+    final pref = await DriverPrefService.load(driver);
+
+    debugPrint("📦 Pref ditemukan: ${pref != null}");
+
+    if (pref != null) {
+      /// ✅ APPLY THEME
+      CarThemes.currentTheme.value =
+          CarThemeType.values[pref.themeIndex];
+
+      debugPrint("🎨 Applied theme index: ${pref.themeIndex}");
+    } else {
+      /// ⚠️ BELUM SAVE → JANGAN FORCE COMFORT
+      debugPrint("⛔ Pref belum ada → jangan override theme");
+
+      /// OPTIONAL:
+      /// biarin theme tetap (jangan di set apa-apa)
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
+
+    /// 🔥 LOADING SCREEN (IMPORTANT)
+    if (!isReady) {
+      return const Scaffold(
+        body: Center(
+          child: CircularProgressIndicator(),
+        ),
+      );
+    }
+
     return Scaffold(
       body: Stack(
         children: [
@@ -108,14 +165,18 @@ class _HomePageState extends State<HomePage> {
                     switch (index) {
                       case 0:
                         return const Center(
-                          child: Text("Music Page",
-                              style: TextStyle(color: Colors.white)),
+                          child: Text(
+                            "Music Page",
+                            style: TextStyle(color: Colors.white),
+                          ),
                         );
 
                       case 1:
                         return const Center(
-                          child: Text("Phone Page",
-                              style: TextStyle(color: Colors.white)),
+                          child: Text(
+                            "Phone Page",
+                            style: TextStyle(color: Colors.white),
+                          ),
                         );
 
                       case 2:
@@ -126,8 +187,10 @@ class _HomePageState extends State<HomePage> {
 
                       case 4:
                         return const Center(
-                          child: Text("Settings Page",
-                              style: TextStyle(color: Colors.white)),
+                          child: Text(
+                            "Settings Page",
+                            style: TextStyle(color: Colors.white),
+                          ),
                         );
 
                       default:
@@ -138,9 +201,6 @@ class _HomePageState extends State<HomePage> {
               ),
             ],
           ),
-
-          /// ❌ TIDAK ADA VIDEO DI SINI LAGI
-          /// (sudah ditangani global overlay service)
         ],
       ),
     );

@@ -22,14 +22,18 @@ class _ScanFaceButtonState extends State<ScanFaceButton> {
   bool _isScanning = false;
 
   Timer? _timer;
-  DateTime? _recognizedSince;
+  Timer? _countdownTimer;
 
-  final Duration _steadyDuration = const Duration(seconds: 2);
+  DateTime? _detectedSince;
 
-  bool _isLocked = false;
+  final Duration _steadyDuration = const Duration(milliseconds: 800);
 
-  String? detectedName;
-  double? confidence;
+  bool _isTriggered = false;
+
+  String? _currentDriverName;
+  double? _confidence;
+
+  int _countdown = 0;
 
   /// ================= START =================
   void _startScan() {
@@ -42,10 +46,11 @@ class _ScanFaceButtonState extends State<ScanFaceButton> {
 
     setState(() {
       _isScanning = true;
-      _recognizedSince = null;
-      _isLocked = false;
-      detectedName = null;
-      confidence = null;
+      _detectedSince = null;
+      _isTriggered = false;
+      _currentDriverName = null;
+      _confidence = null;
+      _countdown = 0;
     });
 
     _startPolling();
@@ -54,15 +59,37 @@ class _ScanFaceButtonState extends State<ScanFaceButton> {
   /// ================= STOP =================
   void _stopScan() {
     _timer?.cancel();
+    _countdownTimer?.cancel();
 
     if (!mounted) return;
 
     setState(() {
       _isScanning = false;
-      _recognizedSince = null;
-      _isLocked = false;
-      detectedName = null;
-      confidence = null;
+      _detectedSince = null;
+      _isTriggered = false;
+      _currentDriverName = null;
+      _confidence = null;
+      _countdown = 0;
+    });
+  }
+
+  /// ================= COUNTDOWN =================
+  void _startCountdown() {
+    _countdown = 3;
+
+    _countdownTimer?.cancel();
+    _countdownTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      if (_countdown == 0) {
+        timer.cancel();
+
+        debugPrint("🚀 START ENROLL");
+
+        widget.onFaceStable?.call();
+      } else {
+        setState(() {
+          _countdown--;
+        });
+      }
     });
   }
 
@@ -74,40 +101,48 @@ class _ScanFaceButtonState extends State<ScanFaceButton> {
       try {
         final result = await FaceIdApi.getDriverStatus();
 
-        final recognized = result["recognized"] == true;
-        final name = result["driver"]?.toString();
+        debugPrint("API RESULT: $result");
+
+        final bbox = result["bbox"];
+        final detected = bbox is List && bbox.length == 4;
+
         final conf = result["confidence"];
+        if (conf is num) {
+          _confidence = conf.toDouble();
+        }
 
-        if (recognized && name != null) {
+        if (detected) {
           final now = DateTime.now();
-          _recognizedSince ??= now;
+          _detectedSince ??= now;
 
-          final elapsed = now.difference(_recognizedSince!);
+          final elapsed = now.difference(_detectedSince!);
 
-          /// 🔥 tampilkan nama realtime
-          setState(() {
-            detectedName = name;
-            confidence = conf is num ? conf.toDouble() : null;
-          });
+          if (elapsed >= _steadyDuration && !_isTriggered) {
+            _isTriggered = true;
 
-          if (elapsed >= _steadyDuration && !_isLocked) {
-            _isLocked = true;
+            debugPrint("✅ FACE DETECTED → SHOW NAME");
 
-            debugPrint("✅ FACE LOCKED: $name");
+            setState(() {
+              _currentDriverName = widget.driverName;
+            });
 
-            widget.onFaceStable?.call();
+            /// 🔥 start countdown
+            _startCountdown();
           }
         } else {
-          _recognizedSince = null;
-          _isLocked = false;
+          _detectedSince = null;
+          _isTriggered = false;
+
+          _countdownTimer?.cancel();
 
           setState(() {
-            detectedName = null;
-            confidence = null;
+            _currentDriverName = null;
+            _confidence = null;
+            _countdown = 0;
           });
         }
       } catch (e) {
-        debugPrint("Polling error: $e");
+        debugPrint("❌ Polling error: $e");
       }
     });
   }
@@ -115,6 +150,7 @@ class _ScanFaceButtonState extends State<ScanFaceButton> {
   @override
   void dispose() {
     _timer?.cancel();
+    _countdownTimer?.cancel();
     super.dispose();
   }
 
@@ -123,16 +159,13 @@ class _ScanFaceButtonState extends State<ScanFaceButton> {
   Widget build(BuildContext context) {
     return AnimatedContainer(
       duration: const Duration(milliseconds: 300),
-      width: 220.w,
-      height: 220.w,
+      width: double.infinity,
+      height: 320.h,
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(30.r),
         boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.1),
-            blurRadius: 12,
-          ),
+          BoxShadow(color: Colors.black.withOpacity(0.1), blurRadius: 12),
         ],
       ),
       child: ClipRRect(
@@ -140,29 +173,42 @@ class _ScanFaceButtonState extends State<ScanFaceButton> {
         child: _isScanning
             ? Stack(
                 children: [
-                  /// 🎥 CAMERA
+                  /// CAMERA
                   Positioned.fill(
                     child: LiveCameraWS(
                       url: FaceIdApi.cameraWs,
                     ),
                   ),
 
-                  /// 🔥 NAMA DRIVER
-                  if (detectedName != null)
+                  /// 🔥 COUNTDOWN BESAR
+                  if (_countdown > 0)
+                    Center(
+                      child: Text(
+                        "$_countdown",
+                        style: const TextStyle(
+                          fontSize: 80,
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+
+                  /// DRIVER NAME
+                  if (_currentDriverName != null)
                     Positioned(
-                      bottom: 60,
+                      bottom: 80,
                       left: 0,
                       right: 0,
                       child: Center(
                         child: Container(
                           padding: const EdgeInsets.symmetric(
-                              horizontal: 14, vertical: 6),
+                              horizontal: 16, vertical: 8),
                           decoration: BoxDecoration(
-                            color: Colors.green.withOpacity(0.85),
-                            borderRadius: BorderRadius.circular(10),
+                            color: Colors.green.withOpacity(0.9),
+                            borderRadius: BorderRadius.circular(12),
                           ),
                           child: Text(
-                            detectedName!,
+                            _currentDriverName!,
                             style: const TextStyle(
                               color: Colors.white,
                               fontWeight: FontWeight.bold,
@@ -172,18 +218,18 @@ class _ScanFaceButtonState extends State<ScanFaceButton> {
                       ),
                     ),
 
-                  /// 🔥 CONFIDENCE
-                  if (confidence != null)
+                  /// CONFIDENCE
+                  if (_confidence != null)
                     Positioned(
-                      bottom: 35,
+                      bottom: 50,
                       left: 0,
                       right: 0,
                       child: Center(
                         child: Text(
-                          "Confidence: ${confidence!.toStringAsFixed(2)}",
+                          "Confidence: ${_confidence!.toStringAsFixed(2)}",
                           style: const TextStyle(
                             color: Colors.white,
-                            fontSize: 11,
+                            fontSize: 12,
                           ),
                         ),
                       ),
@@ -191,25 +237,22 @@ class _ScanFaceButtonState extends State<ScanFaceButton> {
 
                   /// STATUS
                   Positioned(
-                    bottom: 8,
-                    left: 8,
-                    right: 8,
+                    bottom: 12,
+                    left: 12,
+                    right: 12,
                     child: Container(
-                      padding: const EdgeInsets.all(6),
+                      padding: const EdgeInsets.all(8),
                       decoration: BoxDecoration(
                         color: Colors.black.withOpacity(0.6),
-                        borderRadius: BorderRadius.circular(10),
+                        borderRadius: BorderRadius.circular(12),
                       ),
                       child: Text(
-                        _isLocked
-                            ? "Face Locked ✅"
-                            : detectedName != null
-                                ? "Recognized"
+                        _countdown > 0
+                            ? "Get ready..."
+                            : _isTriggered
+                                ? "Preparing..."
                                 : "Scanning...",
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 11,
-                        ),
+                        style: const TextStyle(color: Colors.white),
                         textAlign: TextAlign.center,
                       ),
                     ),
@@ -217,12 +260,12 @@ class _ScanFaceButtonState extends State<ScanFaceButton> {
 
                   /// CLOSE BUTTON
                   Positioned(
-                    top: 6,
-                    right: 6,
+                    top: 10,
+                    right: 10,
                     child: GestureDetector(
                       onTap: _stopScan,
                       child: Container(
-                        padding: const EdgeInsets.all(4),
+                        padding: const EdgeInsets.all(6),
                         decoration: BoxDecoration(
                           color: Colors.black.withOpacity(0.6),
                           shape: BoxShape.circle,
@@ -230,7 +273,7 @@ class _ScanFaceButtonState extends State<ScanFaceButton> {
                         child: const Icon(
                           Icons.close,
                           color: Colors.white,
-                          size: 16,
+                          size: 18,
                         ),
                       ),
                     ),
@@ -238,45 +281,38 @@ class _ScanFaceButtonState extends State<ScanFaceButton> {
 
                   /// LIVE LABEL
                   const Positioned(
-                    top: 6,
-                    left: 6,
+                    top: 10,
+                    left: 10,
                     child: Text(
                       "LIVE",
                       style: TextStyle(
                         color: Colors.greenAccent,
-                        fontSize: 10,
+                        fontSize: 11,
                         fontWeight: FontWeight.bold,
                       ),
                     ),
                   ),
                 ],
               )
-
-            /// ================= BUTTON =================
             : GestureDetector(
                 onTap: _startScan,
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Icon(
-                      Icons.face,
-                      size: 60.sp,
-                      color: Colors.deepPurple,
-                    ),
-                    SizedBox(height: 10.h),
+                    Icon(Icons.face, size: 70.sp, color: Colors.deepPurple),
+                    SizedBox(height: 12.h),
                     Text(
                       "Scan Face",
                       style: TextStyle(
-                        fontSize: 16.sp,
+                        fontSize: 18.sp,
                         fontWeight: FontWeight.bold,
-                        color: Colors.black,
                       ),
                     ),
-                    SizedBox(height: 6.h),
+                    SizedBox(height: 8.h),
                     Text(
-                      "Start recognition",
+                      "Auto detect & enroll",
                       style: TextStyle(
-                        fontSize: 11.sp,
+                        fontSize: 12.sp,
                         color: Colors.grey,
                       ),
                     ),

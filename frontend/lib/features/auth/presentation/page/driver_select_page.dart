@@ -1,20 +1,142 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:frontend/core/navigation/driver_session.dart';
+import 'package:frontend/core/services/drive_pref_service.dart';
+import 'package:frontend/core/services/faceid_api.dart';
 import 'package:frontend/features/auth/presentation/widget/driver_avatar_card.dart';
 import 'package:frontend/features/auth/presentation/widget/guest_button.dart';
+
 import '../../../boot/presentation/widget/dotted_background.dart';
 
-
-class DriverSelectPage extends StatelessWidget {
+class DriverSelectPage extends StatefulWidget {
   const DriverSelectPage({super.key});
+
+  @override
+  State<DriverSelectPage> createState() => _DriverSelectPageState();
+}
+
+class _DriverSelectPageState extends State<DriverSelectPage> {
+  Timer? _timer;
+
+  bool isNavigated = false;
+  bool isLoading = true;
+  bool _isDetecting = false; // 🔥 anti double start
+
+  List<String> drivers = [];
+
+  @override
+  void initState() {
+    super.initState();
+    _loadDrivers();
+    _startFaceDetection();
+  }
+
+  @override
+  void dispose() {
+    _stopFaceDetection(); // 🔥 pastikan stop
+    super.dispose();
+  }
+
+  /// ================= LOAD DRIVER =================
+  Future<void> _loadDrivers() async {
+    try {
+      final result = await FaceIdApi.getDrivers();
+
+      setState(() {
+        drivers = result;
+        isLoading = false;
+      });
+
+      debugPrint("🔥 Drivers: $drivers");
+    } catch (e) {
+      debugPrint("Load driver error: $e");
+      setState(() => isLoading = false);
+    }
+  }
+
+  /// ================= START DETECTION =================
+  void _startFaceDetection() {
+    if (_isDetecting) return;
+
+    _isDetecting = true;
+
+    _timer = Timer.periodic(const Duration(milliseconds: 500), (_) async {
+      try {
+        final result = await FaceIdApi.getDriverStatus();
+
+        final recognized = result["recognized"] == true;
+        final name = result["driver"];
+
+        if (recognized && name != null && !isNavigated) {
+          /// 🔥 CEK SUDAH SAVE ATAU BELUM
+          final pref = await DriverPrefService.load(name);
+
+          if (pref == null) {
+            debugPrint("⛔ $name belum setup → jangan login");
+            return;
+          }
+
+          /// ✅ BOLEH LOGIN
+          isNavigated = true;
+
+          debugPrint("🔥 AUTO LOGIN: $name");
+
+          DriverSession.currentDriver = name.toString();
+
+          _stopFaceDetection(); // 🔥 stop sebelum pindah
+
+          if (mounted) {
+            Navigator.pushReplacementNamed(context, "/home");
+          }
+        }
+      } catch (e) {
+        debugPrint("DriverSelect error: $e");
+      }
+    });
+  }
+
+  /// ================= STOP DETECTION =================
+  void _stopFaceDetection() {
+    _timer?.cancel();
+    _timer = null;
+    _isDetecting = false;
+  }
+
+  /// ================= MANUAL SELECT =================
+  void _selectDriver(String name) {
+    _stopFaceDetection();
+
+    DriverSession.currentDriver = name;
+    Navigator.pushReplacementNamed(context, "/home");
+  }
+
+  /// ================= GUEST =================
+  void _selectGuest() {
+    _stopFaceDetection();
+
+    DriverSession.currentDriver = null;
+    Navigator.pushReplacementNamed(context, "/home");
+  }
+
+  /// ================= ADD DRIVER =================
+  void _goToAddDriver() {
+    _stopFaceDetection(); // 🔥 penting
+
+    Navigator.pushNamed(context, "/add-driver").then((_) {
+      _loadDrivers();
+
+      /// 🔥 start lagi setelah balik
+      _startFaceDetection();
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       body: Stack(
         children: [
-
-          /// Background
+          /// BACKGROUND
           Container(
             decoration: const BoxDecoration(
               gradient: RadialGradient(
@@ -27,16 +149,13 @@ class DriverSelectPage extends StatelessWidget {
             ),
           ),
 
-          const Positioned.fill(
-            child: DottedBackground(),
-          ),
+          const Positioned.fill(child: DottedBackground()),
 
-          /// Content
+          /// CONTENT
           Center(
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-
                 Text(
                   "Siapa yang mengemudi hari ini?",
                   style: TextStyle(
@@ -46,49 +165,46 @@ class DriverSelectPage extends StatelessWidget {
                   ),
                 ),
 
-                SizedBox(height: 60.h),
+                SizedBox(height: 20.h),
 
-                /// Driver Options
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-
-                    DriverAvatarCard(
-                      name: "Raihan",
-                      onTap: () {
-                        Navigator.pushReplacementNamed(context, "/home");
-                      },
-                    ),
-
-                    SizedBox(width: 60.w),
-
-                    DriverAvatarCard(
-                      name: "Febrian",
-                      onTap: () {
-                        Navigator.pushReplacementNamed(context, "/home");
-                      },
-                    ),
-
-                    SizedBox(width: 60.w),
-
-                    DriverAvatarCard(
-                      name: "Tambah Akun",
-                      isAddButton: true,
-                      onTap: () {
-                        // nanti bisa ke halaman register
-                        Navigator.pushNamed(context, "/add-driver");
-                      },
-                    ),
-                  ],
+                Text(
+                  "Detecting driver...",
+                  style: TextStyle(
+                    color: Colors.white54,
+                    fontSize: 14.sp,
+                  ),
                 ),
+
+                SizedBox(height: 40.h),
+
+                /// DRIVER LIST
+                isLoading
+                    ? const CircularProgressIndicator(color: Colors.white)
+                    : Wrap(
+                        spacing: 60.w,
+                        runSpacing: 20.h,
+                        alignment: WrapAlignment.center,
+                        children: [
+                          ...drivers.map(
+                            (name) => DriverAvatarCard(
+                              name: name,
+                              onTap: () => _selectDriver(name),
+                            ),
+                          ),
+
+                          /// ADD DRIVER
+                          DriverAvatarCard(
+                            name: "Tambah Akun",
+                            isAddButton: true,
+                            onTap: _goToAddDriver,
+                          ),
+                        ],
+                      ),
 
                 SizedBox(height: 80.h),
 
-                GuestButton(
-                  onTap: () {
-                    Navigator.pushReplacementNamed(context, "/home");
-                  },
-                ),
+                /// GUEST
+                GuestButton(onTap: _selectGuest),
               ],
             ),
           ),
