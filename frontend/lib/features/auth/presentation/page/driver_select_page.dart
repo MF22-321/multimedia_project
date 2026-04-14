@@ -82,7 +82,9 @@ class _DriverSelectPageState extends State<DriverSelectPage> {
 
           debugPrint("🔥 AUTO LOGIN: $name");
 
-          DriverSession.currentDriver = name.toString();
+          final normalized = name.toString().trim().toLowerCase();
+
+          DriverSession.setDriver(normalized);
 
           _stopFaceDetection(); // 🔥 stop sebelum pindah
 
@@ -107,7 +109,9 @@ class _DriverSelectPageState extends State<DriverSelectPage> {
   void _selectDriver(String name) {
     _stopFaceDetection();
 
-    DriverSession.currentDriver = name;
+    final normalized = name.trim().toLowerCase();
+
+    DriverSession.setDriver(normalized);
     Navigator.pushReplacementNamed(context, "/home");
   }
 
@@ -115,7 +119,7 @@ class _DriverSelectPageState extends State<DriverSelectPage> {
   void _selectGuest() {
     _stopFaceDetection();
 
-    DriverSession.currentDriver = null;
+    DriverSession.clear();
     Navigator.pushReplacementNamed(context, "/home");
   }
 
@@ -140,10 +144,7 @@ class _DriverSelectPageState extends State<DriverSelectPage> {
           Container(
             decoration: const BoxDecoration(
               gradient: RadialGradient(
-                colors: [
-                  Color(0xFF111111),
-                  Colors.black,
-                ],
+                colors: [Color(0xFF111111), Colors.black],
                 radius: 0.9,
               ),
             ),
@@ -169,10 +170,7 @@ class _DriverSelectPageState extends State<DriverSelectPage> {
 
                 Text(
                   "Detecting driver...",
-                  style: TextStyle(
-                    color: Colors.white54,
-                    fontSize: 14.sp,
-                  ),
+                  style: TextStyle(color: Colors.white54, fontSize: 14.sp),
                 ),
 
                 SizedBox(height: 40.h),

@@ -1,5 +1,7 @@
 class DriverPreference {
-  final String name;
+  final String name;        // 🔑 internal key (lowercase)
+  final String displayName; // 🎨 UI + backend (original)
+
   final int fanLevel;
   final int temperature;
   final int cartridge;
@@ -7,6 +9,7 @@ class DriverPreference {
 
   DriverPreference({
     required this.name,
+    required this.displayName,
     required this.fanLevel,
     required this.temperature,
     required this.cartridge,
@@ -15,6 +18,7 @@ class DriverPreference {
 
   Map<String, dynamic> toJson() => {
         "name": name,
+        "displayName": displayName,
         "fanLevel": fanLevel,
         "temperature": temperature,
         "cartridge": cartridge,
@@ -24,6 +28,7 @@ class DriverPreference {
   factory DriverPreference.fromJson(Map<String, dynamic> json) {
     return DriverPreference(
       name: json["name"],
+      displayName: json["displayName"] ?? json["name"],
       fanLevel: json["fanLevel"],
       temperature: json["temperature"],
       cartridge: json["cartridge"],

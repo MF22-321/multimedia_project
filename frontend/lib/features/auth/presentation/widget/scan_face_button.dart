@@ -159,8 +159,8 @@ class _ScanFaceButtonState extends State<ScanFaceButton> {
   Widget build(BuildContext context) {
     return AnimatedContainer(
       duration: const Duration(milliseconds: 300),
-      width: double.infinity,
-      height: 320.h,
+      width: 400.w,
+      height: 300.h,
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(30.r),

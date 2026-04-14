@@ -32,12 +32,27 @@ class _PersonalizePageState extends State<PersonalizePage> {
   @override
   void initState() {
     super.initState();
+
+    DriverSession.currentDriver.addListener(_onDriverChanged);
+
+    _initDriver();
+  }
+
+  @override
+  void dispose() {
+    DriverSession.currentDriver.removeListener(_onDriverChanged);
+    super.dispose();
+  }
+
+  void _onDriverChanged() {
     _initDriver();
   }
 
   /// ================= INIT DRIVER =================
   Future<void> _initDriver() async {
-    final name = DriverSession.currentDriver;
+    final name = DriverSession.currentDriver.value;
+
+    if (!mounted) return;
 
     setState(() {
       driverName = name;
@@ -45,9 +60,9 @@ class _PersonalizePageState extends State<PersonalizePage> {
 
     if (name == null) return;
 
-    final pref = await DriverPrefService.load(name);
+    final pref = await DriverPrefService.load(name.toLowerCase());
 
-    if (pref != null) {
+    if (pref != null && mounted) {
       setState(() {
         selectedCartridge = pref.cartridge;
         fanLevel = pref.fanLevel;
@@ -55,9 +70,10 @@ class _PersonalizePageState extends State<PersonalizePage> {
         selectedTheme = pref.themeIndex;
       });
 
-      /// 🔥 APPLY THEME
-      CarThemes.currentTheme.value =
-          CarThemeType.values[pref.themeIndex];
+      /// 🔥 APPLY THEME (SAFE)
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        CarThemes.currentTheme.value = CarThemeType.values[pref.themeIndex];
+      });
     }
   }
 
@@ -68,9 +84,23 @@ class _PersonalizePageState extends State<PersonalizePage> {
       return;
     }
 
+    final current = DriverSession.currentDriver.value;
+
+    if (current == null) return;
+
+    /// 🔥 LOAD DATA LAMA (SOURCE OF TRUTH)
+    final existingPref = await DriverPrefService.load(current.toLowerCase());
+
+    /// 🔥 AMBIL displayName ASLI
+    final rawName = existingPref?.displayName ?? current;
+
+    /// 🔑 KEY tetap lowercase
+    final key = rawName.trim().toLowerCase();
+
     await DriverPrefService.save(
       DriverPreference(
-        name: driverName!,
+        name: key,
+        displayName: rawName, // ✅ TIDAK AKAN KE-LOWERCASE LAGI
         fanLevel: fanLevel,
         temperature: temperature,
         cartridge: selectedCartridge,
@@ -78,13 +108,17 @@ class _PersonalizePageState extends State<PersonalizePage> {
       ),
     );
 
+    /// 🔥 OPTIONAL (biar session selalu clean)
+    DriverSession.setDriver(rawName);
+
     /// 🔥 APPLY THEME
-    CarThemes.currentTheme.value =
-        CarThemeType.values[selectedTheme];
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      CarThemes.currentTheme.value = CarThemeType.values[selectedTheme];
+    });
 
-    debugPrint("✅ Saved preference for $driverName");
+    debugPrint("✅ Saved preference for $rawName");
 
-    Navigator.pop(context);
+    if (mounted) Navigator.pop(context);
   }
 
   @override
@@ -119,15 +153,14 @@ class _PersonalizePageState extends State<PersonalizePage> {
 
                   if (themeType == CarThemeType.futuristic)
                     const Positioned.fill(
-                        child: FuturisticParticlesBackground()),
+                      child: FuturisticParticlesBackground(),
+                    ),
 
                   if (themeType == CarThemeType.retro)
-                    const Positioned.fill(
-                        child: RetroParticlesBackground()),
+                    const Positioned.fill(child: RetroParticlesBackground()),
 
                   if (themeType == CarThemeType.playful)
-                    const Positioned.fill(
-                        child: PlayfulParticlesBackground()),
+                    const Positioned.fill(child: PlayfulParticlesBackground()),
                 ],
               );
             },
@@ -148,13 +181,19 @@ class _PersonalizePageState extends State<PersonalizePage> {
                         onTap: () => Navigator.pop(context),
                         child: Row(
                           children: [
-                            Icon(Icons.arrow_back_ios,
-                                color: Colors.white, size: 20.sp),
+                            Icon(
+                              Icons.arrow_back_ios,
+                              color: Colors.white,
+                              size: 20.sp,
+                            ),
                             SizedBox(width: 8.w),
-                            Text("Back",
-                                style: TextStyle(
-                                    color: Colors.white70,
-                                    fontSize: 16.sp)),
+                            Text(
+                              "Back",
+                              style: TextStyle(
+                                color: Colors.white70,
+                                fontSize: 16.sp,
+                              ),
+                            ),
                           ],
                         ),
                       ),
@@ -196,18 +235,44 @@ class _PersonalizePageState extends State<PersonalizePage> {
                                 Text(
                                   "Hello,",
                                   style: TextStyle(
-                                      fontSize: 32.sp,
-                                      color: Colors.white),
+                                    fontSize: 32.sp,
+                                    color: Colors.white,
+                                  ),
                                 ),
 
                                 /// 🔥 DRIVER NAME
-                                Text(
-                                  driverName ?? "Guest",
-                                  style: TextStyle(
-                                    fontSize: 70.sp,
-                                    fontWeight: FontWeight.bold,
-                                    color: Colors.white,
-                                  ),
+                                ValueListenableBuilder<String?>(
+                                  valueListenable: DriverSession.currentDriver,
+                                  builder: (context, driver, _) {
+                                    if (driver == null) {
+                                      return Text(
+                                        "Guest",
+                                        style: TextStyle(
+                                          fontSize: 70.sp,
+                                          fontWeight: FontWeight.bold,
+                                          color: Colors.white,
+                                        ),
+                                      );
+                                    }
+
+                                    return FutureBuilder<DriverPreference?>(
+                                      future: DriverPrefService.load(
+                                        driver.toLowerCase(),
+                                      ),
+                                      builder: (context, snapshot) {
+                                        final pref = snapshot.data;
+
+                                        return Text(
+                                          pref?.displayName ?? driver,
+                                          style: TextStyle(
+                                            fontSize: 70.sp,
+                                            fontWeight: FontWeight.bold,
+                                            color: Colors.white,
+                                          ),
+                                        );
+                                      },
+                                    );
+                                  },
                                 ),
 
                                 SizedBox(height: 20.h),
@@ -217,13 +282,16 @@ class _PersonalizePageState extends State<PersonalizePage> {
                                     Text(
                                       "Personalize your settings",
                                       style: TextStyle(
-                                          color: Colors.white70,
-                                          fontSize: 18.sp),
+                                        color: Colors.white70,
+                                        fontSize: 18.sp,
+                                      ),
                                     ),
                                     SizedBox(width: 10.w),
-                                    Icon(Icons.arrow_forward,
-                                        color: Colors.white70,
-                                        size: 20.sp),
+                                    Icon(
+                                      Icons.arrow_forward,
+                                      color: Colors.white70,
+                                      size: 20.sp,
+                                    ),
                                   ],
                                 ),
 
@@ -233,22 +301,25 @@ class _PersonalizePageState extends State<PersonalizePage> {
                                 GestureDetector(
                                   onTap: _savePreference,
                                   child: ValueListenableBuilder(
-                                    valueListenable:
-                                        CarThemes.currentTheme,
+                                    valueListenable: CarThemes.currentTheme,
                                     builder: (context, themeType, _) {
-                                      final theme =
-                                          CarThemes.getTheme(themeType);
+                                      final theme = CarThemes.getTheme(
+                                        themeType,
+                                      );
 
                                       return AnimatedContainer(
                                         duration: const Duration(
-                                            milliseconds: 250),
+                                          milliseconds: 250,
+                                        ),
                                         padding: EdgeInsets.symmetric(
-                                            horizontal: 40.w,
-                                            vertical: 16.h),
+                                          horizontal: 40.w,
+                                          vertical: 16.h,
+                                        ),
                                         decoration: BoxDecoration(
                                           color: theme.buttonColor,
-                                          borderRadius:
-                                              BorderRadius.circular(30.r),
+                                          borderRadius: BorderRadius.circular(
+                                            30.r,
+                                          ),
                                           boxShadow: [
                                             BoxShadow(
                                               color: theme.buttonColor
@@ -262,13 +333,11 @@ class _PersonalizePageState extends State<PersonalizePage> {
                                           style: TextStyle(
                                             color:
                                                 themeType ==
-                                                            CarThemeType
-                                                                .comfort ||
-                                                        themeType ==
-                                                            CarThemeType
-                                                                .futuristic
-                                                    ? Colors.black
-                                                    : Colors.white,
+                                                        CarThemeType.comfort ||
+                                                    themeType ==
+                                                        CarThemeType.futuristic
+                                                ? Colors.black
+                                                : Colors.white,
                                             fontSize: 18.sp,
                                             fontWeight: FontWeight.bold,
                                           ),
@@ -311,8 +380,9 @@ class _PersonalizePageState extends State<PersonalizePage> {
                       selectedTheme = index;
                     });
 
-                    CarThemes.currentTheme.value =
-                        CarThemeType.values[index];
+                    WidgetsBinding.instance.addPostFrameCallback((_) {
+                      CarThemes.currentTheme.value = CarThemeType.values[index];
+                    });
                   },
                 ),
               ),

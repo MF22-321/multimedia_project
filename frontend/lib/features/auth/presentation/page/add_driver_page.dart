@@ -3,6 +3,7 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:frontend/core/navigation/driver_session.dart';
 import 'package:frontend/core/services/drive_pref_service.dart';
 import 'package:frontend/core/services/faceid_api.dart';
 import 'package:frontend/core/storage/driver_preference.dart';
@@ -147,7 +148,10 @@ class _AddDriverPageState extends State<AddDriverPage> {
             });
 
             /// 🔥 APPLY THEME
-            CarThemes.currentTheme.value = CarThemeType.values[pref.themeIndex];
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              CarThemes.currentTheme.value =
+                  CarThemeType.values[pref.themeIndex];
+            });
           }
         } else {
           /// 🔥 RESET kalau tidak ada face
@@ -297,7 +301,7 @@ class _AddDriverPageState extends State<AddDriverPage> {
                                     children: [
                                       SizedBox(
                                         width:
-                                            500.w, // 🔥 lebih besar & konsisten
+                                            400.w, // 🔥 lebih besar & konsisten
                                         height:
                                             300.h, // 🔥 konsisten & lebih besar
                                         child: Stack(
@@ -423,9 +427,16 @@ class _AddDriverPageState extends State<AddDriverPage> {
                             onTap: () async {
                               if (detectedDriverName == null) return;
 
+                              final rawName =
+                                  detectedDriverName!; // 🔥 ORIGINAL
+                              final key = rawName
+                                  .trim()
+                                  .toLowerCase(); // 🔑 internal
+
                               await DriverPrefService.save(
                                 DriverPreference(
-                                  name: detectedDriverName!,
+                                  name: key,
+                                  displayName: rawName, // ✅ FIX
                                   fanLevel: fanLevel,
                                   temperature: temperature,
                                   cartridge: selectedCartridge,
@@ -433,9 +444,16 @@ class _AddDriverPageState extends State<AddDriverPage> {
                                 ),
                               );
 
-                              debugPrint(
-                                "✅ Preference saved for ${detectedDriverName!}",
-                              );
+                              /// 🔥 SET DRIVER (pakai display name biar UI sesuai)
+                              DriverSession.setDriver(rawName);
+
+                              /// 🔥 APPLY THEME
+                              WidgetsBinding.instance.addPostFrameCallback((_) {
+                                CarThemes.currentTheme.value =
+                                    CarThemeType.values[selectedTheme];
+                              });
+
+                              debugPrint("✅ Preference saved for $rawName");
 
                               Navigator.pushAndRemoveUntil(
                                 context,
@@ -489,6 +507,9 @@ class _AddDriverPageState extends State<AddDriverPage> {
                   onThemeChanged: (index) {
                     setState(() {
                       selectedTheme = index;
+                    });
+
+                    WidgetsBinding.instance.addPostFrameCallback((_) {
                       CarThemes.currentTheme.value = CarThemeType.values[index];
                     });
                   },

@@ -30,19 +30,25 @@ class HomePage extends StatefulWidget {
 }
 
 class _HomePageState extends State<HomePage> {
-
   /// 🔥 LOADING STATE (WAJIB)
   bool isReady = false;
 
   @override
   void initState() {
     super.initState();
+    DriverSession.currentDriver.addListener(_onDriverChanged);
 
     _init(); // 🔥 INIT TERPUSAT
 
     Future.microtask(() {
       context.read<VideoProvider>().init(context);
     });
+  }
+
+    @override
+  void dispose() {
+    DriverSession.currentDriver.removeListener(_onDriverChanged);
+    super.dispose();
   }
 
   /// 🔥 INIT SEMUA DISINI
@@ -54,54 +60,59 @@ class _HomePageState extends State<HomePage> {
     });
   }
 
+
+  void _onDriverChanged() {
+  _applyDriverPreference();
+}
+
   /// 🔥 APPLY DRIVER PREF
   Future<void> _applyDriverPreference() async {
-    final driver = DriverSession.currentDriver;
+  final driver = DriverSession.currentDriver.value;
 
-    debugPrint("🔥 Driver aktif di Home: $driver");
+  debugPrint("🔥 Driver aktif di Home: $driver");
 
-    if (driver == null) {
-      /// 🔥 GUEST MODE
+  if (driver == null) {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
       CarThemes.currentTheme.value = CarThemeType.comfort;
-      debugPrint("👤 Guest mode → comfort");
-      return;
+    });
+
+    debugPrint("👤 Guest mode → comfort");
+    return;
+  }
+
+  /// 🔥 LOAD DENGAN KEY NORMALIZED
+  final pref = await DriverPrefService.load(driver.toLowerCase());
+
+  debugPrint("📦 Pref ditemukan: ${pref != null}");
+
+  if (pref != null) {
+
+    /// 🔥 INI YANG FIX BUG LOWERCASE
+    if (DriverSession.currentDriver.value != pref.displayName) {
+      DriverSession.setDriver(pref.displayName);
     }
 
-    final pref = await DriverPrefService.load(driver);
-
-    debugPrint("📦 Pref ditemukan: ${pref != null}");
-
-    if (pref != null) {
-      /// ✅ APPLY THEME
+    WidgetsBinding.instance.addPostFrameCallback((_) {
       CarThemes.currentTheme.value =
           CarThemeType.values[pref.themeIndex];
+    });
 
-      debugPrint("🎨 Applied theme index: ${pref.themeIndex}");
-    } else {
-      /// ⚠️ BELUM SAVE → JANGAN FORCE COMFORT
-      debugPrint("⛔ Pref belum ada → jangan override theme");
-
-      /// OPTIONAL:
-      /// biarin theme tetap (jangan di set apa-apa)
-    }
+    debugPrint("🎨 Applied theme index: ${pref.themeIndex}");
+  } else {
+    debugPrint("⛔ Pref belum ada → skip theme");
   }
+}
 
   @override
   Widget build(BuildContext context) {
-
     /// 🔥 LOADING SCREEN (IMPORTANT)
     if (!isReady) {
-      return const Scaffold(
-        body: Center(
-          child: CircularProgressIndicator(),
-        ),
-      );
+      return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
 
     return Scaffold(
       body: Stack(
         children: [
-
           /// =============================
           /// 🎨 BACKGROUND
           /// =============================
