@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:frontend/core/provider/gps_provider.dart';
+import 'package:frontend/core/provider/pothole_provider.dart';
 import 'package:frontend/features/face_recognition/presentation/pages/drowsines_alert_page.dart';
 import 'package:frontend/features/personalize/presentation/page/personalize_page.dart';
 import 'package:frontend/features/smart_fragrance/page/smart_fragrance_page.dart';
@@ -75,6 +77,15 @@ class MyApp extends StatelessWidget {
         /// 🔥 VIDEO PROVIDER (AUTO INIT LAN)
         ChangeNotifierProvider(
           create: (_) => VideoProvider(),
+        ),
+        /// 🔥 GPS REALTIME
+        ChangeNotifierProvider(
+          create: (_) => GPSProvider(),
+        ),
+
+        /// 🔥 POTHOLE DATA
+        ChangeNotifierProvider(
+          create: (_) => PotholeProvider(),
         ),
       ],
       child: ScreenUtilInit(
