@@ -69,25 +69,30 @@ class SmartFragranceSection extends StatelessWidget {
               /// CUSTOM SETTINGS BUTTON
               Align(
                 alignment: Alignment.centerRight,
-                child: Container(
-                  padding: EdgeInsets.symmetric(
-                    horizontal: 30.w,
-                    vertical: 8.h,
-                  ),
-                  decoration: BoxDecoration(
-                    color: theme.buttonColor,
-                    borderRadius: BorderRadius.circular(20.r),
-                  ),
-                  child: Text(
-                    "Custom Settings",
-                    style: TextStyle(
-                      fontSize: 14.sp,
-                      color:
-                          themeType == CarThemeType.comfort ||
-                              themeType == CarThemeType.futuristic
-                          ? Colors.black
-                          : Colors.white,
-                      fontWeight: FontWeight.w600,
+                child: GestureDetector(
+                  onTap: () {
+                    Navigator.pushNamed(context, '/fragrance_settings');
+                  },
+                  child: Container(
+                    padding: EdgeInsets.symmetric(
+                      horizontal: 30.w,
+                      vertical: 8.h,
+                    ),
+                    decoration: BoxDecoration(
+                      color: theme.buttonColor,
+                      borderRadius: BorderRadius.circular(20.r),
+                    ),
+                    child: Text(
+                      "Custom Settings",
+                      style: TextStyle(
+                        fontSize: 14.sp,
+                        color:
+                            themeType == CarThemeType.comfort ||
+                                themeType == CarThemeType.futuristic
+                            ? Colors.black
+                            : Colors.white,
+                        fontWeight: FontWeight.w600,
+                      ),
                     ),
                   ),
                 ),

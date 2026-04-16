@@ -2,7 +2,6 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:frontend/core/navigation/driver_session.dart';
-import 'package:frontend/core/services/drive_pref_service.dart';
 import 'package:frontend/core/services/faceid_api.dart';
 import 'package:frontend/features/auth/presentation/widget/driver_avatar_card.dart';
 import 'package:frontend/features/auth/presentation/widget/guest_button.dart';
@@ -21,7 +20,7 @@ class _DriverSelectPageState extends State<DriverSelectPage> {
 
   bool isNavigated = false;
   bool isLoading = true;
-  bool _isDetecting = false; // 🔥 anti double start
+  bool _isDetecting = false;
 
   List<String> drivers = [];
 
@@ -34,7 +33,7 @@ class _DriverSelectPageState extends State<DriverSelectPage> {
 
   @override
   void dispose() {
-    _stopFaceDetection(); // 🔥 pastikan stop
+    _stopFaceDetection();
     super.dispose();
   }
 
@@ -69,24 +68,13 @@ class _DriverSelectPageState extends State<DriverSelectPage> {
         final name = result["driver"];
 
         if (recognized && name != null && !isNavigated) {
-          /// 🔥 CEK SUDAH SAVE ATAU BELUM
-          final pref = await DriverPrefService.load(name);
-
-          if (pref == null) {
-            debugPrint("⛔ $name belum setup → jangan login");
-            return;
-          }
-
-          /// ✅ BOLEH LOGIN
           isNavigated = true;
 
           debugPrint("🔥 AUTO LOGIN: $name");
 
-          final normalized = name.toString().trim().toLowerCase();
+          DriverSession.setDriver(name);
 
-          DriverSession.setDriver(normalized);
-
-          _stopFaceDetection(); // 🔥 stop sebelum pindah
+          _stopFaceDetection();
 
           if (mounted) {
             Navigator.pushReplacementNamed(context, "/home");
@@ -125,12 +113,10 @@ class _DriverSelectPageState extends State<DriverSelectPage> {
 
   /// ================= ADD DRIVER =================
   void _goToAddDriver() {
-    _stopFaceDetection(); // 🔥 penting
+    _stopFaceDetection();
 
     Navigator.pushNamed(context, "/add-driver").then((_) {
       _loadDrivers();
-
-      /// 🔥 start lagi setelah balik
       _startFaceDetection();
     });
   }

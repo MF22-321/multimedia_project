@@ -1,7 +1,11 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:frontend/core/navigation/driver_session.dart';
 import 'package:frontend/core/services/drive_pref_service.dart';
+import 'package:frontend/core/services/drowsiness_api.dart';
+import 'package:frontend/features/face_recognition/presentation/pages/drowsines_alert_page.dart';
 import 'package:provider/provider.dart';
 
 import 'package:frontend/core/navigation/app_navigation.dart';
@@ -20,6 +24,7 @@ import 'package:frontend/features/home/presentation/widget/top_bar.dart';
 
 import 'package:frontend/features/video/provider/video_provider.dart';
 
+
 import '../../../boot/presentation/widget/dotted_background.dart';
 
 class HomePage extends StatefulWidget {
@@ -30,82 +35,154 @@ class HomePage extends StatefulWidget {
 }
 
 class _HomePageState extends State<HomePage> {
-  /// 🔥 LOADING STATE (WAJIB)
   bool isReady = false;
+
+  Timer? _drowsyTimer;
+  bool _isMonitoring = false;
+  bool _dialogShown = false;
 
   @override
   void initState() {
     super.initState();
+
     DriverSession.currentDriver.addListener(_onDriverChanged);
 
-    _init(); // 🔥 INIT TERPUSAT
+    _init();
 
     Future.microtask(() {
       context.read<VideoProvider>().init(context);
     });
   }
 
-    @override
+  @override
   void dispose() {
     DriverSession.currentDriver.removeListener(_onDriverChanged);
+    _drowsyTimer?.cancel();
     super.dispose();
   }
 
-  /// 🔥 INIT SEMUA DISINI
+  /// ================= INIT =================
   Future<void> _init() async {
     await _applyDriverPreference();
+    await _startDrowsiness();
 
     setState(() {
       isReady = true;
     });
   }
 
+  void _onDriverChanged() async {
+    debugPrint("🔄 Driver changed");
 
-  void _onDriverChanged() {
-  _applyDriverPreference();
-}
+    _drowsyTimer?.cancel();
 
-  /// 🔥 APPLY DRIVER PREF
-  Future<void> _applyDriverPreference() async {
-  final driver = DriverSession.currentDriver.value;
-
-  debugPrint("🔥 Driver aktif di Home: $driver");
-
-  if (driver == null) {
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      CarThemes.currentTheme.value = CarThemeType.comfort;
-    });
-
-    debugPrint("👤 Guest mode → comfort");
-    return;
+    await _applyDriverPreference(); // 🔥 tunggu selesai
+    await _startDrowsiness();
   }
 
-  /// 🔥 LOAD DENGAN KEY NORMALIZED
-  final pref = await DriverPrefService.load(driver.toLowerCase());
+  /// ================= APPLY PREF =================
+  Future<void> _applyDriverPreference() async {
+    final driver = DriverSession.currentDriver.value;
 
-  debugPrint("📦 Pref ditemukan: ${pref != null}");
+    debugPrint("🧠 DRIVER SESSION: $driver");
 
-  if (pref != null) {
-
-    /// 🔥 INI YANG FIX BUG LOWERCASE
-    if (DriverSession.currentDriver.value != pref.displayName) {
-      DriverSession.setDriver(pref.displayName);
+    if (driver == null) {
+      CarThemes.currentTheme.value = CarThemeType.comfort;
+      return;
     }
 
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      CarThemes.currentTheme.value =
-          CarThemeType.values[pref.themeIndex];
-    });
+    final key = driver.toLowerCase();
 
-    debugPrint("🎨 Applied theme index: ${pref.themeIndex}");
-  } else {
-    debugPrint("⛔ Pref belum ada → skip theme");
+    final pref = await DriverHiveService.load(key);
+
+    /// 🔥 CEK LAGI DRIVER (ANTI RACE CONDITION)
+    if (DriverSession.currentDriver.value != driver) {
+      debugPrint("⛔ Driver berubah saat load → skip apply");
+      return;
+    }
+
+    if (pref != null) {
+      debugPrint("🎨 APPLY THEME INDEX: ${pref.themeIndex}");
+
+      CarThemes.currentTheme.value = CarThemeType.values[pref.themeIndex];
+    } else {
+      debugPrint("⛔ NO PREF FOUND");
+    }
   }
-}
 
+  /// ================= START DROWSINESS =================
+  Future<void> _startDrowsiness() async {
+    final driver = DriverSession.currentDriver.value;
+
+    if (driver == null) return;
+
+    try {
+      final result = await DrowsinessApi.startDrowsiness(
+        driverName: driver.toLowerCase(), // backend pakai lowercase
+      );
+
+      _isMonitoring = result["active"] == true;
+
+      debugPrint("🚀 Drowsiness started for $driver");
+
+      _startPolling();
+    } catch (e) {
+      debugPrint("❌ start drowsiness error: $e");
+    }
+  }
+
+  /// ================= POLLING =================
+  void _startPolling() {
+    _drowsyTimer?.cancel();
+
+    _drowsyTimer = Timer.periodic(const Duration(milliseconds: 800), (_) async {
+      if (!_isMonitoring) return;
+
+      try {
+        final result = await DrowsinessApi.getDrowsinessStatus();
+
+        if (!mounted) return;
+
+        final status = result["status"]?.toString() ?? "inactive";
+
+        debugPrint("📊 STATUS: $status");
+
+        if (status == "drowsy" && !_dialogShown) {
+          _dialogShown = true;
+
+          await Navigator.push(
+            context,
+            PageRouteBuilder(
+              opaque: false,
+              pageBuilder: (_, __, ___) => DrowsinessAlertPage(
+                onYes: () {
+                  debugPrint("🌸 Fragrance ON");
+                  Navigator.pop(context);
+                },
+                onNo: () {
+                  Navigator.pop(context);
+                },
+                onDisable: () async {
+                  await DrowsinessApi.stopDrowsiness();
+                  Navigator.pop(context);
+                },
+              ),
+            ),
+          );
+        }
+
+        if (status != "drowsy") {
+          _dialogShown = false;
+        }
+      } catch (e) {
+        debugPrint("❌ polling error: $e");
+      }
+    });
+  }
+
+  /// ================= UI =================
   @override
   Widget build(BuildContext context) {
-    /// 🔥 LOADING SCREEN (IMPORTANT)
     if (!isReady) {
       return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
@@ -113,9 +190,7 @@ class _HomePageState extends State<HomePage> {
     return Scaffold(
       body: Stack(
         children: [
-          /// =============================
-          /// 🎨 BACKGROUND
-          /// =============================
+          /// BACKGROUND
           ValueListenableBuilder(
             valueListenable: CarThemes.currentTheme,
             builder: (context, themeType, _) {
@@ -128,7 +203,6 @@ class _HomePageState extends State<HomePage> {
                     children: [
                       AnimatedContainer(
                         duration: const Duration(milliseconds: 600),
-                        curve: Curves.easeInOut,
                         decoration: BoxDecoration(
                           gradient: LinearGradient(
                             colors: theme.backgroundGradient,
@@ -162,9 +236,7 @@ class _HomePageState extends State<HomePage> {
             },
           ),
 
-          /// =============================
-          /// 🧩 MAIN UI
-          /// =============================
+          /// MAIN UI
           Row(
             children: [
               const SideMenu(),
@@ -174,36 +246,10 @@ class _HomePageState extends State<HomePage> {
                   valueListenable: AppNavigation.currentIndex,
                   builder: (context, index, _) {
                     switch (index) {
-                      case 0:
-                        return const Center(
-                          child: Text(
-                            "Music Page",
-                            style: TextStyle(color: Colors.white),
-                          ),
-                        );
-
-                      case 1:
-                        return const Center(
-                          child: Text(
-                            "Phone Page",
-                            style: TextStyle(color: Colors.white),
-                          ),
-                        );
-
                       case 2:
                         return const _HomeContent();
-
                       case 3:
                         return const MenuContent();
-
-                      case 4:
-                        return const Center(
-                          child: Text(
-                            "Settings Page",
-                            style: TextStyle(color: Colors.white),
-                          ),
-                        );
-
                       default:
                         return const _HomeContent();
                     }
@@ -218,6 +264,7 @@ class _HomePageState extends State<HomePage> {
   }
 }
 
+/// ================= HOME CONTENT =================
 class _HomeContent extends StatelessWidget {
   const _HomeContent();
 
@@ -233,7 +280,6 @@ class _HomeContent extends StatelessWidget {
           Expanded(
             child: Row(
               children: [
-                /// LEFT
                 Expanded(
                   flex: 2,
                   child: Column(
@@ -247,7 +293,6 @@ class _HomeContent extends StatelessWidget {
 
                 SizedBox(width: 30.w),
 
-                /// RIGHT
                 Expanded(
                   flex: 2,
                   child: Column(

@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:frontend/features/face_recognition/presentation/pages/drowsines_alert_page.dart';
 import 'package:frontend/features/personalize/presentation/page/personalize_page.dart';
+import 'package:frontend/features/smart_fragrance/page/smart_fragrance_page.dart';
+import 'package:hive_flutter/adapters.dart';
 import 'package:media_kit/media_kit.dart';
 import 'package:window_manager/window_manager.dart';
 import 'package:provider/provider.dart';
@@ -17,7 +20,13 @@ import 'package:frontend/features/video/provider/video_provider.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-      MediaKit.ensureInitialized(); // ⬅️ WAJIB
+      MediaKit.ensureInitialized(); // ⬅️ WAJI
+      
+      
+  await Hive.initFlutter();
+
+  /// 🔥 buka box driver
+  await Hive.openBox('drivers');
 
   /// Init window manager
   await windowManager.ensureInitialized();
@@ -94,6 +103,7 @@ class MyApp extends StatelessWidget {
               "/add-driver": (context) => const AddDriverPage(),
               "/personalize": (context) => const PersonalizePage(),
               "/home": (context) => const HomePage(),
+              '/fragrance_settings': (context) => const SmartFragrancePage(),
             },
           );
         },

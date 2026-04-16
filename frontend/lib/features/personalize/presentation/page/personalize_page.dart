@@ -5,7 +5,7 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 import 'package:frontend/core/navigation/driver_session.dart';
 import 'package:frontend/core/services/drive_pref_service.dart';
-import 'package:frontend/core/storage/driver_preference.dart';
+import 'package:frontend/core/model/driver_preference.dart';
 
 import 'package:frontend/core/themes/car_theme.dart';
 import 'package:frontend/core/themes/futuristic_particle_background.dart';
@@ -60,7 +60,14 @@ class _PersonalizePageState extends State<PersonalizePage> {
 
     if (name == null) return;
 
-    final pref = await DriverPrefService.load(name.toLowerCase());
+    final currentDriver = name; // 🔥 SIMPAN DULU
+
+    final pref = await DriverHiveService.load(name.toLowerCase());
+
+    /// 🔥 CEK LAGI (ANTI RACE CONDITION)
+    if (DriverSession.currentDriver.value != currentDriver) {
+      return;
+    }
 
     if (pref != null && mounted) {
       setState(() {
@@ -70,7 +77,6 @@ class _PersonalizePageState extends State<PersonalizePage> {
         selectedTheme = pref.themeIndex;
       });
 
-      /// 🔥 APPLY THEME (SAFE)
       WidgetsBinding.instance.addPostFrameCallback((_) {
         CarThemes.currentTheme.value = CarThemeType.values[pref.themeIndex];
       });
@@ -88,16 +94,10 @@ class _PersonalizePageState extends State<PersonalizePage> {
 
     if (current == null) return;
 
-    /// 🔥 LOAD DATA LAMA (SOURCE OF TRUTH)
-    final existingPref = await DriverPrefService.load(current.toLowerCase());
-
-    /// 🔥 AMBIL displayName ASLI
-    final rawName = existingPref?.displayName ?? current;
-
-    /// 🔑 KEY tetap lowercase
+    final rawName = current;
     final key = rawName.trim().toLowerCase();
 
-    await DriverPrefService.save(
+    await DriverHiveService.save(
       DriverPreference(
         name: key,
         displayName: rawName, // ✅ TIDAK AKAN KE-LOWERCASE LAGI
@@ -255,22 +255,17 @@ class _PersonalizePageState extends State<PersonalizePage> {
                                       );
                                     }
 
-                                    return FutureBuilder<DriverPreference?>(
-                                      future: DriverPrefService.load(
-                                        driver.toLowerCase(),
-                                      ),
-                                      builder: (context, snapshot) {
-                                        final pref = snapshot.data;
+                                    final pref = DriverHiveService.load(
+                                      driver.toLowerCase(),
+                                    );
 
-                                        return Text(
-                                          pref?.displayName ?? driver,
-                                          style: TextStyle(
-                                            fontSize: 70.sp,
-                                            fontWeight: FontWeight.bold,
-                                            color: Colors.white,
-                                          ),
-                                        );
-                                      },
+                                    return Text(
+                                      pref?.displayName ?? driver,
+                                      style: TextStyle(
+                                        fontSize: 70.sp,
+                                        fontWeight: FontWeight.bold,
+                                        color: Colors.white,
+                                      ),
                                     );
                                   },
                                 ),

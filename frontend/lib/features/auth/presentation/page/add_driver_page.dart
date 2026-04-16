@@ -3,10 +3,10 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:frontend/core/model/driver_preference.dart';
 import 'package:frontend/core/navigation/driver_session.dart';
 import 'package:frontend/core/services/drive_pref_service.dart';
 import 'package:frontend/core/services/faceid_api.dart';
-import 'package:frontend/core/storage/driver_preference.dart';
 import 'package:frontend/core/themes/car_theme.dart';
 import 'package:frontend/core/themes/futuristic_particle_background.dart';
 import 'package:frontend/core/themes/playful_background.dart';
@@ -41,6 +41,7 @@ class _AddDriverPageState extends State<AddDriverPage> {
   int temperature = 19;
   int selectedCartridge = 1;
   int selectedTheme = 0;
+  bool _prefLoaded = false;
 
   @override
   void dispose() {
@@ -56,6 +57,7 @@ class _AddDriverPageState extends State<AddDriverPage> {
     setState(() {
       detectedDriverName = null;
       confidence = null;
+      _prefLoaded = false;
     });
 
     if (isCapturing) return; // 🔥 biar ga spam
@@ -137,14 +139,20 @@ class _AddDriverPageState extends State<AddDriverPage> {
           });
 
           /// 🔥 2. LOAD PREFERENCE (JIKA ADA)
-          final pref = await DriverPrefService.load(name);
+          final pref = await DriverHiveService.load(name.toLowerCase());
 
-          if (pref != null) {
+          if (pref != null && !_prefLoaded) {
             setState(() {
               fanLevel = pref.fanLevel;
               temperature = pref.temperature;
               selectedCartridge = pref.cartridge;
               selectedTheme = pref.themeIndex;
+              if (recognized && name != null) {
+                /// 🔥 RESET kalau driver beda
+                if (detectedDriverName != name) {
+                  _prefLoaded = false;
+                }
+              }
             });
 
             /// 🔥 APPLY THEME
@@ -164,6 +172,37 @@ class _AddDriverPageState extends State<AddDriverPage> {
         debugPrint("Recognition error: $e");
       }
     });
+  }
+
+  Future<void> _saveDriver() async {
+    if (detectedDriverName == null) return;
+
+    final current = detectedDriverName!;
+    final rawName = current; // 🔥 langsung pakai hasil face
+    final key = rawName.trim().toLowerCase();
+
+    await DriverHiveService.save(
+      DriverPreference(
+        name: key,
+        displayName: rawName,
+        fanLevel: fanLevel,
+        temperature: temperature,
+        cartridge: selectedCartridge,
+        themeIndex: selectedTheme,
+      ),
+    );
+
+    DriverSession.setDriver(rawName);
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      CarThemes.currentTheme.value = CarThemeType.values[selectedTheme];
+    });
+
+    Navigator.pushAndRemoveUntil(
+      context,
+      MaterialPageRoute(builder: (_) => const HomePage()),
+      (route) => false,
+    );
   }
 
   @override
@@ -424,45 +463,7 @@ class _AddDriverPageState extends State<AddDriverPage> {
 
                           /// SAVE BUTTON
                           GestureDetector(
-                            onTap: () async {
-                              if (detectedDriverName == null) return;
-
-                              final rawName =
-                                  detectedDriverName!; // 🔥 ORIGINAL
-                              final key = rawName
-                                  .trim()
-                                  .toLowerCase(); // 🔑 internal
-
-                              await DriverPrefService.save(
-                                DriverPreference(
-                                  name: key,
-                                  displayName: rawName, // ✅ FIX
-                                  fanLevel: fanLevel,
-                                  temperature: temperature,
-                                  cartridge: selectedCartridge,
-                                  themeIndex: selectedTheme,
-                                ),
-                              );
-
-                              /// 🔥 SET DRIVER (pakai display name biar UI sesuai)
-                              DriverSession.setDriver(rawName);
-
-                              /// 🔥 APPLY THEME
-                              WidgetsBinding.instance.addPostFrameCallback((_) {
-                                CarThemes.currentTheme.value =
-                                    CarThemeType.values[selectedTheme];
-                              });
-
-                              debugPrint("✅ Preference saved for $rawName");
-
-                              Navigator.pushAndRemoveUntil(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (_) => const HomePage(),
-                                ),
-                                (route) => false,
-                              );
-                            },
+                            onTap: _saveDriver,
                             child: AnimatedContainer(
                               duration: const Duration(milliseconds: 250),
                               padding: EdgeInsets.symmetric(

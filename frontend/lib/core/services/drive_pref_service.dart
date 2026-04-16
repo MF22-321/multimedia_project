@@ -1,41 +1,44 @@
-import 'dart:convert';
-import 'package:frontend/core/storage/driver_preference.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+import 'package:hive/hive.dart';
+import '../model/driver_preference.dart';
 
-class DriverPrefService {
+class DriverHiveService {
+  static final _box = Hive.box('drivers'); // 🔥 SATUIN
+
   static String _key(String name) {
-    return "driver_${name.trim().toLowerCase()}";
+    return name.trim().toLowerCase();
   }
 
+  /// SAVE
   static Future<void> save(DriverPreference pref) async {
-    final prefs = await SharedPreferences.getInstance();
-
     final key = _key(pref.name);
+    await _box.put(key, pref.toJson());
 
-    await prefs.setString(
-      key,
-      jsonEncode(pref.toJson()),
-    );
+    print("💾 HIVE SAVE: $key");
   }
 
-  static Future<DriverPreference?> load(String name) async {
-    final prefs = await SharedPreferences.getInstance();
-
+  /// LOAD
+  static DriverPreference? load(String name) {
     final key = _key(name);
 
-    final data = prefs.getString(key);
+    final data = _box.get(key);
     if (data == null) return null;
 
-    try {
-      return DriverPreference.fromJson(jsonDecode(data));
-    } catch (e) {
-      print("❌ JSON error: $e");
-      return null;
-    }
+    return DriverPreference.fromJson(Map<String, dynamic>.from(data));
   }
 
+  /// DELETE (FIXED)
   static Future<void> delete(String name) async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.remove(_key(name));
+    final key = _key(name);
+    await _box.delete(key);
+
+    print("🗑 HIVE DELETE: $key");
+  }
+
+  /// DEBUG
+  static void printAll() {
+    print("=== HIVE DATA ===");
+    for (var key in _box.keys) {
+      print("$key = ${_box.get(key)}");
+    }
   }
 }

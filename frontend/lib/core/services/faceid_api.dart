@@ -13,7 +13,7 @@ class FaceIdApi {
   /// ==============================
   /// 📊 DRIVER STATUS
   /// ==============================
-  /// 
+  ///
   ///   /// 🔥 GET LIST DRIVER
   static Future<List<String>> getDrivers() async {
     final res = await http.get(Uri.parse("$_httpBase/drivers"));
@@ -28,9 +28,7 @@ class FaceIdApi {
 
   static Future<Map<String, dynamic>> getDriverStatus() async {
     try {
-      final res = await http.get(
-        Uri.parse("$_httpBase/driver_status"),
-      );
+      final res = await http.get(Uri.parse("$_httpBase/driver_status"));
 
       if (res.statusCode != 200) {
         throw Exception("Failed: ${res.body}");
@@ -47,9 +45,7 @@ class FaceIdApi {
   /// ==============================
   static Future<Uint8List> captureFace() async {
     try {
-      final res = await http.get(
-        Uri.parse("$_httpBase/capture_face"),
-      );
+      final res = await http.get(Uri.parse("$_httpBase/capture_face"));
 
       if (res.statusCode != 200) {
         throw Exception("Failed: ${res.body}");
@@ -97,8 +93,6 @@ class FaceIdApi {
     }
   }
 
-  
-
   /// ==============================
   /// 🚀 ENROLL LIVE BURST (AUTO CAPTURE)
   /// ==============================
@@ -127,6 +121,27 @@ class FaceIdApi {
       return jsonDecode(body);
     } catch (e) {
       throw Exception("Burst enroll error: $e");
+    }
+  }
+
+  /// ==============================
+  /// 🗑 DELETE DRIVER (FULL CLEAN)
+  /// ==============================
+  static Future<Map<String, dynamic>> deleteDriver(String name) async {
+    try {
+      final normalized = name.trim().toLowerCase();
+
+      final res = await http.delete(
+        Uri.parse("$_httpBase/delete-driver/$normalized"),
+      );
+
+      if (res.statusCode != 200) {
+        throw Exception("Delete failed: ${res.body}");
+      }
+
+      return jsonDecode(res.body);
+    } catch (e) {
+      throw Exception("Delete driver error: $e");
     }
   }
 }

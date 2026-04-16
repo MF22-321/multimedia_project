@@ -5,8 +5,8 @@ class DriverSession {
       ValueNotifier<String?>(null);
 
   /// SET DRIVER
-  static void setDriver(String name) {
-    currentDriver.value = name.trim().toLowerCase();
+ static void setDriver(String name) {
+  currentDriver.value = name; // 🔥 JANGAN LOWERCASE
   }
 
   /// CLEAR (GUEST)
