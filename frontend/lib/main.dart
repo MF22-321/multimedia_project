@@ -3,7 +3,6 @@ import 'package:flutter/services.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:frontend/core/provider/gps_provider.dart';
 import 'package:frontend/core/provider/pothole_provider.dart';
-import 'package:frontend/features/face_recognition/presentation/pages/drowsines_alert_page.dart';
 import 'package:frontend/features/personalize/presentation/page/personalize_page.dart';
 import 'package:frontend/features/smart_fragrance/page/smart_fragrance_page.dart';
 import 'package:hive_flutter/adapters.dart';
