@@ -155,7 +155,7 @@ def init_recognizer():
 
     if recognizer is None:
         recognizer = FaceID(
-            conf_threshold=0.35,
+            conf_threshold=0.4,
             vote_window_sec=1.5,
             vote_min_ratio=0.60,
             vote_min_samples=6,

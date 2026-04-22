@@ -1,89 +1,177 @@
 import 'dart:async';
+import 'dart:typed_data';
 import 'package:flutter_libserialport/flutter_libserialport.dart';
 import 'package:frontend/core/model/gps_data.dart';
 
 class SerialService {
   SerialPort? _port;
   SerialPortReader? _reader;
+  StreamSubscription? _readerSub;
+  Timer? _scanTimer;
 
   final _controller = StreamController<GPSData>.broadcast();
   Stream<GPSData> get stream => _controller.stream;
 
   String _buffer = "";
 
+  bool _connected = false;
+  bool _disposed = false;
+  String? _currentPort;
+  List<String> _lastPorts = [];
+
+  // ================= START =================
   void start() {
+    _startAutoScan();
+  }
+
+  // ================= AUTO SCAN =================
+  void _startAutoScan() {
+    _scanTimer?.cancel();
+
+    _scanTimer = Timer.periodic(
+      const Duration(seconds: 2),
+      (_) => _scanPorts(),
+    );
+
+    _scanPorts();
+  }
+
+  void _scanPorts() {
+    if (_disposed) return;
+    if (_connected) return;
+
     try {
       final ports = SerialPort.availablePorts;
 
-      print("AVAILABLE PORTS: $ports");
-
-      if (ports.isEmpty) {
-        print("No serial device");
-        return;
+      // print hanya jika berubah
+      if (ports.toString() != _lastPorts.toString()) {
+        print("AVAILABLE PORTS: $ports");
+        _lastPorts = List.from(ports);
       }
 
-      final portName = ports.first;
+      if (ports.isEmpty) return;
 
-      print("Using port: $portName");
+      for (final portName in ports) {
+        if (_tryConnect(portName)) {
+          break;
+        }
+      }
+    } catch (e) {
+      print("SCAN ERROR: $e");
+    }
+  }
 
-      _port = SerialPort(portName);
+  // ================= CONNECT =================
+  bool _tryConnect(String portName) {
+    try {
+      final port = SerialPort(portName);
 
-      /// OPEN PORT
-      if (!_port!.openRead()) {
-        print("Failed open serial");
-        return;
+      if (!port.openReadWrite()) {
+        return false;
       }
 
-      /// CONFIG SERIAL
-      final config = _port!.config;
-
+      final config = port.config;
       config.baudRate = 115200;
       config.bits = 8;
       config.stopBits = 1;
       config.parity = SerialPortParity.none;
+      port.config = config;
 
-      _port!.config = config;
+      _port = port;
+      _reader = SerialPortReader(port);
+      _currentPort = portName;
+      _connected = true;
+      _buffer = "";
 
-      /// START READER
-      _reader = SerialPortReader(_port!);
+      print("CONNECTED TO $portName");
 
-      _reader!.stream.listen((data) {
-        _buffer += String.fromCharCodes(data);
+      _readerSub = _reader!.stream.listen(
+        _onDataReceived,
+        onDone: _handleDisconnect,
+        onError: (_) => _handleDisconnect(),
+        cancelOnError: true,
+      );
 
-        /// cek jika ada newline
-        if (_buffer.contains("\n")) {
-          final lines = _buffer.split("\n");
+      return true;
+    } catch (e) {
+      print("CONNECT FAIL $portName : $e");
+      return false;
+    }
+  }
 
-          /// simpan sisa buffer
-          _buffer = lines.last;
+  // ================= DATA =================
+  void _onDataReceived(Uint8List data) {
+    try {
+      final incoming = String.fromCharCodes(data);
+      _buffer += incoming;
 
-          for (final line in lines) {
-            final clean = line.trim();
+      while (_buffer.contains('\n')) {
+        final index = _buffer.indexOf('\n');
 
-            if (clean.isEmpty) continue;
+        final line = _buffer.substring(0, index).trim();
+        _buffer = _buffer.substring(index + 1);
 
-            print("SERIAL: $clean");
+        if (line.isEmpty) continue;
 
-            /// hanya parsing GPS
-            if (clean.startsWith("GPS")) {
-              final parts = clean.split(",");
+        print("SERIAL: $line");
 
-              if (parts.length < 4) {
-                return;
-              }
-
-              try {
-                final gps = GPSData.fromSerial(clean);
-                _controller.add(gps);
-              } catch (e) {
-                print("Parse error: $e");
-              }
-            }
+        if (line.startsWith("GPS")) {
+          try {
+            final gps = GPSData.fromSerial(line);
+            _controller.add(gps);
+          } catch (e) {
+            print("PARSE ERROR: $e");
           }
         }
-      });
+      }
     } catch (e) {
-      print("Serial error: $e");
+      print("READ ERROR: $e");
+      _handleDisconnect();
     }
+  }
+
+  // ================= DISCONNECT =================
+  void _handleDisconnect() {
+    if (!_connected) return;
+
+    print("DISCONNECTED $_currentPort");
+
+    try {
+      _readerSub?.cancel();
+    } catch (_) {}
+
+    _readerSub = null;
+
+    try {
+      _reader?.close();
+    } catch (_) {}
+
+    _reader = null;
+
+    try {
+      _port?.close();
+    } catch (_) {}
+
+    _port = null;
+
+    _connected = false;
+    _currentPort = null;
+    _buffer = "";
+  }
+
+  // ================= STATUS =================
+  bool get isConnected => _connected;
+  String? get currentPort => _currentPort;
+
+  // ================= STOP =================
+  void dispose() {
+    _disposed = true;
+
+    _scanTimer?.cancel();
+    _scanTimer = null;
+
+    _handleDisconnect();
+
+    _controller.close();
   }
 }

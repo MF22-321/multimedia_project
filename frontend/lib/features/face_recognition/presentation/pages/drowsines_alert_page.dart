@@ -72,9 +72,10 @@ class DrowsinessAlertPage extends StatelessWidget {
                       SizedBox(height: 20.h),
 
                       /// 🔥 ICON
-                      Icon(
-                        Icons.airline_seat_recline_normal,
-                        size: 120.sp,
+                      Image.asset(
+                        'assets/images/drowsy.png',
+                        width: 120.w,
+                        height: 120.h,
                         color: theme.accentColor,
                       ),
 
@@ -103,7 +104,7 @@ class DrowsinessAlertPage extends StatelessWidget {
                               padding: EdgeInsets.symmetric(
                                   horizontal: 40.w, vertical: 16.h),
                               decoration: BoxDecoration(
-                                color: Colors.red,
+                                color: theme.accentColor,
                                 borderRadius: BorderRadius.circular(30.r),
                               ),
                               child: Text(

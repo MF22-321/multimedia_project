@@ -21,9 +21,8 @@ import 'package:frontend/features/video/provider/video_provider.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-      MediaKit.ensureInitialized(); // ⬅️ WAJI
-      
-      
+  MediaKit.ensureInitialized(); // ⬅️ WAJI
+
   await Hive.initFlutter();
 
   /// 🔥 buka box driver
@@ -70,22 +69,16 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-
     return MultiProvider(
       providers: [
         /// 🔥 VIDEO PROVIDER (AUTO INIT LAN)
-        ChangeNotifierProvider(
-          create: (_) => VideoProvider(),
-        ),
+        ChangeNotifierProvider(create: (_) => VideoProvider()),
+
         /// 🔥 GPS REALTIME
-        ChangeNotifierProvider(
-          create: (_) => GPSProvider(),
-        ),
+        ChangeNotifierProvider(create: (_) => GPSProvider()),
 
         /// 🔥 POTHOLE DATA
-        ChangeNotifierProvider(
-          create: (_) => PotholeProvider(),
-        ),
+        ChangeNotifierProvider(create: (_) => PotholeProvider()),
       ],
       child: ScreenUtilInit(
         designSize: const Size(1280, 720),
@@ -95,6 +88,15 @@ class MyApp extends StatelessWidget {
           return MaterialApp(
             debugShowCheckedModeBanner: false,
             title: "Toyota Multimedia System",
+
+            builder: (context, child) {
+              return MediaQuery(
+                data: MediaQuery.of(
+                  context,
+                ).copyWith(textScaler: const TextScaler.linear(1.0)),
+                child: child!,
+              );
+            },
 
             theme: ThemeData(
               brightness: Brightness.dark,
