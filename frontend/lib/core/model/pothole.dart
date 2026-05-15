@@ -23,19 +23,19 @@ class Pothole {
   /// =========================
   /// AUTO CATEGORY
   /// =========================
-  String get category {
-    // pothole valid
-    if (severity > 1.5 && speed > 8) {
-      return "pothole";
-    }
-
-    // speed bump / polisi tidur
-    if (severity > 0.8 && speed <= 10) {
-      return "bumper";
-    }
-
-    return "normal";
+String get category {
+  // pothole besar / sedang
+  if (severity >= 1.2 && speed > 8) {
+    return "pothole";
   }
+
+  // bumper / hump / polisi tidur
+  if (severity >= 0.6 && speed <= 12) {
+    return "bumper";
+  }
+
+  return "normal";
+}
 
   bool get isDanger => category == "pothole";
 }

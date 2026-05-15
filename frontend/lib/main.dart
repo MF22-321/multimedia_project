@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:frontend/core/provider/gps_provider.dart';
+import 'package:frontend/core/provider/music_provider.dart';
 import 'package:frontend/core/provider/pothole_provider.dart';
 import 'package:frontend/features/personalize/presentation/page/personalize_page.dart';
 import 'package:frontend/features/smart_fragrance/page/smart_fragrance_page.dart';
@@ -21,44 +22,48 @@ import 'package:frontend/features/video/provider/video_provider.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  MediaKit.ensureInitialized(); // ⬅️ WAJI
+  MediaKit.ensureInitialized();
 
   await Hive.initFlutter();
-
-  /// 🔥 buka box driver
   await Hive.openBox('drivers');
 
-  /// Init window manager
   await windowManager.ensureInitialized();
 
-  /// Lock orientation ke Landscape (Headunit Mode)
+  /// Landscape mode
   await SystemChrome.setPreferredOrientations([
     DeviceOrientation.landscapeLeft,
     DeviceOrientation.landscapeRight,
   ]);
 
-  /// Hilangkan status bar
+  /// Hide status bar
   SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
 
-  /// Window options (Fullscreen Headunit)
-  WindowOptions windowOptions = const WindowOptions(
-    fullScreen: true,
-    skipTaskbar: true,
+  /// WINDOW MODE (Bukan Fullscreen)
+  const WindowOptions windowOptions = WindowOptions(
+    fullScreen: false,
+    skipTaskbar: false,
     titleBarStyle: TitleBarStyle.hidden,
+    backgroundColor: Colors.black,
   );
 
   windowManager.waitUntilReadyToShow(windowOptions, () async {
+    /// tampilkan window
     await windowManager.show();
+
+    /// fokus
     await windowManager.focus();
 
     /// pindah ke monitor kedua
     await windowManager.setPosition(const Offset(1920, 0));
 
-    /// resolusi monitor kedua
+    /// ukuran tetap monitor kedua
     await windowManager.setSize(const Size(2560, 1600));
 
-    /// fullscreen
-    await windowManager.setFullScreen(true);
+    /// pastikan bukan fullscreen
+    await windowManager.setFullScreen(false);
+
+    /// optional: tidak bisa resize user
+    await windowManager.setResizable(true);
   });
 
   runApp(const MyApp());
@@ -71,13 +76,18 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MultiProvider(
       providers: [
-        /// 🔥 VIDEO PROVIDER (AUTO INIT LAN)
+        ChangeNotifierProvider(
+          create: (_) {
+            final provider = MusicProvider();
+
+            provider.startListening();
+
+            return provider;
+          },
+        ),
+
         ChangeNotifierProvider(create: (_) => VideoProvider()),
-
-        /// 🔥 GPS REALTIME
         ChangeNotifierProvider(create: (_) => GPSProvider()),
-
-        /// 🔥 POTHOLE DATA
         ChangeNotifierProvider(create: (_) => PotholeProvider()),
       ],
       child: ScreenUtilInit(
@@ -115,7 +125,7 @@ class MyApp extends StatelessWidget {
               "/add-driver": (context) => const AddDriverPage(),
               "/personalize": (context) => const PersonalizePage(),
               "/home": (context) => const HomePage(),
-              '/fragrance_settings': (context) => const SmartFragrancePage(),
+              "/fragrance_settings": (context) => const SmartFragrancePage(),
             },
           );
         },

@@ -141,159 +141,280 @@ class _MapCardState extends State<MapCard> {
   }
 
   // ================= ALERT =================
-  void triggerAlert(double distance) {
-    if (!mounted || isDialogShowing || !alertEnabled) return;
+// ================= ALERT =================
+// ================= ALERT MODERN =================
+void triggerAlert(String category, double distance, double severity) {
+  if (!mounted || isDialogShowing || !alertEnabled) return;
 
-    isDialogShowing = true;
+  isDialogShowing = true;
 
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      showGeneralDialog(
-        context: context,
-        barrierDismissible: false,
-        barrierLabel: "Pothole Alert",
-        barrierColor: Colors.black.withOpacity(0.45),
-        transitionDuration: const Duration(milliseconds: 350),
-        pageBuilder: (_, __, ___) {
+  final bool isPothole = category == "pothole";
+
+  final Color alertColor =
+      isPothole ? Colors.red : Colors.orange;
+
+  final String title =
+      isPothole ? "POTHOLE IN ${(distance * 1000).toInt()} M !" : "SPEED BUMP";
+
+  showGeneralDialog(
+    context: context,
+    barrierDismissible: false,
+    barrierLabel: "Alert",
+    barrierColor: Colors.black.withOpacity(0.55),
+    transitionDuration: const Duration(milliseconds: 400),
+
+    pageBuilder: (_, __, ___) {
+      return StatefulBuilder(
+        builder: (context, setState) {
           return Center(
             child: Container(
-              width: 420.w,
-              padding: EdgeInsets.all(24.w),
+              width: 500.w,
+              height: 390.h,
               decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(24.r),
-                color: const Color(0xFF111111),
-                border: Border.all(
-                  color: Colors.orangeAccent.withOpacity(0.8),
-                  width: 2,
-                ),
+                borderRadius: BorderRadius.circular(28.r),
+                color: Colors.black,
+                boxShadow: [
+                  BoxShadow(
+                    color: alertColor.withOpacity(0.5),
+                    blurRadius: 30,
+                    spreadRadius: 4,
+                  )
+                ],
               ),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
+
+              child: Stack(
                 children: [
-                  Icon(
-                    Icons.warning_amber_rounded,
-                    color: Colors.orangeAccent,
-                    size: 50.sp,
-                  ),
 
-                  SizedBox(height: 18.h),
-
-                  Text(
-                    "POTHOLE DETECTED",
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 24.sp,
-                      fontWeight: FontWeight.bold,
+                  // MAP BACKGROUND
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(28.r),
+                    child: Opacity(
+                      opacity: 0.45,
+                      child: FlutterMap(
+                        options: MapOptions(
+                          initialCenter: smoothCarPosition!,
+                          initialZoom: 16,
+                        ),
+                        children: [
+                          TileLayer(
+                            urlTemplate:
+                                "https://tile.openstreetmap.org/{z}/{x}/{y}.png",
+                          ),
+                        ],
+                      ),
                     ),
                   ),
 
-                  SizedBox(height: 12.h),
-
-                  Text(
-                    "${(distance * 1000).toStringAsFixed(0)} meters ahead",
-                    style: TextStyle(color: Colors.white70, fontSize: 16.sp),
+                  // TOP BAR
+                  Positioned(
+                    top: 15.h,
+                    left: 15.w,
+                    right: 15.w,
+                    child: Container(
+                      padding: EdgeInsets.symmetric(
+                        horizontal: 18.w,
+                        vertical: 10.h,
+                      ),
+                      decoration: BoxDecoration(
+                        color: Colors.red.shade900,
+                        borderRadius: BorderRadius.circular(14.r),
+                      ),
+                      child: Text(
+                        "Navigation Ready",
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 18.sp,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
                   ),
 
-                  SizedBox(height: 24.h),
+                  // WARNING TITLE
+                  Positioned(
+                    top: 70.h,
+                    left: 0,
+                    right: 0,
+                    child: Center(
+                      child: Text(
+                        "WARNING !",
+                        style: TextStyle(
+                          color: Colors.red,
+                          fontSize: 42.sp,
+                          fontWeight: FontWeight.w900,
+                        ),
+                      ),
+                    ),
+                  ),
 
-                  Row(
-                    children: [
-                      Expanded(
-                        child: GestureDetector(
-                          onTap: () {
-                            Navigator.pop(context);
-                          },
-                          child: Container(
-                            padding: EdgeInsets.symmetric(vertical: 14.h),
-                            decoration: BoxDecoration(
-                              borderRadius: BorderRadius.circular(14.r),
-                              color: Colors.white.withOpacity(0.08),
-                            ),
-                            child: Center(
-                              child: Text(
-                                "Dismiss",
+                  // CENTER ICON
+                  Center(
+                    child: TweenAnimationBuilder(
+                      tween: Tween(begin: 0.9, end: 1.05),
+                      duration: const Duration(milliseconds: 700),
+                      curve: Curves.easeInOut,
+                      builder: (_, value, child) {
+                        return Transform.scale(
+                          scale: value.toDouble(),
+                          child: child,
+                        );
+                      },
+                      child: Container(
+                        width: 150.w,
+                        height: 150.w,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          gradient: RadialGradient(
+                            colors: [
+                              Colors.redAccent,
+                              Colors.red.shade900,
+                            ],
+                          ),
+                        ),
+                        child: Center(
+                          child: Icon(
+                            Icons.priority_high,
+                            color: Colors.white,
+                            size: 100.sp,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+
+                  // DISTANCE TEXT
+                  Positioned(
+                    bottom: 75.h,
+                    left: 0,
+                    right: 0,
+                    child: Center(
+                      child: Text(
+                        title,
+                        style: TextStyle(
+                          color: Colors.red,
+                          fontSize: 28.sp,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                  ),
+
+                  // BOTTOM INFO BAR
+                  Positioned(
+                    bottom: 15.h,
+                    left: 15.w,
+                    right: 15.w,
+                    child: Container(
+                      padding: EdgeInsets.symmetric(
+                        horizontal: 18.w,
+                        vertical: 14.h,
+                      ),
+                      decoration: BoxDecoration(
+                        color: Colors.red.shade900,
+                        borderRadius: BorderRadius.circular(14.r),
+                      ),
+                      child: Row(
+                        mainAxisAlignment:
+                            MainAxisAlignment.spaceBetween,
+                        children: [
+                          Row(
+                            children: [
+                              Icon(
+                                Icons.location_pin,
+                                color: Colors.white,
+                              ),
+                              SizedBox(width: 8.w),
+                              Text(
+                                "Karawang",
                                 style: TextStyle(
                                   color: Colors.white,
-                                  fontSize: 15.sp,
+                                  fontSize: 16.sp,
                                 ),
                               ),
+                            ],
+                          ),
+
+                          Text(
+                            "ETA 12 min",
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 16.sp,
                             ),
                           ),
-                        ),
-                      ),
 
-                      SizedBox(width: 12.w),
-
-                      Expanded(
-                        child: GestureDetector(
-                          onTap: () {
-                            setState(() {
-                              alertEnabled = false;
-                            });
-
-                            Navigator.pop(context);
-                          },
-                          child: Container(
-                            padding: EdgeInsets.symmetric(vertical: 14.h),
-                            decoration: BoxDecoration(
-                              borderRadius: BorderRadius.circular(14.r),
-                              color: Colors.orangeAccent,
-                            ),
-                            child: Center(
-                              child: Text(
-                                "Mute Alert",
-                                style: TextStyle(
-                                  color: Colors.black,
-                                  fontSize: 15.sp,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
+                          Text(
+                            "4.6 km",
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 16.sp,
                             ),
                           ),
-                        ),
+                        ],
                       ),
-                    ],
+                    ),
                   ),
                 ],
               ),
             ),
           );
         },
-      ).then((_) {
-        isDialogShowing = false;
-      });
-    });
-  }
+      );
+    },
+  ).then((_) {
+    isDialogShowing = false;
+  });
+
+  Future.delayed(const Duration(seconds: 4), () {
+    if (mounted && Navigator.canPop(context)) {
+      Navigator.pop(context);
+    }
+  });
+}
 
   // ================= CHECK ALERT =================
-  void checkPotholeAlert(LatLng current, List<Pothole> potholes) {
-    for (var p in potholes) {
-      final distance = calculateDistance(
+ void checkPotholeAlert(LatLng current, List<Pothole> potholes) {
+  for (var p in potholes) {
+    if (p.category == "normal") continue;
+
+    final distance = calculateDistance(
+      current.latitude,
+      current.longitude,
+      p.lat,
+      p.lng,
+    );
+
+    if (distance < 0.05) {
+      final bearingToPothole = calculateBearing(
         current.latitude,
         current.longitude,
         p.lat,
         p.lng,
       );
 
-      if (distance < 0.05) {
-        final bearingToPothole = calculateBearing(
-          current.latitude,
-          current.longitude,
-          p.lat,
-          p.lng,
+      final diff = getAngleDiff(
+        bearingToPothole,
+        currentHeading,
+      );
+
+      if (diff < 90) {
+        if (DateTime.now()
+                .difference(lastAlertTime)
+                .inSeconds <
+            5) return;
+
+        lastAlertTime = DateTime.now();
+
+        triggerAlert(
+          p.category,
+          distance,
+          p.severity,
         );
 
-        final diff = getAngleDiff(bearingToPothole, currentHeading);
-
-        if (diff < 90) {
-          if (DateTime.now().difference(lastAlertTime).inSeconds < 5) return;
-
-          lastAlertTime = DateTime.now();
-          triggerAlert(distance);
-          break;
-        }
+        break;
       }
     }
   }
+}
 
   // ================= ZOOM =================
   void _zoomIn(LatLng pos) {

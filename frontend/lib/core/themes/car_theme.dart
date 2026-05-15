@@ -114,3 +114,48 @@ class CarThemes {
     return themes[type]!;
   }
 }
+
+/// ===============================
+/// MUSIC ACCENT COLOR
+/// ===============================
+
+Color getMusicAccentColor(
+  CarThemeType type,
+  CarThemeData theme,
+) {
+
+  switch (type) {
+
+    /// COMFORT
+    case CarThemeType.comfort:
+      return const Color(
+        0xFF6CB4FF,
+      );
+
+    /// SPORT
+    case CarThemeType.sport:
+      return Colors.redAccent;
+
+    /// FUTURISTIC
+    case CarThemeType.futuristic:
+      return const Color(
+        0xFF00E5FF,
+      );
+
+    /// RETRO
+    case CarThemeType.retro:
+      return const Color(
+        0xFFFF2BC2,
+      );
+
+    /// PLAYFUL
+    case CarThemeType.playful:
+      return const Color(
+        0xFFC6A883,
+      );
+
+    /// CUSTOM
+    case CarThemeType.custom:
+      return theme.buttonColor;
+  }
+}
