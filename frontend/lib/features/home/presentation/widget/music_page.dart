@@ -159,6 +159,13 @@ class _MusicPageState extends State<MusicPage> {
       _lyricKeys.add(GlobalKey());
     }
 
+    if (_lyricKeys.length > musicProvider.syncedLyrics.length) {
+      _lyricKeys.removeRange(
+        musicProvider.syncedLyrics.length,
+        _lyricKeys.length,
+      );
+    }
+
     if (_lastLyricIndex != musicProvider.currentLyricIndex) {
       _lastLyricIndex = musicProvider.currentLyricIndex;
 

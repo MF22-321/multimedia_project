@@ -1,5 +1,5 @@
 import 'package:dbus/dbus.dart';
-import 'package:frontend/core/model/lyric_line.dart';
+
 
 class SpotifyDBusService {
 
@@ -57,11 +57,33 @@ class SpotifyDBusService {
               ?.asString() ??
           '';
 
+      final length =
+          _readDbusInteger(
+        map['mpris:length'],
+      );
+
+      final position =
+          _readDbusInteger(
+        properties['Position'],
+      );
+
+      final trackId =
+          _readTrackId(
+        map['mpris:trackid'],
+      );
+
       return {
 
         'title': title,
         'artist': artist,
         'albumArt': albumArt,
+        'position': Duration(
+          microseconds: position,
+        ),
+        'duration': Duration(
+          microseconds: length,
+        ),
+        'trackId': trackId,
         'isPlaying':
             playback?.asString() ==
                 'Playing',
@@ -75,6 +97,9 @@ class SpotifyDBusService {
         'title': '',
         'artist': '',
         'albumArt': '',
+        'position': Duration.zero,
+        'duration': Duration.zero,
+        'trackId': '',
         'isPlaying': false,
       };
     }
@@ -101,22 +126,22 @@ class SpotifyDBusService {
 
   Future<void> play() async {
 
-  final client = DBusClient.session();
+    final client = DBusClient.session();
 
-  final object = DBusRemoteObject(
-    client,
+    final object = DBusRemoteObject(
+      client,
 
-    name: service,
+      name: service,
 
-    path: DBusObjectPath(path),
-  );
+      path: DBusObjectPath(path),
+    );
 
-  await object.callMethod(
-    'org.mpris.MediaPlayer2.Player',
-    'Play',
-    [],
-  );
-}
+    await object.callMethod(
+      'org.mpris.MediaPlayer2.Player',
+      'Play',
+      [],
+    );
+  }
 
   Future<void> next() async {
 
@@ -154,6 +179,80 @@ class SpotifyDBusService {
       'Previous',
       [],
     );
+  }
+
+  Future<void> seekTo({
+    required String trackId,
+    required Duration position,
+  }) async {
+
+    if (trackId.isEmpty ||
+        !trackId.startsWith('/')) {
+      return;
+    }
+
+    final client = DBusClient.session();
+
+    final object = DBusRemoteObject(
+      client,
+
+      name: service,
+
+      path: DBusObjectPath(path),
+    );
+
+    await object.callMethod(
+      'org.mpris.MediaPlayer2.Player',
+      'SetPosition',
+      [
+        DBusObjectPath(trackId),
+        DBusInt64(position.inMicroseconds),
+      ],
+    );
+  }
+
+  int _readDbusInteger(
+    DBusValue? value,
+  ) {
+    if (value == null) {
+      return 0;
+    }
+
+    switch (value.signature.value) {
+      case 'x':
+        return value.asInt64();
+      case 't':
+        return value.asUint64();
+      case 'i':
+        return value.asInt32();
+      case 'u':
+        return value.asUint32();
+      case 'n':
+        return value.asInt16();
+      case 'q':
+        return value.asUint16();
+      case 'y':
+        return value.asByte();
+      default:
+        return 0;
+    }
+  }
+
+  String _readTrackId(
+    DBusValue? value,
+  ) {
+    if (value == null) {
+      return '';
+    }
+
+    switch (value.signature.value) {
+      case 'o':
+        return value.asObjectPath().value;
+      case 's':
+        return value.asString();
+      default:
+        return '';
+    }
   }
 
 }

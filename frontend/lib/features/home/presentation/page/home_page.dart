@@ -289,7 +289,7 @@ class _HomeContent extends StatelessWidget {
                     children: [
                       const MapCard(),
                       SizedBox(height: 25.h),
-                      const MediaCard(),
+                      const MediaCard(  ),
                     ],
                   ),
                 ),
