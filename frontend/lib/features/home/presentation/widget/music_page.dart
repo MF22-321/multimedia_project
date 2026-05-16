@@ -382,58 +382,19 @@ class _MusicPageState extends State<MusicPage> {
                             child: ListView.builder(
                               physics: const BouncingScrollPhysics(),
 
-                              itemCount: spotifyData.isEmpty
-                                  ? recentSongs.length
-                                  : selectedCategory == 'track'
-                                  ? (spotifyData['tracks']?['items']?.length ??
-                                        0)
-                                  : selectedCategory == 'artist'
-                                  ? (spotifyData['artists']?['items']?.length ??
-                                        0)
-                                  : selectedCategory == 'album'
-                                  ? (spotifyData['albums']?['items']?.length ??
-                                        0)
-                                  : (spotifyData['playlists']?['items']
-                                            ?.length ??
-                                        0),
+                              itemCount: _spotifyItems.length,
 
                               itemBuilder: (context, index) {
-                                final song = spotifyData.isEmpty
-                                    ? recentSongs[index]
-                                    : selectedCategory == 'track'
-                                    ? spotifyData['tracks']['items'][index]
-                                    : selectedCategory == 'artist'
-                                    ? spotifyData['artists']['items'][index]
-                                    : selectedCategory == 'album'
-                                    ? spotifyData['albums']['items'][index]
-                                    : spotifyData['playlists']['items'][index];
+                                final song = _spotifyItems[index];
 
-                                final imageUrl = spotifyData.isEmpty
-                                    ? song['image']
-                                    : selectedCategory == 'track'
-                                    ? (song['album']['images'] != null &&
-                                              song['album']['images']
-                                                  .isNotEmpty)
-                                          ? song['album']['images'][0]['url']
-                                          : ''
-                                    : song['images'] != null &&
-                                          song['images'].isNotEmpty
-                                    ? song['images'][0]['url']
-                                    : '';
+                                final imageUrl =
+                                    _imageUrlForSong(song);
 
-                                final title = spotifyData.isEmpty
-                                    ? song['title']
-                                    : song['name'];
+                                final title =
+                                    _titleForSong(song);
 
-                                final subtitle = spotifyData.isEmpty
-                                    ? song['artist']
-                                    : selectedCategory == 'track'
-                                    ? song['artists'][0]['name']
-                                    : selectedCategory == 'artist'
-                                    ? 'Artist'
-                                    : selectedCategory == 'album'
-                                    ? song['artists'][0]['name']
-                                    : 'Playlist';
+                                final subtitle =
+                                    _subtitleForSong(song);
 
                                 return Container(
                                   margin: EdgeInsets.only(bottom: 16.h),
@@ -519,7 +480,12 @@ class _MusicPageState extends State<MusicPage> {
                                         onTap: () async {
                                           if (spotifyData.isNotEmpty &&
                                               selectedCategory == 'track') {
-                                            final uri = song['uri'];
+                                            final uri =
+                                                song['uri']?.toString() ?? '';
+
+                                            if (uri.isEmpty) {
+                                              return;
+                                            }
 
                                             await playSpotifySong(
                                               uri,
@@ -1106,6 +1072,115 @@ class _MusicPageState extends State<MusicPage> {
     final seconds = twoDigits(d.inSeconds.remainder(60));
 
     return '$minutes:$seconds';
+  }
+
+  List<Map<String, dynamic>> get _spotifyItems {
+    if (spotifyData.isEmpty) {
+      return recentSongs;
+    }
+
+    final section = selectedCategory == 'track'
+        ? spotifyData['tracks']
+        : selectedCategory == 'artist'
+        ? spotifyData['artists']
+        : selectedCategory == 'album'
+        ? spotifyData['albums']
+        : spotifyData['playlists'];
+
+    if (section is! Map) {
+      return [];
+    }
+
+    final items = section['items'];
+
+    if (items is! List) {
+      return [];
+    }
+
+    return items
+        .whereType<Map>()
+        .map(
+          (item) => Map<String, dynamic>.from(item),
+        )
+        .toList();
+  }
+
+  String _imageUrlForSong(
+    Map<String, dynamic> song,
+  ) {
+    if (spotifyData.isEmpty) {
+      return song['image']?.toString() ?? '';
+    }
+
+    if (selectedCategory == 'track') {
+      final album = song['album'];
+
+      if (album is Map) {
+        return _firstImageUrl(album['images']);
+      }
+
+      return '';
+    }
+
+    return _firstImageUrl(song['images']);
+  }
+
+  String _firstImageUrl(
+    dynamic images,
+  ) {
+    if (images is! List ||
+        images.isEmpty) {
+      return '';
+    }
+
+    final firstImage =
+        images.first;
+
+    if (firstImage is! Map) {
+      return '';
+    }
+
+    return firstImage['url']?.toString() ?? '';
+  }
+
+  String _titleForSong(
+    Map<String, dynamic> song,
+  ) {
+    if (spotifyData.isEmpty) {
+      return song['title']?.toString() ?? 'Unknown Title';
+    }
+
+    return song['name']?.toString() ?? 'Unknown Title';
+  }
+
+  String _subtitleForSong(
+    Map<String, dynamic> song,
+  ) {
+    if (spotifyData.isEmpty) {
+      return song['artist']?.toString() ?? 'Unknown Artist';
+    }
+
+    if (selectedCategory == 'artist') {
+      return 'Artist';
+    }
+
+    if (selectedCategory == 'playlist') {
+      return 'Playlist';
+    }
+
+    final artists =
+        song['artists'];
+
+    if (artists is List &&
+        artists.isNotEmpty &&
+        artists.first is Map) {
+      final firstArtist =
+          artists.first as Map;
+
+      return firstArtist['name']?.toString() ?? 'Unknown Artist';
+    }
+
+    return 'Unknown Artist';
   }
 
   /// ===============================

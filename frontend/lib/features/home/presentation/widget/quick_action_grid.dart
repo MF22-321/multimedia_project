@@ -1,13 +1,17 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:frontend/core/navigation/app_navigation.dart';
 import 'package:frontend/core/themes/car_theme.dart';
+import 'package:frontend/features/home/presentation/widget/bluetooth_content.dart';
+import 'package:frontend/features/home/presentation/widget/radio_content.dart';
+import 'package:frontend/features/home/presentation/widget/screen_cast_content.dart';
+import 'package:frontend/features/home/presentation/widget/tutorial_content.dart';
 
 class QuickActionGrid extends StatelessWidget {
   const QuickActionGrid({super.key});
 
   @override
   Widget build(BuildContext context) {
-
     final actions = [
       _ActionItem("M-Toyota", Icons.car_rental),
       _ActionItem("Music", Icons.play_circle_fill),
@@ -22,8 +26,7 @@ class QuickActionGrid extends StatelessWidget {
     return ValueListenableBuilder(
       valueListenable: CarThemes.currentTheme,
       builder: (context, themeType, _) {
-
-       final theme = CarThemes.getTheme(themeType);
+        final theme = CarThemes.getTheme(themeType);
 
         return Expanded(
           child: GridView.builder(
@@ -37,11 +40,171 @@ class QuickActionGrid extends StatelessWidget {
             ),
 
             itemBuilder: (context, index) {
-
               final item = actions[index];
 
               return GestureDetector(
-                onTap: () {},
+                onTap: () {
+                  /// OPEN TUTORIAL PAGE
+                  if (item.label == "M-Toyota") {
+                    Navigator.push(
+                      context,
+
+                      PageRouteBuilder(
+                        transitionDuration: const Duration(milliseconds: 450),
+
+                        reverseTransitionDuration: const Duration(
+                          milliseconds: 350,
+                        ),
+
+                        pageBuilder: (context, animation, secondaryAnimation) {
+                          return const TutorialPage();
+                        },
+
+                        transitionsBuilder:
+                            (context, animation, secondaryAnimation, child) {
+                              final curved = CurvedAnimation(
+                                parent: animation,
+
+                                curve: Curves.easeInOutCubic,
+                              );
+
+                              return FadeTransition(
+                                opacity: curved,
+
+                                child: SlideTransition(
+                                  position: Tween<Offset>(
+                                    begin: const Offset(0.08, 0),
+
+                                    end: Offset.zero,
+                                  ).animate(curved),
+
+                                  child: child,
+                                ),
+                              );
+                            },
+                      ),
+                    );
+                  } else if (item.label == "Music") {
+                    AppNavigation.currentIndex.value = 0;
+                  } else if (item.label == "Radio") {
+                    Navigator.push(
+                      context,
+
+                      PageRouteBuilder(
+                        transitionDuration: const Duration(milliseconds: 450),
+
+                        reverseTransitionDuration: const Duration(
+                          milliseconds: 350,
+                        ),
+
+                        pageBuilder: (context, animation, secondaryAnimation) {
+                          return const RadioContent();
+                        },
+
+                        transitionsBuilder:
+                            (context, animation, secondaryAnimation, child) {
+                              final curved = CurvedAnimation(
+                                parent: animation,
+
+                                curve: Curves.easeInOutCubic,
+                              );
+
+                              return FadeTransition(
+                                opacity: curved,
+
+                                child: SlideTransition(
+                                  position: Tween<Offset>(
+                                    begin: const Offset(0.08, 0),
+
+                                    end: Offset.zero,
+                                  ).animate(curved),
+
+                                  child: child,
+                                ),
+                              );
+                            },
+                      ),
+                    );
+                  } else if (item.label == "Bluetooth") {
+                    Navigator.push(
+                      context,
+
+                      PageRouteBuilder(
+                        transitionDuration: const Duration(milliseconds: 450),
+
+                        reverseTransitionDuration: const Duration(
+                          milliseconds: 350,
+                        ),
+
+                        pageBuilder: (context, animation, secondaryAnimation) {
+                          return const BluetoothContent();
+                        },
+
+                        transitionsBuilder:
+                            (context, animation, secondaryAnimation, child) {
+                              final curved = CurvedAnimation(
+                                parent: animation,
+
+                                curve: Curves.easeInOutCubic,
+                              );
+
+                              return FadeTransition(
+                                opacity: curved,
+
+                                child: SlideTransition(
+                                  position: Tween<Offset>(
+                                    begin: const Offset(0.08, 0),
+
+                                    end: Offset.zero,
+                                  ).animate(curved),
+
+                                  child: child,
+                                ),
+                              );
+                            },
+                      ),
+                    );
+                  }else if (item.label == "Screen Cast") {
+                    Navigator.push(
+                      context,
+
+                      PageRouteBuilder(
+                        transitionDuration: const Duration(milliseconds: 450),
+
+                        reverseTransitionDuration: const Duration(
+                          milliseconds: 350,
+                        ),
+
+                        pageBuilder: (context, animation, secondaryAnimation) {
+                          return const ScreenCastContent();
+                        },
+
+                        transitionsBuilder:
+                            (context, animation, secondaryAnimation, child) {
+                              final curved = CurvedAnimation(
+                                parent: animation,
+
+                                curve: Curves.easeInOutCubic,
+                              );
+
+                              return FadeTransition(
+                                opacity: curved,
+
+                                child: SlideTransition(
+                                  position: Tween<Offset>(
+                                    begin: const Offset(0.08, 0),
+
+                                    end: Offset.zero,
+                                  ).animate(curved),
+
+                                  child: child,
+                                ),
+                              );
+                            },
+                      ),
+                    );
+                  }
+                },
 
                 child: AnimatedContainer(
                   duration: const Duration(milliseconds: 400),
@@ -68,19 +231,14 @@ class QuickActionGrid extends StatelessWidget {
                         color: theme.accentColor.withOpacity(0.25),
                         blurRadius: 12,
                         offset: const Offset(0, 5),
-                      )
+                      ),
                     ],
                   ),
 
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-
-                      Icon(
-                        item.icon,
-                        size: 40.sp,
-                        color: theme.accentColor,
-                      ),
+                      Icon(item.icon, size: 40.sp, color: theme.accentColor),
 
                       SizedBox(height: 8.h),
 
@@ -105,7 +263,6 @@ class QuickActionGrid extends StatelessWidget {
 }
 
 class _ActionItem {
-
   final String label;
   final IconData icon;
 

@@ -413,6 +413,9 @@ class MusicProvider extends ChangeNotifier {
   void dispose() {
 
     _timer?.cancel();
+    unawaited(
+      _service.dispose(),
+    );
 
     super.dispose();
   }

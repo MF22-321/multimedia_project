@@ -9,22 +9,26 @@ class SpotifyDBusService {
   static const String path =
       '/org/mpris/MediaPlayer2';
 
+  DBusClient? _client;
+
+  DBusRemoteObject get _playerObject {
+    _client ??= DBusClient.session();
+
+    return DBusRemoteObject(
+      _client!,
+
+      name: service,
+
+      path: DBusObjectPath(path),
+    );
+  }
+
   Future<Map<String, dynamic>> getMetadata() async {
 
     try {
 
-      final client = DBusClient.session();
-
-      final object = DBusRemoteObject(
-        client,
-
-        name: service,
-
-        path: DBusObjectPath(path),
-      );
-
       final properties =
-          await object.getAllProperties(
+          await _playerObject.getAllProperties(
         'org.mpris.MediaPlayer2.Player',
       );
 
@@ -107,17 +111,7 @@ class SpotifyDBusService {
 
   Future<void> playPause() async {
 
-    final client = DBusClient.session();
-
-    final object = DBusRemoteObject(
-      client,
-
-      name: service,
-
-      path: DBusObjectPath(path),
-    );
-
-    await object.callMethod(
+    await _playerObject.callMethod(
       'org.mpris.MediaPlayer2.Player',
       'PlayPause',
       [],
@@ -126,17 +120,7 @@ class SpotifyDBusService {
 
   Future<void> play() async {
 
-    final client = DBusClient.session();
-
-    final object = DBusRemoteObject(
-      client,
-
-      name: service,
-
-      path: DBusObjectPath(path),
-    );
-
-    await object.callMethod(
+    await _playerObject.callMethod(
       'org.mpris.MediaPlayer2.Player',
       'Play',
       [],
@@ -145,17 +129,7 @@ class SpotifyDBusService {
 
   Future<void> next() async {
 
-    final client = DBusClient.session();
-
-    final object = DBusRemoteObject(
-      client,
-
-      name: service,
-
-      path: DBusObjectPath(path),
-    );
-
-    await object.callMethod(
+    await _playerObject.callMethod(
       'org.mpris.MediaPlayer2.Player',
       'Next',
       [],
@@ -164,17 +138,7 @@ class SpotifyDBusService {
 
   Future<void> previous() async {
 
-    final client = DBusClient.session();
-
-    final object = DBusRemoteObject(
-      client,
-
-      name: service,
-
-      path: DBusObjectPath(path),
-    );
-
-    await object.callMethod(
+    await _playerObject.callMethod(
       'org.mpris.MediaPlayer2.Player',
       'Previous',
       [],
@@ -191,17 +155,7 @@ class SpotifyDBusService {
       return;
     }
 
-    final client = DBusClient.session();
-
-    final object = DBusRemoteObject(
-      client,
-
-      name: service,
-
-      path: DBusObjectPath(path),
-    );
-
-    await object.callMethod(
+    await _playerObject.callMethod(
       'org.mpris.MediaPlayer2.Player',
       'SetPosition',
       [
@@ -209,6 +163,11 @@ class SpotifyDBusService {
         DBusInt64(position.inMicroseconds),
       ],
     );
+  }
+
+  Future<void> dispose() async {
+    await _client?.close();
+    _client = null;
   }
 
   int _readDbusInteger(

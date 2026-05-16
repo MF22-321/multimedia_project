@@ -7,6 +7,8 @@ import 'package:frontend/core/services/drive_pref_service.dart';
 import 'package:frontend/core/services/drowsiness_api.dart';
 import 'package:frontend/features/face_recognition/presentation/pages/drowsines_alert_page.dart';
 import 'package:frontend/features/home/presentation/widget/music_page.dart';
+import 'package:frontend/features/home/presentation/widget/phone_content.dart';
+import 'package:frontend/features/home/presentation/widget/settings_content.dart';
 import 'package:provider/provider.dart';
 
 import 'package:frontend/core/navigation/app_navigation.dart';
@@ -240,7 +242,7 @@ class _HomePageState extends State<HomePage> {
           /// MAIN UI
           Row(
             children: [
-              const SideMenu(),
+              
 
               Expanded(
                 child: ValueListenableBuilder(
@@ -249,16 +251,21 @@ class _HomePageState extends State<HomePage> {
                     switch (index) {
                       case 0:
                         return const MusicPage();
+                      case 1:
+                        return const PhoneContent();
                       case 2:
                         return const _HomeContent();
                       case 3:
                         return const MenuContent();
+                      case 4:
+                        return const SettingsContent();
                       default:
                         return const _HomeContent();
                     }
                   },
                 ),
               ),
+              const SideMenu(),
             ],
           ),
         ],
