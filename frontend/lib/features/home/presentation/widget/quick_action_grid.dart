@@ -3,9 +3,12 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:frontend/core/navigation/app_navigation.dart';
 import 'package:frontend/core/themes/car_theme.dart';
 import 'package:frontend/features/home/presentation/widget/bluetooth_content.dart';
+import 'package:frontend/features/home/presentation/widget/car_info_content.dart';
+import 'package:frontend/features/home/presentation/widget/info_content.dart';
 import 'package:frontend/features/home/presentation/widget/radio_content.dart';
 import 'package:frontend/features/home/presentation/widget/screen_cast_content.dart';
 import 'package:frontend/features/home/presentation/widget/tutorial_content.dart';
+import 'package:frontend/features/home/presentation/widget/usb_connect_content.dart';
 
 class QuickActionGrid extends StatelessWidget {
   const QuickActionGrid({super.key});
@@ -177,6 +180,123 @@ class QuickActionGrid extends StatelessWidget {
 
                         pageBuilder: (context, animation, secondaryAnimation) {
                           return const ScreenCastContent();
+                        },
+
+                        transitionsBuilder:
+                            (context, animation, secondaryAnimation, child) {
+                              final curved = CurvedAnimation(
+                                parent: animation,
+
+                                curve: Curves.easeInOutCubic,
+                              );
+
+                              return FadeTransition(
+                                opacity: curved,
+
+                                child: SlideTransition(
+                                  position: Tween<Offset>(
+                                    begin: const Offset(0.08, 0),
+
+                                    end: Offset.zero,
+                                  ).animate(curved),
+
+                                  child: child,
+                                ),
+                              );
+                            },
+                      ),
+                    );
+                  }else if (item.label == "Car Status") {
+                    Navigator.push(
+                      context,
+
+                      PageRouteBuilder(
+                        transitionDuration: const Duration(milliseconds: 450),
+
+                        reverseTransitionDuration: const Duration(
+                          milliseconds: 350,
+                        ),
+
+                        pageBuilder: (context, animation, secondaryAnimation) {
+                          return const CarInfoContent();
+                        },
+
+                        transitionsBuilder:
+                            (context, animation, secondaryAnimation, child) {
+                              final curved = CurvedAnimation(
+                                parent: animation,
+
+                                curve: Curves.easeInOutCubic,
+                              );
+
+                              return FadeTransition(
+                                opacity: curved,
+
+                                child: SlideTransition(
+                                  position: Tween<Offset>(
+                                    begin: const Offset(0.08, 0),
+
+                                    end: Offset.zero,
+                                  ).animate(curved),
+
+                                  child: child,
+                                ),
+                              );
+                            },
+                      ),
+                    );
+                  }else if (item.label == "Info") {
+                    Navigator.push(
+                      context,
+
+                      PageRouteBuilder(
+                        transitionDuration: const Duration(milliseconds: 450),
+
+                        reverseTransitionDuration: const Duration(
+                          milliseconds: 350,
+                        ),
+
+                        pageBuilder: (context, animation, secondaryAnimation) {
+                          return const InfoContent();
+                        },
+
+                        transitionsBuilder:
+                            (context, animation, secondaryAnimation, child) {
+                              final curved = CurvedAnimation(
+                                parent: animation,
+
+                                curve: Curves.easeInOutCubic,
+                              );
+
+                              return FadeTransition(
+                                opacity: curved,
+
+                                child: SlideTransition(
+                                  position: Tween<Offset>(
+                                    begin: const Offset(0.08, 0),
+
+                                    end: Offset.zero,
+                                  ).animate(curved),
+
+                                  child: child,
+                                ),
+                              );
+                            },
+                      ),
+                    );
+                  }else if (item.label == "USB") {
+                    Navigator.push(
+                      context,
+
+                      PageRouteBuilder(
+                        transitionDuration: const Duration(milliseconds: 450),
+
+                        reverseTransitionDuration: const Duration(
+                          milliseconds: 350,
+                        ),
+
+                        pageBuilder: (context, animation, secondaryAnimation) {
+                          return const UsbConnectContent();
                         },
 
                         transitionsBuilder:

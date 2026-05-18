@@ -6,50 +6,39 @@ import 'package:frontend/core/themes/car_theme.dart';
 import 'package:provider/provider.dart';
 
 class MediaCard extends StatelessWidget {
-
-  const MediaCard({super.key,});
+  const MediaCard({super.key});
 
   @override
   Widget build(BuildContext context) {
-
-    final musicProvider =
-        Provider.of<MusicProvider>(context);
+    final musicProvider = Provider.of<MusicProvider>(context);
 
     return ValueListenableBuilder(
       valueListenable: CarThemes.currentTheme,
       builder: (context, themeType, _) {
+        final theme = CarThemes.getTheme(themeType);
 
-        final theme =
-            CarThemes.getTheme(themeType);
-
-        final Color playButtonColor =
-            themeType == CarThemeType.comfort
-                ? Colors.grey.shade600
-                : theme.buttonColor;
+        final Color playButtonColor = themeType == CarThemeType.comfort
+            ? Colors.grey.shade600
+            : theme.buttonColor;
 
         return GestureDetector(
-
           /// OPEN MUSIC PAGE
-  onTap: () {
-
-  /// PINDAH SIDEBAR + PAGE
-  AppNavigation.currentIndex.value = 0;
-},
+          onTap: () {
+            /// PINDAH SIDEBAR + PAGE
+            AppNavigation.currentIndex.value = 0;
+          },
 
           child: AnimatedContainer(
             duration: const Duration(milliseconds: 400),
             height: 130.h,
-            padding:
-                EdgeInsets.symmetric(horizontal: 20.w),
+            padding: EdgeInsets.symmetric(horizontal: 20.w),
 
             decoration: BoxDecoration(
-              borderRadius:
-                  BorderRadius.circular(25.r),
+              borderRadius: BorderRadius.circular(25.r),
 
               gradient: LinearGradient(
                 colors: [
-                  theme.backgroundGradient.last
-                      .withOpacity(0.9),
+                  theme.backgroundGradient.last.withOpacity(0.9),
 
                   Colors.black.withOpacity(0.6),
                 ],
@@ -58,24 +47,21 @@ class MediaCard extends StatelessWidget {
               ),
 
               border: Border.all(
-                color:
-                    theme.accentColor.withOpacity(0.4),
+                color: theme.accentColor.withOpacity(0.4),
                 width: 2,
               ),
 
               boxShadow: [
                 BoxShadow(
-                  color:
-                      theme.accentColor.withOpacity(0.25),
+                  color: theme.accentColor.withOpacity(0.25),
                   blurRadius: 20,
                   offset: const Offset(0, 10),
-                )
+                ),
               ],
             ),
 
             child: Row(
               children: [
-
                 /// ALBUM COVER
                 Hero(
                   tag: 'album_art',
@@ -85,22 +71,13 @@ class MediaCard extends StatelessWidget {
                     height: 90.w,
 
                     decoration: BoxDecoration(
-                      borderRadius:
-                          BorderRadius.circular(15.r),
+                      borderRadius: BorderRadius.circular(15.r),
 
                       image: DecorationImage(
-
-                        image:
-                            musicProvider.albumArt.isNotEmpty
-
-                                ? NetworkImage(
-                                    musicProvider.albumArt,
-                                  )
-
-                                : const AssetImage(
-                                        "assets/images/weekend.png",
-                                      )
-                                    as ImageProvider,
+                        image: musicProvider.albumArt.isNotEmpty
+                            ? NetworkImage(musicProvider.albumArt)
+                            : const AssetImage("assets/images/weekend.png")
+                                  as ImageProvider,
 
                         fit: BoxFit.cover,
                       ),
@@ -113,14 +90,11 @@ class MediaCard extends StatelessWidget {
                 /// SONG INFO
                 Expanded(
                   child: Column(
-                    mainAxisAlignment:
-                        MainAxisAlignment.center,
+                    mainAxisAlignment: MainAxisAlignment.center,
 
-                    crossAxisAlignment:
-                        CrossAxisAlignment.start,
+                    crossAxisAlignment: CrossAxisAlignment.start,
 
                     children: [
-
                       /// SONG TITLE
                       Text(
                         musicProvider.title,
@@ -145,8 +119,7 @@ class MediaCard extends StatelessWidget {
                         overflow: TextOverflow.ellipsis,
 
                         style: TextStyle(
-                          color: theme.textColor
-                              .withOpacity(0.7),
+                          color: theme.textColor.withOpacity(0.7),
 
                           fontSize: 14.sp,
                         ),
@@ -155,31 +128,86 @@ class MediaCard extends StatelessWidget {
                       SizedBox(height: 12.h),
 
                       /// PROGRESS BAR
-                      Container(
-                        height: 4.h,
+                      /// ===============================
+                      /// PROGRESS BAR
+                      /// ===============================
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          /// TIME
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
 
-                        decoration: BoxDecoration(
-                          color:
-                              Colors.white.withOpacity(0.2),
+                            children: [
+                              Text(
+                                formatDuration(musicProvider.currentPosition),
 
-                          borderRadius:
-                              BorderRadius.circular(10.r),
-                        ),
-
-                        child: FractionallySizedBox(
-                          widthFactor: 0.5,
-
-                          child: Container(
-                            decoration: BoxDecoration(
-                              color: theme.accentColor,
-
-                              borderRadius:
-                                  BorderRadius.circular(
-                                10.r,
+                                style: TextStyle(
+                                  color: Colors.white54,
+                                  fontSize: 11.sp,
+                                  fontWeight: FontWeight.w600,
+                                ),
                               ),
+
+                              Text(
+                                formatDuration(musicProvider.totalDuration),
+
+                                style: TextStyle(
+                                  color: Colors.white54,
+                                  fontSize: 11.sp,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ],
+                          ),
+
+                          SizedBox(height: 8.h),
+
+                          SliderTheme(
+                            data: SliderThemeData(
+                              trackHeight: 4.h,
+
+                              thumbShape: RoundSliderThumbShape(
+                                enabledThumbRadius: 5.r,
+                              ),
+
+                              overlayShape: SliderComponentShape.noOverlay,
+
+                              inactiveTrackColor: Colors.white.withOpacity(
+                                0.15,
+                              ),
+
+                              activeTrackColor:
+                                  themeType == CarThemeType.comfort
+                                  ? const Color(0xFF6CB4FF)
+                                  : theme.accentColor,
+
+                              thumbColor: themeType == CarThemeType.comfort
+                                  ? const Color(0xFF6CB4FF)
+                                  : theme.accentColor,
+                            ),
+
+                            child: Slider(
+                              value:
+                                  musicProvider.totalDuration.inMilliseconds ==
+                                      0
+                                  ? 0
+                                  : (musicProvider
+                                                .currentPosition
+                                                .inMilliseconds /
+                                            musicProvider
+                                                .totalDuration
+                                                .inMilliseconds)
+                                        .clamp(0.0, 1.0),
+
+                              onChanged: (value) {},
+
+                              onChangeEnd: (value) async {
+                                await musicProvider.seekTo(value);
+                              },
                             ),
                           ),
-                        ),
+                        ],
                       ),
                     ],
                   ),
@@ -188,11 +216,9 @@ class MediaCard extends StatelessWidget {
                 /// CONTROLS
                 Row(
                   children: [
-
                     /// PREVIOUS
                     GestureDetector(
                       onTap: () async {
-
                         await musicProvider.previous();
                       },
 
@@ -207,15 +233,12 @@ class MediaCard extends StatelessWidget {
 
                     /// PLAY / PAUSE
                     GestureDetector(
-
                       onTap: () async {
-
                         await musicProvider.togglePlay();
                       },
 
                       child: AnimatedContainer(
-                        duration:
-                            const Duration(milliseconds: 250),
+                        duration: const Duration(milliseconds: 250),
 
                         width: 50.w,
                         height: 50.w,
@@ -226,16 +249,14 @@ class MediaCard extends StatelessWidget {
 
                           boxShadow: [
                             BoxShadow(
-                              color: playButtonColor
-                                  .withOpacity(0.4),
+                              color: playButtonColor.withOpacity(0.4),
 
                               blurRadius: 12,
-                            )
+                            ),
                           ],
                         ),
 
                         child: Icon(
-
                           musicProvider.isPlaying
                               ? Icons.pause
                               : Icons.play_arrow,
@@ -251,7 +272,6 @@ class MediaCard extends StatelessWidget {
                     /// NEXT
                     GestureDetector(
                       onTap: () async {
-
                         await musicProvider.next();
                       },
 
@@ -262,7 +282,7 @@ class MediaCard extends StatelessWidget {
                       ),
                     ),
                   ],
-                )
+                ),
               ],
             ),
           ),
@@ -270,4 +290,14 @@ class MediaCard extends StatelessWidget {
       },
     );
   }
+}
+
+String formatDuration(Duration d) {
+  String twoDigits(int n) => n.toString().padLeft(2, '0');
+
+  final minutes = twoDigits(d.inMinutes.remainder(60));
+
+  final seconds = twoDigits(d.inSeconds.remainder(60));
+
+  return '$minutes:$seconds';
 }
