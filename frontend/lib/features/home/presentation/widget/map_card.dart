@@ -6,6 +6,7 @@ import 'package:flutter_map/flutter_map.dart';
 import 'package:frontend/core/model/pothole.dart';
 import 'package:frontend/core/provider/gps_provider.dart';
 import 'package:frontend/core/provider/pothole_provider.dart';
+import 'package:frontend/features/home/presentation/page/map_detail_page.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:provider/provider.dart';
 import 'package:frontend/core/themes/car_theme.dart';
@@ -141,280 +142,263 @@ class _MapCardState extends State<MapCard> {
   }
 
   // ================= ALERT =================
-// ================= ALERT =================
-// ================= ALERT MODERN =================
-void triggerAlert(String category, double distance, double severity) {
-  if (!mounted || isDialogShowing || !alertEnabled) return;
+  // ================= ALERT =================
+  // ================= ALERT MODERN =================
+  void triggerAlert(String category, double distance, double severity) {
+    if (!mounted || isDialogShowing || !alertEnabled) return;
 
-  isDialogShowing = true;
+    isDialogShowing = true;
 
-  final bool isPothole = category == "pothole";
+    final bool isPothole = category == "pothole";
 
-  final Color alertColor =
-      isPothole ? Colors.red : Colors.orange;
+    final Color alertColor = isPothole ? Colors.red : Colors.orange;
 
-  final String title =
-      isPothole ? "POTHOLE IN ${(distance * 1000).toInt()} M !" : "SPEED BUMP";
+    final String title =
+        isPothole
+            ? "POTHOLE IN ${(distance * 1000).toInt()} M !"
+            : "SPEED BUMP";
 
-  showGeneralDialog(
-    context: context,
-    barrierDismissible: false,
-    barrierLabel: "Alert",
-    barrierColor: Colors.black.withOpacity(0.55),
-    transitionDuration: const Duration(milliseconds: 400),
+    showGeneralDialog(
+      context: context,
+      barrierDismissible: false,
+      barrierLabel: "Alert",
+      barrierColor: Colors.black.withOpacity(0.55),
+      transitionDuration: const Duration(milliseconds: 400),
 
-    pageBuilder: (_, __, ___) {
-      return StatefulBuilder(
-        builder: (context, setState) {
-          return Center(
-            child: Container(
-              width: 500.w,
-              height: 390.h,
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(28.r),
-                color: Colors.black,
-                boxShadow: [
-                  BoxShadow(
-                    color: alertColor.withOpacity(0.5),
-                    blurRadius: 30,
-                    spreadRadius: 4,
-                  )
-                ],
-              ),
+      pageBuilder: (_, __, ___) {
+        return StatefulBuilder(
+          builder: (context, setState) {
+            return Center(
+              child: Container(
+                width: 500.w,
+                height: 390.h,
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(28.r),
+                  color: Colors.black,
+                  boxShadow: [
+                    BoxShadow(
+                      color: alertColor.withOpacity(0.5),
+                      blurRadius: 30,
+                      spreadRadius: 4,
+                    ),
+                  ],
+                ),
 
-              child: Stack(
-                children: [
-
-                  // MAP BACKGROUND
-                  ClipRRect(
-                    borderRadius: BorderRadius.circular(28.r),
-                    child: Opacity(
-                      opacity: 0.45,
-                      child: FlutterMap(
-                        options: MapOptions(
-                          initialCenter: smoothCarPosition!,
-                          initialZoom: 16,
-                        ),
-                        children: [
-                          TileLayer(
-                            urlTemplate:
-                                "https://tile.openstreetmap.org/{z}/{x}/{y}.png",
+                child: Stack(
+                  children: [
+                    // MAP BACKGROUND
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(28.r),
+                      child: Opacity(
+                        opacity: 0.45,
+                        child: FlutterMap(
+                          options: MapOptions(
+                            initialCenter: smoothCarPosition!,
+                            initialZoom: 16,
                           ),
-                        ],
-                      ),
-                    ),
-                  ),
-
-                  // TOP BAR
-                  Positioned(
-                    top: 15.h,
-                    left: 15.w,
-                    right: 15.w,
-                    child: Container(
-                      padding: EdgeInsets.symmetric(
-                        horizontal: 18.w,
-                        vertical: 10.h,
-                      ),
-                      decoration: BoxDecoration(
-                        color: Colors.red.shade900,
-                        borderRadius: BorderRadius.circular(14.r),
-                      ),
-                      child: Text(
-                        "Navigation Ready",
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 18.sp,
-                          fontWeight: FontWeight.bold,
+                          children: [
+                            TileLayer(
+                              urlTemplate:
+                                  "https://tile.openstreetmap.org/{z}/{x}/{y}.png",
+                            ),
+                          ],
                         ),
                       ),
                     ),
-                  ),
 
-                  // WARNING TITLE
-                  Positioned(
-                    top: 70.h,
-                    left: 0,
-                    right: 0,
-                    child: Center(
-                      child: Text(
-                        "WARNING !",
-                        style: TextStyle(
-                          color: Colors.red,
-                          fontSize: 42.sp,
-                          fontWeight: FontWeight.w900,
-                        ),
-                      ),
-                    ),
-                  ),
-
-                  // CENTER ICON
-                  Center(
-                    child: TweenAnimationBuilder(
-                      tween: Tween(begin: 0.9, end: 1.05),
-                      duration: const Duration(milliseconds: 700),
-                      curve: Curves.easeInOut,
-                      builder: (_, value, child) {
-                        return Transform.scale(
-                          scale: value.toDouble(),
-                          child: child,
-                        );
-                      },
+                    // TOP BAR
+                    Positioned(
+                      top: 15.h,
+                      left: 15.w,
+                      right: 15.w,
                       child: Container(
-                        width: 150.w,
-                        height: 150.w,
+                        padding: EdgeInsets.symmetric(
+                          horizontal: 18.w,
+                          vertical: 10.h,
+                        ),
                         decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          gradient: RadialGradient(
-                            colors: [
-                              Colors.redAccent,
-                              Colors.red.shade900,
-                            ],
-                          ),
+                          color: Colors.red.shade900,
+                          borderRadius: BorderRadius.circular(14.r),
                         ),
-                        child: Center(
-                          child: Icon(
-                            Icons.priority_high,
+                        child: Text(
+                          "Navigation Ready",
+                          style: TextStyle(
                             color: Colors.white,
-                            size: 100.sp,
+                            fontSize: 18.sp,
+                            fontWeight: FontWeight.bold,
                           ),
                         ),
                       ),
                     ),
-                  ),
 
-                  // DISTANCE TEXT
-                  Positioned(
-                    bottom: 75.h,
-                    left: 0,
-                    right: 0,
-                    child: Center(
-                      child: Text(
-                        title,
-                        style: TextStyle(
-                          color: Colors.red,
-                          fontSize: 28.sp,
-                          fontWeight: FontWeight.bold,
+                    // WARNING TITLE
+                    Positioned(
+                      top: 70.h,
+                      left: 0,
+                      right: 0,
+                      child: Center(
+                        child: Text(
+                          "WARNING !",
+                          style: TextStyle(
+                            color: Colors.red,
+                            fontSize: 42.sp,
+                            fontWeight: FontWeight.w900,
+                          ),
                         ),
                       ),
                     ),
-                  ),
 
-                  // BOTTOM INFO BAR
-                  Positioned(
-                    bottom: 15.h,
-                    left: 15.w,
-                    right: 15.w,
-                    child: Container(
-                      padding: EdgeInsets.symmetric(
-                        horizontal: 18.w,
-                        vertical: 14.h,
+                    // CENTER ICON
+                    Center(
+                      child: TweenAnimationBuilder(
+                        tween: Tween(begin: 0.9, end: 1.05),
+                        duration: const Duration(milliseconds: 700),
+                        curve: Curves.easeInOut,
+                        builder: (_, value, child) {
+                          return Transform.scale(
+                            scale: value.toDouble(),
+                            child: child,
+                          );
+                        },
+                        child: Container(
+                          width: 150.w,
+                          height: 150.w,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            gradient: RadialGradient(
+                              colors: [Colors.redAccent, Colors.red.shade900],
+                            ),
+                          ),
+                          child: Center(
+                            child: Icon(
+                              Icons.priority_high,
+                              color: Colors.white,
+                              size: 100.sp,
+                            ),
+                          ),
+                        ),
                       ),
-                      decoration: BoxDecoration(
-                        color: Colors.red.shade900,
-                        borderRadius: BorderRadius.circular(14.r),
+                    ),
+
+                    // DISTANCE TEXT
+                    Positioned(
+                      bottom: 75.h,
+                      left: 0,
+                      right: 0,
+                      child: Center(
+                        child: Text(
+                          title,
+                          style: TextStyle(
+                            color: Colors.red,
+                            fontSize: 28.sp,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
                       ),
-                      child: Row(
-                        mainAxisAlignment:
-                            MainAxisAlignment.spaceBetween,
-                        children: [
-                          Row(
-                            children: [
-                              Icon(
-                                Icons.location_pin,
-                                color: Colors.white,
-                              ),
-                              SizedBox(width: 8.w),
-                              Text(
-                                "Karawang",
-                                style: TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 16.sp,
+                    ),
+
+                    // BOTTOM INFO BAR
+                    Positioned(
+                      bottom: 15.h,
+                      left: 15.w,
+                      right: 15.w,
+                      child: Container(
+                        padding: EdgeInsets.symmetric(
+                          horizontal: 18.w,
+                          vertical: 14.h,
+                        ),
+                        decoration: BoxDecoration(
+                          color: Colors.red.shade900,
+                          borderRadius: BorderRadius.circular(14.r),
+                        ),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Row(
+                              children: [
+                                Icon(Icons.location_pin, color: Colors.white),
+                                SizedBox(width: 8.w),
+                                Text(
+                                  "Karawang",
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 16.sp,
+                                  ),
                                 ),
+                              ],
+                            ),
+
+                            Text(
+                              "ETA 12 min",
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 16.sp,
                               ),
-                            ],
-                          ),
-
-                          Text(
-                            "ETA 12 min",
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontSize: 16.sp,
                             ),
-                          ),
 
-                          Text(
-                            "4.6 km",
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontSize: 16.sp,
+                            Text(
+                              "4.6 km",
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 16.sp,
+                              ),
                             ),
-                          ),
-                        ],
+                          ],
+                        ),
                       ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
-            ),
-          );
-        },
-      );
-    },
-  ).then((_) {
-    isDialogShowing = false;
-  });
+            );
+          },
+        );
+      },
+    ).then((_) {
+      isDialogShowing = false;
+    });
 
-  Future.delayed(const Duration(seconds: 4), () {
-    if (mounted && Navigator.canPop(context)) {
-      Navigator.pop(context);
-    }
-  });
-}
+    Future.delayed(const Duration(seconds: 4), () {
+      if (mounted && Navigator.canPop(context)) {
+        Navigator.pop(context);
+      }
+    });
+  }
 
   // ================= CHECK ALERT =================
- void checkPotholeAlert(LatLng current, List<Pothole> potholes) {
-  for (var p in potholes) {
-    if (p.category == "normal") continue;
+  void checkPotholeAlert(LatLng current, List<Pothole> potholes) {
+    for (var p in potholes) {
+      if (p.category == "normal") continue;
 
-    final distance = calculateDistance(
-      current.latitude,
-      current.longitude,
-      p.lat,
-      p.lng,
-    );
-
-    if (distance < 0.05) {
-      final bearingToPothole = calculateBearing(
+      final distance = calculateDistance(
         current.latitude,
         current.longitude,
         p.lat,
         p.lng,
       );
 
-      final diff = getAngleDiff(
-        bearingToPothole,
-        currentHeading,
-      );
-
-      if (diff < 90) {
-        if (DateTime.now()
-                .difference(lastAlertTime)
-                .inSeconds <
-            5) return;
-
-        lastAlertTime = DateTime.now();
-
-        triggerAlert(
-          p.category,
-          distance,
-          p.severity,
+      if (distance < 0.05) {
+        final bearingToPothole = calculateBearing(
+          current.latitude,
+          current.longitude,
+          p.lat,
+          p.lng,
         );
 
-        break;
+        final diff = getAngleDiff(bearingToPothole, currentHeading);
+
+        if (diff < 90) {
+          if (DateTime.now().difference(lastAlertTime).inSeconds < 5) return;
+
+          lastAlertTime = DateTime.now();
+
+          triggerAlert(p.category, distance, p.severity);
+
+          break;
+        }
       }
     }
   }
-}
 
   // ================= ZOOM =================
   void _zoomIn(LatLng pos) {
@@ -427,15 +411,40 @@ void triggerAlert(String category, double distance, double severity) {
     _mapController.move(pos, _zoom);
   }
 
+  void _openMapDetail() {
+    Navigator.of(context).push(
+      PageRouteBuilder(
+        transitionDuration: const Duration(milliseconds: 420),
+        reverseTransitionDuration: const Duration(milliseconds: 280),
+        pageBuilder: (_, __, ___) => const MapDetailPage(),
+        transitionsBuilder: (_, animation, __, child) {
+          final curved = CurvedAnimation(
+            parent: animation,
+            curve: Curves.easeOutCubic,
+          );
+
+          return FadeTransition(
+            opacity: curved,
+            child: ScaleTransition(
+              scale: Tween<double>(begin: 0.96, end: 1).animate(curved),
+              child: child,
+            ),
+          );
+        },
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Consumer2<GPSProvider, PotholeProvider>(
       builder: (context, gps, potholeProvider, _) {
         final hasGPS = gps.current != null;
 
-        final rawPosition = hasGPS
-            ? LatLng(gps.current!.lat, gps.current!.lng)
-            : const LatLng(-6.3, 107.2);
+        final rawPosition =
+            hasGPS
+                ? LatLng(gps.current!.lat, gps.current!.lng)
+                : const LatLng(-6.3, 107.2);
 
         if (hasGPS) {
           currentHeading = gps.current!.heading;
@@ -502,6 +511,8 @@ void triggerAlert(String category, double distance, double severity) {
                         }
                       },
 
+                      onTap: (_, __) => _openMapDetail(),
+
                       onMapReady: () {
                         if (firstLoad) {
                           updateMapCamera(position);
@@ -538,50 +549,55 @@ void triggerAlert(String category, double distance, double severity) {
                         ),
 
                       MarkerLayer(
-                        markers: potholeProvider.potholes
-                            .where((p) => p.category != "normal")
-                            .map((p) {
-                              Color color = Colors.orange;
-                              IconData icon = Icons.warning_rounded;
+                        markers:
+                            potholeProvider.potholes
+                                .where((p) => p.category != "normal")
+                                .map((p) {
+                                  Color color = Colors.orange;
+                                  IconData icon = Icons.warning_rounded;
 
-                              if (p.category == "pothole") {
-                                color = Colors.red;
-                                icon = Icons.report_problem;
-                              } else if (p.category == "bumper") {
-                                color = Colors.yellow;
-                                icon = Icons.speed;
-                              }
+                                  if (p.category == "pothole") {
+                                    color = Colors.red;
+                                    icon = Icons.report_problem;
+                                  } else if (p.category == "bumper") {
+                                    color = Colors.yellow;
+                                    icon = Icons.speed;
+                                  }
 
-                              return Marker(
-                                point: LatLng(p.lat, p.lng),
-                                width: 65,
-                                height: 65,
-                                child: Column(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    Icon(icon, color: color, size: 28),
-                                    Container(
-                                      padding: const EdgeInsets.symmetric(
-                                        horizontal: 6,
-                                        vertical: 2,
-                                      ),
-                                      decoration: BoxDecoration(
-                                        color: Colors.black.withOpacity(0.75),
-                                        borderRadius: BorderRadius.circular(6),
-                                      ),
-                                      child: Text(
-                                        "${p.category.toUpperCase()} ${p.severity.toStringAsFixed(1)}",
-                                        style: const TextStyle(
-                                          color: Colors.white,
-                                          fontSize: 9,
+                                  return Marker(
+                                    point: LatLng(p.lat, p.lng),
+                                    width: 65,
+                                    height: 65,
+                                    child: Column(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        Icon(icon, color: color, size: 28),
+                                        Container(
+                                          padding: const EdgeInsets.symmetric(
+                                            horizontal: 6,
+                                            vertical: 2,
+                                          ),
+                                          decoration: BoxDecoration(
+                                            color: Colors.black.withOpacity(
+                                              0.75,
+                                            ),
+                                            borderRadius: BorderRadius.circular(
+                                              6,
+                                            ),
+                                          ),
+                                          child: Text(
+                                            "${p.category.toUpperCase()} ${p.severity.toStringAsFixed(1)}",
+                                            style: const TextStyle(
+                                              color: Colors.white,
+                                              fontSize: 9,
+                                            ),
+                                          ),
                                         ),
-                                      ),
+                                      ],
                                     ),
-                                  ],
-                                ),
-                              );
-                            })
-                            .toList(),
+                                  );
+                                })
+                                .toList(),
                       ),
                     ],
                   ),
@@ -707,6 +723,34 @@ void triggerAlert(String category, double distance, double severity) {
                               : Icons.notifications_off,
                           color: alertEnabled ? Colors.green : Colors.red,
                           size: 22,
+                        ),
+                      ),
+                    ),
+                  ),
+
+                  Positioned(
+                    top: 70.h,
+                    left: 15.w,
+                    child: Tooltip(
+                      message: "Open detailed map",
+                      child: GestureDetector(
+                        onTap: _openMapDetail,
+                        child: Container(
+                          width: 45.w,
+                          height: 45.w,
+                          decoration: BoxDecoration(
+                            color: Colors.black.withOpacity(0.75),
+                            borderRadius: BorderRadius.circular(12.r),
+                            border: Border.all(
+                              color: theme.accentColor,
+                              width: 2,
+                            ),
+                          ),
+                          child: Icon(
+                            Icons.open_in_full,
+                            color: theme.accentColor,
+                            size: 20.sp,
+                          ),
                         ),
                       ),
                     ),
