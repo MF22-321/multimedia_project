@@ -4,6 +4,7 @@ import 'dart:ui';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:frontend/core/navigation/smart_music_navigation.dart';
 import 'package:frontend/core/provider/music_provider.dart';
 import 'package:frontend/core/services/spotify_search_service.dart';
 import 'package:frontend/core/themes/car_theme.dart';
@@ -56,6 +57,7 @@ class _MusicPageState extends State<MusicPage> {
   final SpotifySearchService spotifySearchService = SpotifySearchService();
 
   Map<String, dynamic> spotifyData = {};
+  String suggestedMoodKeyword = "";
 
   String selectedCategory = 'track';
 
@@ -81,7 +83,16 @@ class _MusicPageState extends State<MusicPage> {
   ];
 
   @override
+  void initState() {
+    super.initState();
+
+    SmartMusicSuggestion.suggestedKeyword.addListener(_handleMoodSuggestion);
+  }
+
+  @override
   void dispose() {
+    SmartMusicSuggestion.suggestedKeyword.removeListener(_handleMoodSuggestion);
+
     _lyricsController.dispose();
 
     _searchController.dispose();
@@ -111,6 +122,29 @@ class _MusicPageState extends State<MusicPage> {
 
       curve: Curves.easeOutCubic,
     );
+  }
+
+  /// ===============================
+  /// HANDLE MOOD SUGGESTION
+  /// ===============================
+  void _handleMoodSuggestion() {
+    final keyword = SmartMusicSuggestion.suggestedKeyword.value;
+
+    if (keyword == null) return;
+
+    setState(() {
+      suggestedMoodKeyword = keyword;
+    });
+
+    /// AUTO SEARCH
+    _searchController.text = keyword;
+
+    searchMusic(keyword);
+
+    /// RESET
+    Future.delayed(const Duration(seconds: 2), () {
+      SmartMusicSuggestion.suggestedKeyword.value = null;
+    });
   }
 
   /// ===============================
@@ -154,6 +188,19 @@ class _MusicPageState extends State<MusicPage> {
   @override
   Widget build(BuildContext context) {
     final musicProvider = Provider.of<MusicProvider>(context);
+    final moodKeyword = SmartMusicSuggestion.suggestedKeyword.value;
+
+    if (moodKeyword != null &&
+        moodKeyword.isNotEmpty &&
+        moodKeyword != suggestedMoodKeyword) {
+      suggestedMoodKeyword = moodKeyword;
+
+      _searchController.text = moodKeyword;
+
+      Future.microtask(() {
+        searchMusic(moodKeyword);
+      });
+    }
 
     while (_lyricKeys.length < musicProvider.syncedLyrics.length) {
       _lyricKeys.add(GlobalKey());
@@ -362,6 +409,92 @@ class _MusicPageState extends State<MusicPage> {
 
                           SizedBox(height: 30.h),
 
+                          /// ===============================
+                          /// AI MOOD RECOMMENDATION
+                          /// ===============================
+                          if (suggestedMoodKeyword.isNotEmpty)
+                            Container(
+                              margin: EdgeInsets.only(bottom: 24.h),
+
+                              padding: EdgeInsets.all(22.w),
+
+                              decoration: BoxDecoration(
+                                borderRadius: BorderRadius.circular(28.r),
+
+                                color: musicAccent.withOpacity(0.12),
+
+                                border: Border.all(
+                                  color: musicAccent.withOpacity(0.22),
+                                ),
+
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: musicAccent.withOpacity(0.24),
+
+                                    blurRadius: 24,
+                                  ),
+                                ],
+                              ),
+
+                              child: Row(
+                                children: [
+                                  Container(
+                                    width: 60.w,
+                                    height: 60.w,
+
+                                    decoration: BoxDecoration(
+                                      shape: BoxShape.circle,
+
+                                      color: musicAccent.withOpacity(0.18),
+                                    ),
+
+                                    child: Icon(
+                                      Icons.psychology,
+
+                                      color: musicAccent,
+
+                                      size: 30.sp,
+                                    ),
+                                  ),
+
+                                  SizedBox(width: 18.w),
+
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+
+                                      children: [
+                                        Text(
+                                          "AI Mood Recommendation",
+
+                                          style: TextStyle(
+                                            color: Colors.white,
+
+                                            fontSize: 18.sp,
+
+                                            fontWeight: FontWeight.bold,
+                                          ),
+                                        ),
+
+                                        SizedBox(height: 6.h),
+
+                                        Text(
+                                          suggestedMoodKeyword,
+
+                                          style: TextStyle(
+                                            color: Colors.white70,
+
+                                            fontSize: 14.sp,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+
                           /// TITLE
                           Text(
                             spotifyData.isEmpty
@@ -387,14 +520,11 @@ class _MusicPageState extends State<MusicPage> {
                               itemBuilder: (context, index) {
                                 final song = _spotifyItems[index];
 
-                                final imageUrl =
-                                    _imageUrlForSong(song);
+                                final imageUrl = _imageUrlForSong(song);
 
-                                final title =
-                                    _titleForSong(song);
+                                final title = _titleForSong(song);
 
-                                final subtitle =
-                                    _subtitleForSong(song);
+                                final subtitle = _subtitleForSong(song);
 
                                 return Container(
                                   margin: EdgeInsets.only(bottom: 16.h),
@@ -694,7 +824,8 @@ class _MusicPageState extends State<MusicPage> {
                                                                   .currentLyricIndex;
 
                                                           return AnimatedContainer(
-                                                            key: _lyricKeys[index],
+                                                            key:
+                                                                _lyricKeys[index],
                                                             duration:
                                                                 const Duration(
                                                                   milliseconds:
@@ -1023,8 +1154,7 @@ class _MusicPageState extends State<MusicPage> {
                                     decoration: BoxDecoration(
                                       color: showLyrics
                                           ? musicAccent
-                                          : theme.accentColor
-                                                    .withOpacity(0.4),
+                                          : theme.accentColor.withOpacity(0.4),
 
                                       shape: BoxShape.circle,
 
@@ -1099,15 +1229,11 @@ class _MusicPageState extends State<MusicPage> {
 
     return items
         .whereType<Map>()
-        .map(
-          (item) => Map<String, dynamic>.from(item),
-        )
+        .map((item) => Map<String, dynamic>.from(item))
         .toList();
   }
 
-  String _imageUrlForSong(
-    Map<String, dynamic> song,
-  ) {
+  String _imageUrlForSong(Map<String, dynamic> song) {
     if (spotifyData.isEmpty) {
       return song['image']?.toString() ?? '';
     }
@@ -1125,16 +1251,12 @@ class _MusicPageState extends State<MusicPage> {
     return _firstImageUrl(song['images']);
   }
 
-  String _firstImageUrl(
-    dynamic images,
-  ) {
-    if (images is! List ||
-        images.isEmpty) {
+  String _firstImageUrl(dynamic images) {
+    if (images is! List || images.isEmpty) {
       return '';
     }
 
-    final firstImage =
-        images.first;
+    final firstImage = images.first;
 
     if (firstImage is! Map) {
       return '';
@@ -1143,9 +1265,7 @@ class _MusicPageState extends State<MusicPage> {
     return firstImage['url']?.toString() ?? '';
   }
 
-  String _titleForSong(
-    Map<String, dynamic> song,
-  ) {
+  String _titleForSong(Map<String, dynamic> song) {
     if (spotifyData.isEmpty) {
       return song['title']?.toString() ?? 'Unknown Title';
     }
@@ -1153,9 +1273,7 @@ class _MusicPageState extends State<MusicPage> {
     return song['name']?.toString() ?? 'Unknown Title';
   }
 
-  String _subtitleForSong(
-    Map<String, dynamic> song,
-  ) {
+  String _subtitleForSong(Map<String, dynamic> song) {
     if (spotifyData.isEmpty) {
       return song['artist']?.toString() ?? 'Unknown Artist';
     }
@@ -1168,14 +1286,10 @@ class _MusicPageState extends State<MusicPage> {
       return 'Playlist';
     }
 
-    final artists =
-        song['artists'];
+    final artists = song['artists'];
 
-    if (artists is List &&
-        artists.isNotEmpty &&
-        artists.first is Map) {
-      final firstArtist =
-          artists.first as Map;
+    if (artists is List && artists.isNotEmpty && artists.first is Map) {
+      final firstArtist = artists.first as Map;
 
       return firstArtist['name']?.toString() ?? 'Unknown Artist';
     }

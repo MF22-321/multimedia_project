@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:frontend/core/navigation/drowsiness_control.dart';
 import 'package:frontend/core/themes/car_theme.dart';
 
 
@@ -13,10 +14,6 @@ class SettingsContent extends StatefulWidget {
 
 class _SettingsPageState
     extends State<SettingsContent> {
-
-  bool drowsinessEnabled =
-      true;
-
   bool potholeEnabled =
       true;
 
@@ -264,32 +261,41 @@ class _SettingsPageState
                         /// =========================
                         /// DROWSINESS
                         /// =========================
-                        buildFeatureCard(
+                        ValueListenableBuilder(
+                          valueListenable:
+                              DrowsinessControl
+                                  .enabled,
+                          builder: (
+                            context,
+                            drowsinessEnabled,
+                            _,
+                          ) {
+                            return buildFeatureCard(
 
-                          icon:
-                              Icons
-                                  .bedtime_rounded,
+                              icon:
+                                  Icons
+                                      .bedtime_rounded,
 
-                          title:
-                              'Drowsiness Alert',
+                              title:
+                                  'Drowsiness Alert',
 
-                          description:
-                              'Aktifkan fitur untuk mendeteksi kantuk dan memberi peringatan otomatis.',
+                              description:
+                                  'Aktifkan fitur untuk mendeteksi kantuk dan memberi peringatan otomatis.',
 
-                          value:
-                              drowsinessEnabled,
+                              value:
+                                  drowsinessEnabled,
 
-                          accentColor:
-                              accentColor,
+                              accentColor:
+                                  accentColor,
 
-                          onChanged:
-                              (value) {
-
-                            setState(() {
-
-                              drowsinessEnabled =
-                                  value;
-                            });
+                              onChanged:
+                                  (value) {
+                                DrowsinessControl
+                                        .enabled
+                                        .value =
+                                    value;
+                              },
+                            );
                           },
                         ),
 

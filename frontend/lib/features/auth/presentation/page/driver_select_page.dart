@@ -97,9 +97,7 @@ class _DriverSelectPageState extends State<DriverSelectPage> {
   void _selectDriver(String name) {
     _stopFaceDetection();
 
-    final normalized = name.trim().toLowerCase();
-
-    DriverSession.setDriver(normalized);
+    DriverSession.setDriver(name.trim());
     Navigator.pushReplacementNamed(context, "/home");
   }
 

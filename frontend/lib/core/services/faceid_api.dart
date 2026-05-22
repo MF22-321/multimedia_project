@@ -129,10 +129,10 @@ class FaceIdApi {
   /// ==============================
   static Future<Map<String, dynamic>> deleteDriver(String name) async {
     try {
-      final normalized = name.trim().toLowerCase();
+      final driverName = Uri.encodeComponent(name.trim());
 
       final res = await http.delete(
-        Uri.parse("$_httpBase/delete-driver/$normalized"),
+        Uri.parse("$_httpBase/driver/$driverName"),
       );
 
       if (res.statusCode != 200) {

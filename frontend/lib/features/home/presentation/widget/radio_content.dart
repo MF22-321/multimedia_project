@@ -77,6 +77,54 @@ class _RadioContentState extends State<RadioContent> {
 
       'url': 'https://uk2.internet-radio.com/proxy/danceradiouk?mp=/stream',
     },
+    {
+      'name': 'Prambors FM',
+      'subtitle': 'Indonesia Hits Music',
+      'image': 'https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f',
+      'url': 'https://23683.live.streamtheworld.com/PRAMBORS_FM.mp3',
+    },
+
+    {
+      'name': 'Hard Rock FM',
+      'subtitle': 'Lifestyle & Hits',
+      'image': 'https://images.unsplash.com/photo-1501386761578-eac5c94b800a',
+      'url': 'https://n0e.radiojar.com/7csmg90fuqruv',
+    },
+
+    {
+      'name': 'Gen FM',
+      'subtitle': 'Suara Musik Terkini',
+      'image': 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4',
+      'url': 'https://stream.radiojar.com/4ywdgup3bnzuv',
+    },
+
+    {
+      'name': 'Motion Radio',
+      'subtitle': 'Feel The Beat',
+      'image': 'https://images.unsplash.com/photo-1511192336575-5a79af67a629',
+      'url': 'https://stream.radiojar.com/kw89u0d3bnzuv',
+    },
+
+    {
+      'name': 'Elshinta',
+      'subtitle': 'News & Talk Radio',
+      'image': 'https://images.unsplash.com/photo-1500530855697-b586d89ba3ee',
+      'url': 'https://stream-ssl.arenastreaming.com:8000/jakarta',
+    },
+
+    {
+      'name': 'Ardan Radio',
+      'subtitle': 'Bandung Hits Station',
+      'image': 'https://images.unsplash.com/photo-1521334884684-d80222895322',
+      'url': 'https://stream.radiojar.com/ardanfm',
+    },
+
+    {
+      'name': 'Oz Radio',
+      'subtitle': 'Young & Fresh Hits',
+      'image': 'https://images.unsplash.com/photo-1506157786151-b8491531f063',
+      'url': 'https://stream.radiojar.com/ozradio',
+    },
   ];
 
   /// =========================

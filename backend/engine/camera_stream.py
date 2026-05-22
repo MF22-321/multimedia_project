@@ -23,6 +23,10 @@ frame_lock = threading.Lock()
 recognizer = None
 drowsy_engine = None
 face_mesh = None
+mood_state = {
+    "candidate": "unknown",
+    "candidate_since": None,
+}
 
 
 # =========================================================
@@ -38,8 +42,18 @@ driver_status = {
 drowsiness_status = {
     "active": False,
     "driver_name": None,
+    "recognized_driver": None,
+    "driver_match": False,
     "ear": None,
     "mar": None,
+    "mood": "unknown",
+    "mood_confidence": 0.0,
+    "raw_mood": "unknown",
+    "mood_candidate": "unknown",
+    "mood_candidate_elapsed": 0.0,
+    "mood_required_sec": 7.0,
+    "smile_score": 0.0,
+    "sadness_score": 0.0,
     "yawn_status": "NO",
     "yawn_total": 0,
     "yawns_in_window": 0,
@@ -83,6 +97,11 @@ class DrowsyConfig:
     alert_hold_sec = 3.0
 
 
+class MoodConfig:
+    confirm_seconds = 7.0
+    neutral_confirm_seconds = 2.0
+
+
 # =========================================================
 # INIT FUNCTIONS
 # =========================================================
@@ -97,6 +116,70 @@ def is_frontal_face(face_landmarks, yaw_threshold=0.06):
     print(f"[POSE] yaw_offset={yaw_offset:.4f}, threshold={yaw_threshold:.4f}")
 
     return yaw_offset < yaw_threshold
+
+
+def extract_mood_from_landmarks(pts):
+    """
+    Lightweight mood heuristic from MediaPipe face landmarks.
+    Detects happy/sad from mouth-corner curvature without an extra ML model.
+    """
+    if pts is None or len(pts) < 455:
+        return {
+            "mood": "unknown",
+            "mood_confidence": 0.0,
+            "smile_score": 0.0,
+            "sadness_score": 0.0,
+        }
+
+    try:
+        left_corner = pts[61]
+        right_corner = pts[291]
+        upper_lip = pts[13]
+        lower_lip = pts[14]
+        left_face = pts[234]
+        right_face = pts[454]
+
+        face_width = float(np.linalg.norm(right_face - left_face))
+        if face_width <= 0:
+            raise ValueError("face width is zero")
+
+        mouth_center_y = float((upper_lip[1] + lower_lip[1]) / 2.0)
+        corner_y = float((left_corner[1] + right_corner[1]) / 2.0)
+
+        # y grows downward. Positive curve means mouth corners are lifted.
+        mouth_curve = (mouth_center_y - corner_y) / face_width
+
+        smile_score = clamp01((mouth_curve - 0.010) / 0.040)
+        sadness_score = clamp01((-mouth_curve - 0.004) / 0.026)
+
+        if smile_score >= 0.45 and smile_score >= sadness_score:
+            mood = "happy"
+            confidence = smile_score
+        elif sadness_score >= 0.35:
+            mood = "sad"
+            confidence = sadness_score
+        else:
+            mood = "neutral"
+            confidence = 1.0 - max(smile_score, sadness_score)
+
+        return {
+            "mood": mood,
+            "mood_confidence": float(confidence),
+            "smile_score": float(smile_score),
+            "sadness_score": float(sadness_score),
+        }
+    except Exception as e:
+        print(f"[MOOD] extraction error: {e}")
+        return {
+            "mood": "unknown",
+            "mood_confidence": 0.0,
+            "smile_score": 0.0,
+            "sadness_score": 0.0,
+        }
+
+
+def clamp01(value):
+    return max(0.0, min(1.0, float(value)))
 
 # def init_camera():
 #     global camera
@@ -209,28 +292,42 @@ def reload_recognizer():
 # RESET / START / STOP
 # =========================================================
 def reset_drowsiness_status(driver_name=None):
-    global drowsiness_status
+    global drowsiness_status, mood_state
 
     is_active = driver_name is not None
+    mood_state = {
+        "candidate": "unknown",
+        "candidate_since": None,
+    }
 
     drowsiness_status = {
-    "active": is_active,
-    "driver_name": driver_name,
-    "ear": None,
-    "mar": None,
-    "yawn_status": "NO",
-    "yawn_total": 0,
-    "yawns_in_window": 0,
-    "eye_score": 0.0,
-    "yawn_score": 0.0,
-    "ear_ratio": None,
-    "score": 0.0,
-    "alert_active": False,
-    "calibrating": is_active,
-    "calib_remaining": 3.0 if is_active else 0.0,
-    "status": "calibrating" if is_active else "inactive",
-    "face_position": "not_frontal",
-}
+        "active": is_active,
+        "driver_name": driver_name,
+        "recognized_driver": None,
+        "driver_match": False,
+        "ear": None,
+        "mar": None,
+        "mood": "unknown",
+        "mood_confidence": 0.0,
+        "raw_mood": "unknown",
+        "mood_candidate": "unknown",
+        "mood_candidate_elapsed": 0.0,
+        "mood_required_sec": MoodConfig.confirm_seconds,
+        "smile_score": 0.0,
+        "sadness_score": 0.0,
+        "yawn_status": "NO",
+        "yawn_total": 0,
+        "yawns_in_window": 0,
+        "eye_score": 0.0,
+        "yawn_score": 0.0,
+        "ear_ratio": None,
+        "score": 0.0,
+        "alert_active": False,
+        "calibrating": is_active,
+        "calib_remaining": 3.0 if is_active else 0.0,
+        "status": "calibrating" if is_active else "inactive",
+        "face_position": "not_frontal",
+    }
 
     print(
         f"[RESET] active={drowsiness_status['active']} "
@@ -282,6 +379,53 @@ def get_driver_status():
 # =========================================================
 # DROWSINESS UPDATE
 # =========================================================
+def reset_mood_values():
+    global mood_state
+
+    mood_state = {
+        "candidate": "unknown",
+        "candidate_since": None,
+    }
+
+    drowsiness_status["mood"] = "unknown"
+    drowsiness_status["mood_confidence"] = 0.0
+    drowsiness_status["raw_mood"] = "unknown"
+    drowsiness_status["mood_candidate"] = "unknown"
+    drowsiness_status["mood_candidate_elapsed"] = 0.0
+    drowsiness_status["mood_required_sec"] = MoodConfig.confirm_seconds
+    drowsiness_status["smile_score"] = 0.0
+    drowsiness_status["sadness_score"] = 0.0
+
+
+def reset_detection_values(status="waiting_driver"):
+    drowsiness_status["ear"] = None
+    drowsiness_status["mar"] = None
+    reset_mood_values()
+    drowsiness_status["eye_score"] = 0.0
+    drowsiness_status["yawn_score"] = 0.0
+    drowsiness_status["ear_ratio"] = None
+    drowsiness_status["score"] = 0.0
+    drowsiness_status["alert_active"] = False
+    drowsiness_status["status"] = status
+
+
+def update_driver_match_status():
+    target_driver = drowsiness_status.get("driver_name")
+    recognized_driver = driver_status.get("driver")
+
+    driver_match = bool(
+        drowsiness_status.get("active")
+        and target_driver
+        and recognized_driver
+        and recognized_driver == target_driver
+    )
+
+    drowsiness_status["recognized_driver"] = recognized_driver
+    drowsiness_status["driver_match"] = driver_match
+
+    return driver_match
+
+
 def update_drowsiness_from_metrics(ear, mar, now):
     global drowsiness_status
 
@@ -332,6 +476,48 @@ def update_drowsiness_from_metrics(ear, mar, now):
         drowsiness_status["status"] = "normal"
 
     print(f"[DROWSY STATUS] {drowsiness_status}")
+
+
+def update_mood_from_landmarks(pts, now=None):
+    global mood_state
+
+    if now is None:
+        now = time.time()
+
+    mood_out = extract_mood_from_landmarks(pts)
+    raw_mood = mood_out["mood"]
+    required_sec = (
+        MoodConfig.neutral_confirm_seconds
+        if raw_mood in ("neutral", "unknown")
+        else MoodConfig.confirm_seconds
+    )
+
+    if raw_mood != mood_state["candidate"]:
+        mood_state["candidate"] = raw_mood
+        mood_state["candidate_since"] = now
+
+    candidate_since = mood_state["candidate_since"] or now
+    elapsed = max(0.0, now - candidate_since)
+
+    drowsiness_status["raw_mood"] = raw_mood
+    drowsiness_status["mood_candidate"] = mood_state["candidate"]
+    drowsiness_status["mood_candidate_elapsed"] = float(elapsed)
+    drowsiness_status["mood_required_sec"] = float(required_sec)
+
+    if elapsed >= required_sec:
+        drowsiness_status["mood"] = raw_mood
+        drowsiness_status["mood_confidence"] = mood_out["mood_confidence"]
+    drowsiness_status["smile_score"] = mood_out["smile_score"]
+    drowsiness_status["sadness_score"] = mood_out["sadness_score"]
+
+    print(
+        f"[MOOD] raw={raw_mood} "
+        f"confirmed={drowsiness_status['mood']} "
+        f"elapsed={elapsed:.2f}/{required_sec:.2f}s "
+        f"confidence={mood_out['mood_confidence']:.3f} "
+        f"smile={mood_out['smile_score']:.3f} "
+        f"sad={mood_out['sadness_score']:.3f}"
+    )
 
 
 # =========================================================
@@ -403,6 +589,11 @@ def draw_drowsiness_overlay(preview):
     mar_text = drowsiness_status["mar"]
     status_text = drowsiness_status["status"]
     score_text = drowsiness_status["score"]
+    mood_text = drowsiness_status["mood"]
+    mood_confidence = drowsiness_status["mood_confidence"]
+    raw_mood_text = drowsiness_status["raw_mood"]
+    mood_elapsed = drowsiness_status["mood_candidate_elapsed"]
+    mood_required = drowsiness_status["mood_required_sec"]
 
     cv2.putText(
         preview,
@@ -441,6 +632,28 @@ def draw_drowsiness_overlay(preview):
         preview,
         f"Score: {score_text:.3f}",
         (20, 150),
+        cv2.FONT_HERSHEY_SIMPLEX,
+        0.65,
+        (255, 255, 255),
+        2,
+        cv2.LINE_AA,
+    )
+
+    cv2.putText(
+        preview,
+        f"Mood: {mood_text} ({mood_confidence:.2f}) raw={raw_mood_text}",
+        (20, 180),
+        cv2.FONT_HERSHEY_SIMPLEX,
+        0.65,
+        (255, 255, 255),
+        2,
+        cv2.LINE_AA,
+    )
+
+    cv2.putText(
+        preview,
+        f"Mood hold: {mood_elapsed:.1f}/{mood_required:.1f}s",
+        (20, 210),
         cv2.FONT_HERSHEY_SIMPLEX,
         0.65,
         (255, 255, 255),
@@ -562,20 +775,44 @@ def camera_loop():
             frontal = False
             ear = None
             mar = None
+            pts = None
 
             if drowsiness_status["active"]:
-                ear, mar, _, frontal = extract_ear_mar(frame)
+                driver_match = update_driver_match_status()
+
+                if not driver_match:
+                    drowsiness_status["face_position"] = "not_target_driver"
+                    reset_detection_values(status="waiting_driver")
+                    print(
+                        "[DROWSINESS] skipped because recognized driver "
+                        f"{drowsiness_status['recognized_driver']} does not match "
+                        f"target {drowsiness_status['driver_name']}"
+                    )
+                    draw_drowsiness_overlay(preview)
+
+                    with frame_lock:
+                        last_frame = preview
+
+                    time.sleep(0.03)
+                    continue
+
+                ear, mar, pts, frontal = extract_ear_mar(frame)
 
                 drowsiness_status["face_position"] = "frontal" if frontal else "not_frontal"
 
                 print(f"[LOOP DEBUG] frontal={frontal} ear={ear} mar={mar}")
 
                 if frontal and ear is not None and mar is not None:
-                    update_drowsiness_from_metrics(ear, mar, time.time())
+                    now = time.time()
+                    update_drowsiness_from_metrics(ear, mar, now)
+                    update_mood_from_landmarks(pts, now)
                 else:
+                    reset_mood_values()
                     print("[DROWSINESS] skipped update because face is not frontal or metrics invalid")
             else:
                 drowsiness_status["face_position"] = "not_frontal"
+                drowsiness_status["recognized_driver"] = driver_status.get("driver")
+                drowsiness_status["driver_match"] = False
 
             draw_drowsiness_overlay(preview)
 

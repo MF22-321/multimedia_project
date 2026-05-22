@@ -1,8 +1,11 @@
 import 'dart:async';
+import 'dart:ui';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:frontend/core/navigation/drowsiness_control.dart';
 import 'package:frontend/core/navigation/driver_session.dart';
+import 'package:frontend/core/navigation/smart_music_navigation.dart';
 import 'package:frontend/core/services/drive_pref_service.dart';
 import 'package:frontend/core/services/drowsiness_api.dart';
 import 'package:frontend/features/face_recognition/presentation/pages/drowsines_alert_page.dart';
@@ -27,7 +30,6 @@ import 'package:frontend/features/home/presentation/widget/top_bar.dart';
 
 import 'package:frontend/features/video/provider/video_provider.dart';
 
-
 import '../../../boot/presentation/widget/dotted_background.dart';
 
 class HomePage extends StatefulWidget {
@@ -43,12 +45,16 @@ class _HomePageState extends State<HomePage> {
   Timer? _drowsyTimer;
   bool _isMonitoring = false;
   bool _dialogShown = false;
+  bool _moodSuggestionShown = false;
+  String? _lastSuggestedMood;
+  DateTime? _lastMoodSuggestionAt;
 
   @override
   void initState() {
     super.initState();
 
     DriverSession.currentDriver.addListener(_onDriverChanged);
+    DrowsinessControl.enabled.addListener(_onDrowsinessSettingChanged);
 
     _init();
 
@@ -60,6 +66,7 @@ class _HomePageState extends State<HomePage> {
   @override
   void dispose() {
     DriverSession.currentDriver.removeListener(_onDriverChanged);
+    DrowsinessControl.enabled.removeListener(_onDrowsinessSettingChanged);
     _drowsyTimer?.cancel();
     super.dispose();
   }
@@ -80,7 +87,17 @@ class _HomePageState extends State<HomePage> {
     _drowsyTimer?.cancel();
 
     await _applyDriverPreference(); // 🔥 tunggu selesai
-    await _startDrowsiness();
+    if (DrowsinessControl.enabled.value) {
+      await _startDrowsiness();
+    }
+  }
+
+  void _onDrowsinessSettingChanged() async {
+    if (DrowsinessControl.enabled.value) {
+      await _startDrowsiness();
+    } else {
+      await _stopDrowsiness();
+    }
   }
 
   /// ================= APPLY PREF =================
@@ -117,12 +134,10 @@ class _HomePageState extends State<HomePage> {
   Future<void> _startDrowsiness() async {
     final driver = DriverSession.currentDriver.value;
 
-    if (driver == null) return;
+    if (driver == null || !DrowsinessControl.enabled.value) return;
 
     try {
-      final result = await DrowsinessApi.startDrowsiness(
-        driverName: driver.toLowerCase(), // backend pakai lowercase
-      );
+      final result = await DrowsinessApi.startDrowsiness(driverName: driver);
 
       _isMonitoring = result["active"] == true;
 
@@ -131,6 +146,20 @@ class _HomePageState extends State<HomePage> {
       _startPolling();
     } catch (e) {
       debugPrint("❌ start drowsiness error: $e");
+    }
+  }
+
+  Future<void> _stopDrowsiness() async {
+    _drowsyTimer?.cancel();
+    _isMonitoring = false;
+    _dialogShown = false;
+    _moodSuggestionShown = false;
+
+    try {
+      await DrowsinessApi.stopDrowsiness();
+      debugPrint("🛑 Drowsiness stopped");
+    } catch (e) {
+      debugPrint("❌ stop drowsiness error: $e");
     }
   }
 
@@ -146,9 +175,20 @@ class _HomePageState extends State<HomePage> {
 
         if (!mounted) return;
 
-        final status = result["status"]?.toString() ?? "inactive";
+        _isMonitoring = result["active"] == true;
 
-        debugPrint("📊 STATUS: $status");
+        final status = result["status"]?.toString() ?? "inactive";
+        final mood = result["mood"]?.toString() ?? "unknown";
+        final rawMood = result["raw_mood"]?.toString() ?? "unknown";
+        final driverMatch = result["driver_match"] == true;
+
+        debugPrint(
+          "📊 STATUS: $status | mood=$mood | raw=$rawMood | match=$driverMatch",
+        );
+
+        if (driverMatch) {
+          _maybeShowMoodSuggestion(mood);
+        }
 
         if (status == "drowsy" && !_dialogShown) {
           _dialogShown = true;
@@ -165,8 +205,8 @@ class _HomePageState extends State<HomePage> {
                 onNo: () {
                   Navigator.pop(context);
                 },
-                onDisable: () async {
-                  await DrowsinessApi.stopDrowsiness();
+                onDisable: () {
+                  DrowsinessControl.enabled.value = false;
                   Navigator.pop(context);
                 },
               ),
@@ -181,6 +221,333 @@ class _HomePageState extends State<HomePage> {
         debugPrint("❌ polling error: $e");
       }
     });
+  }
+
+  Future<void> _maybeShowMoodSuggestion(String mood) async {
+    if (_moodSuggestionShown) return;
+
+    if (mood != "happy" && mood != "sad") {
+      _lastSuggestedMood = null;
+      return;
+    }
+
+    final now = DateTime.now();
+
+    final sameMood = _lastSuggestedMood == mood;
+
+    final stillInCooldown =
+        _lastMoodSuggestionAt != null &&
+        now.difference(_lastMoodSuggestionAt!) < const Duration(minutes: 2);
+
+    if (sameMood && stillInCooldown) {
+      return;
+    }
+
+    _moodSuggestionShown = true;
+
+    _lastSuggestedMood = mood;
+
+    _lastMoodSuggestionAt = now;
+
+    final isHappy = mood == "happy";
+
+    /// ===============================
+    /// AUTO MUSIC KEYWORD
+    /// ===============================
+    final keyword = isHappy
+        ? "happy upbeat driving"
+        : "calm relaxing night drive";
+    Future.microtask(() {
+      SmartMusicSuggestion.suggestedKeyword.value = keyword;
+    });
+
+    final title = isHappy ? "Mood Terdeteksi Positif" : "Mood Terdeteksi Lelah";
+
+    final subtitle = isHappy
+        ? "Sepertinya perjalanan kamu sedang menyenangkan."
+        : "Kami merekomendasikan musik santai agar perjalanan lebih nyaman.";
+
+    final buttonText = isHappy ? "Putar Musik Bahagia" : "Putar Musik Santai";
+
+    final currentTheme = CarThemes.currentTheme.value;
+
+    final theme = CarThemes.getTheme(currentTheme);
+
+    final accent = currentTheme == CarThemeType.comfort
+        ? const Color(0xFF6CB4FF)
+        : theme.accentColor;
+
+    if (!mounted) return;
+
+    await showGeneralDialog(
+      context: context,
+
+      barrierDismissible: true,
+
+      barrierLabel: "Mood Dialog",
+
+      barrierColor: Colors.black.withOpacity(0.45),
+
+      transitionDuration: const Duration(milliseconds: 450),
+
+      pageBuilder: (context, animation, secondaryAnimation) {
+        return StatefulBuilder(
+          builder: (context, setState) {
+            return BackdropFilter(
+              filter: ImageFilter.blur(sigmaX: 14, sigmaY: 14),
+
+              child: Center(
+                child: Container(
+                  width: 520.w,
+
+                  padding: EdgeInsets.all(30.w),
+
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(36.r),
+
+                    gradient: LinearGradient(
+                      begin: Alignment.topLeft,
+
+                      end: Alignment.bottomRight,
+
+                      colors: [
+                        Colors.white.withOpacity(0.08),
+
+                        Colors.white.withOpacity(0.03),
+                      ],
+                    ),
+
+                    border: Border.all(color: accent.withOpacity(0.18)),
+
+                    boxShadow: [
+                      BoxShadow(
+                        color: accent.withOpacity(0.20),
+
+                        blurRadius: 40,
+
+                        spreadRadius: 1,
+                      ),
+                    ],
+                  ),
+
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+
+                    children: [
+                      /// ICON
+                      AnimatedContainer(
+                        duration: const Duration(milliseconds: 400),
+
+                        width: 100.w,
+                        height: 100.w,
+
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+
+                          color: accent.withOpacity(0.12),
+
+                          boxShadow: [
+                            BoxShadow(
+                              color: accent.withOpacity(0.35),
+
+                              blurRadius: 30,
+                            ),
+                          ],
+                        ),
+
+                        child: Icon(
+                          isHappy
+                              ? Icons.sentiment_very_satisfied
+                              : Icons.nightlight_round,
+
+                          color: accent,
+
+                          size: 54.sp,
+                        ),
+                      ),
+
+                      SizedBox(height: 26.h),
+
+                      /// TITLE
+                      Text(
+                        title,
+
+                        textAlign: TextAlign.center,
+
+                        style: TextStyle(
+                          color: Colors.white,
+
+                          fontSize: 30.sp,
+
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+
+                      SizedBox(height: 18.h),
+
+                      /// SUBTITLE
+                      Text(
+                        subtitle,
+
+                        textAlign: TextAlign.center,
+
+                        style: TextStyle(
+                          color: Colors.white70,
+
+                          fontSize: 18.sp,
+
+                          height: 1.5,
+                        ),
+                      ),
+
+                      SizedBox(height: 30.h),
+
+                      /// MUSIC CHIP
+                      Container(
+                        padding: EdgeInsets.symmetric(
+                          horizontal: 18.w,
+                          vertical: 14.h,
+                        ),
+
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(22.r),
+
+                          color: Colors.white.withOpacity(0.06),
+                        ),
+
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+
+                          children: [
+                            Icon(Icons.music_note, color: accent, size: 22.sp),
+
+                            SizedBox(width: 10.w),
+
+                            Text(
+                              keyword,
+
+                              style: TextStyle(
+                                color: Colors.white,
+
+                                fontSize: 15.sp,
+
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+
+                      SizedBox(height: 34.h),
+
+                      /// BUTTONS
+                      Row(
+                        children: [
+                          Expanded(
+                            child: GestureDetector(
+                              onTap: () {
+                                Navigator.pop(context);
+                              },
+
+                              child: Container(
+                                height: 66.h,
+
+                                decoration: BoxDecoration(
+                                  borderRadius: BorderRadius.circular(24.r),
+
+                                  color: Colors.white.withOpacity(0.05),
+                                ),
+
+                                child: Center(
+                                  child: Text(
+                                    'Nanti',
+
+                                    style: TextStyle(
+                                      color: Colors.white70,
+
+                                      fontSize: 18.sp,
+
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+
+                          SizedBox(width: 18.w),
+
+                          Expanded(
+                            child: GestureDetector(
+                              onTap: () {
+                                /// OPEN MUSIC PAGE
+                                AppNavigation.currentIndex.value = 0;
+
+                                Navigator.pop(context);
+                              },
+
+                              child: Container(
+                                height: 66.h,
+
+                                decoration: BoxDecoration(
+                                  borderRadius: BorderRadius.circular(24.r),
+
+                                  color: accent,
+
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: accent.withOpacity(0.35),
+
+                                      blurRadius: 24,
+                                    ),
+                                  ],
+                                ),
+
+                                child: Center(
+                                  child: Text(
+                                    buttonText,
+
+                                    textAlign: TextAlign.center,
+
+                                    style: TextStyle(
+                                      color: Colors.black,
+
+                                      fontSize: 18.sp,
+
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            );
+          },
+        );
+      },
+
+      transitionBuilder: (context, animation, secondaryAnimation, child) {
+        return FadeTransition(
+          opacity: animation,
+
+          child: ScaleTransition(
+            scale: Tween<double>(begin: 0.88, end: 1).animate(
+              CurvedAnimation(parent: animation, curve: Curves.easeOutBack),
+            ),
+
+            child: child,
+          ),
+        );
+      },
+    );
+
+    _moodSuggestionShown = false;
   }
 
   /// ================= UI =================
@@ -242,8 +609,6 @@ class _HomePageState extends State<HomePage> {
           /// MAIN UI
           Row(
             children: [
-              
-
               Expanded(
                 child: ValueListenableBuilder(
                   valueListenable: AppNavigation.currentIndex,
@@ -296,7 +661,7 @@ class _HomeContent extends StatelessWidget {
                     children: [
                       const MapCard(),
                       SizedBox(height: 25.h),
-                      const MediaCard(  ),
+                      const MediaCard(),
                     ],
                   ),
                 ),
