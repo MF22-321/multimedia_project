@@ -26,11 +26,7 @@ class SpeedControlCard extends StatelessWidget {
             mainAxisAlignment: MainAxisAlignment.center,
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
-              Icon(
-                Icons.air,
-                size: 42.sp,
-                color: Colors.white70,
-              ),
+              Icon(Icons.air, size: 42.sp, color: Colors.white70),
               SizedBox(width: 18.w),
               _SpeedBars(level: clampedLevel),
               SizedBox(width: 18.w),
@@ -70,29 +66,18 @@ class SpeedControlCard extends StatelessWidget {
 class _SpeedBars extends StatelessWidget {
   final int level;
 
-  const _SpeedBars({
-    required this.level,
-  });
+  const _SpeedBars({required this.level});
 
   @override
   Widget build(BuildContext context) {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.end,
       children: [
-        _SpeedBar(
-          height: 48.h,
-          isActive: level >= 1,
-        ),
+        _SpeedBar(height: 48.h, isActive: level >= 1),
         SizedBox(width: 8.w),
-        _SpeedBar(
-          height: 70.h,
-          isActive: level >= 2,
-        ),
+        _SpeedBar(height: 70.h, isActive: level >= 2),
         SizedBox(width: 8.w),
-        _SpeedBar(
-          height: 92.h,
-          isActive: level >= 3,
-        ),
+        _SpeedBar(height: 92.h, isActive: level >= 3),
       ],
     );
   }
@@ -102,10 +87,7 @@ class _SpeedBar extends StatelessWidget {
   final double height;
   final bool isActive;
 
-  const _SpeedBar({
-    required this.height,
-    required this.isActive,
-  });
+  const _SpeedBar({required this.height, required this.isActive});
 
   @override
   Widget build(BuildContext context) {
@@ -117,12 +99,12 @@ class _SpeedBar extends StatelessWidget {
       decoration: BoxDecoration(
         color: isActive
             ? const Color(0xFF1E73F1)
-            : Colors.white.withOpacity(0.65),
+            : Colors.white.withValues(alpha: 0.65),
         borderRadius: BorderRadius.circular(8.r),
         boxShadow: isActive
             ? [
                 BoxShadow(
-                  color: const Color(0xFF1E73F1).withOpacity(0.28),
+                  color: const Color(0xFF1E73F1).withValues(alpha: 0.28),
                   blurRadius: 10.r,
                   offset: Offset(0, 4.h),
                 ),
@@ -145,8 +127,7 @@ class _AnimatedActionButton extends StatefulWidget {
   });
 
   @override
-  State<_AnimatedActionButton> createState() =>
-      _AnimatedActionButtonState();
+  State<_AnimatedActionButton> createState() => _AnimatedActionButtonState();
 }
 
 class _AnimatedActionButtonState extends State<_AnimatedActionButton> {
@@ -165,20 +146,18 @@ class _AnimatedActionButtonState extends State<_AnimatedActionButton> {
     final bool isEnabled = widget.enabled;
 
     final Color backgroundColor = !isEnabled
-        ? Colors.white.withOpacity(0.08)
+        ? Colors.white.withValues(alpha: 0.08)
         : _isPressed
-            ? const Color(0xFF1E73F1)
-            : Colors.white.withOpacity(0.18);
+        ? const Color(0xFF1E73F1)
+        : Colors.white.withValues(alpha: 0.18);
 
     final Color borderColor = !isEnabled
-        ? Colors.white.withOpacity(0.12)
+        ? Colors.white.withValues(alpha: 0.12)
         : _isPressed
-            ? const Color(0xFF1E73F1)
-            : Colors.white.withOpacity(0.28);
+        ? const Color(0xFF1E73F1)
+        : Colors.white.withValues(alpha: 0.28);
 
-    final Color iconColor = !isEnabled
-        ? Colors.white38
-        : Colors.white;
+    final Color iconColor = !isEnabled ? Colors.white38 : Colors.white;
 
     return GestureDetector(
       onTapDown: (_) => _setPressed(true),
@@ -201,18 +180,14 @@ class _AnimatedActionButtonState extends State<_AnimatedActionButton> {
             boxShadow: _isPressed
                 ? [
                     BoxShadow(
-                      color: const Color(0xFF1E73F1).withOpacity(0.35),
+                      color: const Color(0xFF1E73F1).withValues(alpha: 0.35),
                       blurRadius: 14.r,
                       offset: Offset(0, 4.h),
                     ),
                   ]
                 : [],
           ),
-          child: Icon(
-            widget.icon,
-            color: iconColor,
-            size: 24.sp,
-          ),
+          child: Icon(widget.icon, color: iconColor, size: 24.sp),
         ),
       ),
     );

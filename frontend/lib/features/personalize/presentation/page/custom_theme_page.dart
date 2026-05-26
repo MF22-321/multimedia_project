@@ -13,7 +13,6 @@ class CustomThemePage extends StatefulWidget {
 }
 
 class _CustomThemePageState extends State<CustomThemePage> {
-
   Color gradient1 = const Color(0xFF737373);
   Color gradient2 = const Color(0xFFBABABA);
 
@@ -39,8 +38,7 @@ class _CustomThemePageState extends State<CustomThemePage> {
 
   /// PICK IMAGE
   void pickImage() async {
-    final XFile? image =
-        await picker.pickImage(source: ImageSource.gallery);
+    final XFile? image = await picker.pickImage(source: ImageSource.gallery);
 
     if (image != null) {
       setState(() {
@@ -53,11 +51,9 @@ class _CustomThemePageState extends State<CustomThemePage> {
 
   /// COLOR PICKER
   void openColorPicker(Color current, Function(Color) onSelect) {
-
     showDialog(
       context: context,
       builder: (context) {
-
         Color temp = current;
 
         return Dialog(
@@ -73,7 +69,6 @@ class _CustomThemePageState extends State<CustomThemePage> {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-
                 Text(
                   "Pick Color",
                   style: TextStyle(
@@ -99,7 +94,6 @@ class _CustomThemePageState extends State<CustomThemePage> {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-
                     TextButton(
                       onPressed: () => Navigator.pop(context),
                       child: const Text("Cancel"),
@@ -115,7 +109,7 @@ class _CustomThemePageState extends State<CustomThemePage> {
                       child: const Text("Select"),
                     ),
                   ],
-                )
+                ),
               ],
             ),
           ),
@@ -126,7 +120,6 @@ class _CustomThemePageState extends State<CustomThemePage> {
 
   /// SAVE FINAL THEME
   void saveTheme() {
-
     updateLiveTheme();
 
     Navigator.pop(context);
@@ -134,11 +127,9 @@ class _CustomThemePageState extends State<CustomThemePage> {
 
   @override
   Widget build(BuildContext context) {
-
     return Scaffold(
       body: Stack(
         children: [
-
           /// BACKGROUND PREVIEW
           AnimatedContainer(
             duration: const Duration(milliseconds: 400),
@@ -164,7 +155,6 @@ class _CustomThemePageState extends State<CustomThemePage> {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-
                   /// TITLE
                   Text(
                     "Custom Theme Editor",
@@ -185,17 +175,13 @@ class _CustomThemePageState extends State<CustomThemePage> {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-
                       _colorButton(
                         "Gradient 1",
                         gradient1,
-                        () => openColorPicker(
-                          gradient1,
-                          (c) {
-                            setState(() => gradient1 = c);
-                            updateLiveTheme();
-                          },
-                        ),
+                        () => openColorPicker(gradient1, (c) {
+                          setState(() => gradient1 = c);
+                          updateLiveTheme();
+                        }),
                       ),
 
                       SizedBox(width: 30.w),
@@ -203,13 +189,10 @@ class _CustomThemePageState extends State<CustomThemePage> {
                       _colorButton(
                         "Gradient 2",
                         gradient2,
-                        () => openColorPicker(
-                          gradient2,
-                          (c) {
-                            setState(() => gradient2 = c);
-                            updateLiveTheme();
-                          },
-                        ),
+                        () => openColorPicker(gradient2, (c) {
+                          setState(() => gradient2 = c);
+                          updateLiveTheme();
+                        }),
                       ),
 
                       SizedBox(width: 30.w),
@@ -228,13 +211,10 @@ class _CustomThemePageState extends State<CustomThemePage> {
                   _colorButton(
                     "Accent",
                     accentColor,
-                    () => openColorPicker(
-                      accentColor,
-                      (c) {
-                        setState(() => accentColor = c);
-                        updateLiveTheme();
-                      },
-                    ),
+                    () => openColorPicker(accentColor, (c) {
+                      setState(() => accentColor = c);
+                      updateLiveTheme();
+                    }),
                   ),
 
                   SizedBox(height: 25.h),
@@ -247,13 +227,10 @@ class _CustomThemePageState extends State<CustomThemePage> {
                   _colorButton(
                     "Font",
                     fontColor,
-                    () => openColorPicker(
-                      fontColor,
-                      (c) {
-                        setState(() => fontColor = c);
-                        updateLiveTheme();
-                      },
-                    ),
+                    () => openColorPicker(fontColor, (c) {
+                      setState(() => fontColor = c);
+                      updateLiveTheme();
+                    }),
                   ),
 
                   SizedBox(height: 25.h),
@@ -271,7 +248,7 @@ class _CustomThemePageState extends State<CustomThemePage> {
                         borderRadius: BorderRadius.circular(40.r),
                         boxShadow: [
                           BoxShadow(
-                            color: accentColor.withOpacity(0.5),
+                            color: accentColor.withValues(alpha: 0.5),
                             blurRadius: 25,
                           ),
                         ],
@@ -302,14 +279,12 @@ class _CustomThemePageState extends State<CustomThemePage> {
               },
               child: Row(
                 children: [
-                  Icon(Icons.arrow_back_ios,
-                      color: fontColor,
-                      size: 20.sp),
+                  Icon(Icons.arrow_back_ios, color: fontColor, size: 20.sp),
                   SizedBox(width: 8.w),
                   Text(
                     "Back",
                     style: TextStyle(
-                      color: fontColor.withOpacity(0.9),
+                      color: fontColor.withValues(alpha: 0.9),
                       fontSize: 16.sp,
                     ),
                   ),
@@ -337,10 +312,8 @@ class _CustomThemePageState extends State<CustomThemePage> {
   }
 
   Widget _colorButton(String label, Color color, VoidCallback onTap) {
-
     return Column(
       children: [
-
         GestureDetector(
           onTap: onTap,
           child: Container(
@@ -358,24 +331,15 @@ class _CustomThemePageState extends State<CustomThemePage> {
 
         Text(
           label,
-          style: TextStyle(
-            color: fontColor,
-            fontSize: 14.sp,
-          ),
+          style: TextStyle(color: fontColor, fontSize: 14.sp),
         ),
       ],
     );
   }
 
-  Widget _iconButton(
-    IconData icon,
-    String label,
-    VoidCallback onTap,
-  ) {
-
+  Widget _iconButton(IconData icon, String label, VoidCallback onTap) {
     return Column(
       children: [
-
         GestureDetector(
           onTap: onTap,
           child: Container(
@@ -393,10 +357,7 @@ class _CustomThemePageState extends State<CustomThemePage> {
 
         Text(
           label,
-          style: TextStyle(
-            color: fontColor,
-            fontSize: 14.sp,
-          ),
+          style: TextStyle(color: fontColor, fontSize: 14.sp),
         ),
       ],
     );

@@ -6,10 +6,7 @@ class DottedBackground extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return CustomPaint(
-      painter: _DotPatternPainter(),
-      size: Size.infinite,
-    );
+    return CustomPaint(painter: _DotPatternPainter(), size: Size.infinite);
   }
 }
 
@@ -20,7 +17,7 @@ class _DotPatternPainter extends CustomPainter {
     final double radius = 1.2.r;
 
     final paint = Paint()
-      ..color = Colors.white.withOpacity(0.05)
+      ..color = Colors.white.withValues(alpha: 0.05)
       ..style = PaintingStyle.fill;
 
     for (double x = 0; x < size.width; x += spacing) {

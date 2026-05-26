@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:frontend/core/localization/app_strings.dart';
 import 'package:frontend/core/themes/car_theme.dart';
 
 class FanTemperatureSection extends StatelessWidget {
@@ -25,8 +26,10 @@ class FanTemperatureSection extends StatelessWidget {
     return ValueListenableBuilder(
       valueListenable: CarThemes.currentTheme,
       builder: (context, themeType, _) {
-
         final theme = CarThemes.getTheme(themeType);
+        final accentColor = themeType == CarThemeType.comfort
+            ? const Color(0xFF6CB4FF)
+            : theme.accentColor;
 
         return AnimatedContainer(
           duration: const Duration(milliseconds: 400),
@@ -43,10 +46,9 @@ class FanTemperatureSection extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-
               /// TITLE
               Text(
-                "Fan & Temperature Control",
+                AppStrings.fanTemperatureControl,
                 style: TextStyle(
                   fontSize: 20.sp,
                   color: theme.textColor,
@@ -59,15 +61,13 @@ class FanTemperatureSection extends StatelessWidget {
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-
                   /// FAN
                   Row(
                     children: [
-
                       Image.asset(
                         "assets/images/fan.png",
                         width: 50.w,
-                        color: theme.textColor,
+                        color: theme.accentColor,
                       ),
 
                       SizedBox(width: 20.w),
@@ -75,7 +75,6 @@ class FanTemperatureSection extends StatelessWidget {
                       /// FAN BARS
                       Row(
                         children: List.generate(5, (index) {
-
                           final active = index < fanLevel;
 
                           return AnimatedContainer(
@@ -86,7 +85,7 @@ class FanTemperatureSection extends StatelessWidget {
 
                             decoration: BoxDecoration(
                               color: active
-                                  ? theme.accentColor
+                                  ? accentColor
                                   : Colors.grey.shade300,
                               borderRadius: BorderRadius.circular(5.r),
                             ),
@@ -104,7 +103,7 @@ class FanTemperatureSection extends StatelessWidget {
                             icon: Icon(
                               Icons.add,
                               size: 30.sp,
-                              color: theme.textColor,
+                              color: accentColor,
                             ),
                           ),
                           IconButton(
@@ -112,7 +111,7 @@ class FanTemperatureSection extends StatelessWidget {
                             icon: Icon(
                               Icons.remove,
                               size: 30.sp,
-                              color: theme.textColor,
+                              color: accentColor,
                             ),
                           ),
                         ],
@@ -123,11 +122,10 @@ class FanTemperatureSection extends StatelessWidget {
                   /// TEMPERATURE
                   Row(
                     children: [
-
                       Image.asset(
                         "assets/images/ac.png",
                         width: 50.w,
-                        color: theme.textColor,
+                        color: theme.accentColor,
                       ),
 
                       SizedBox(width: 10.w),
@@ -142,13 +140,10 @@ class FanTemperatureSection extends StatelessWidget {
                         ),
 
                         decoration: BoxDecoration(
-                          color: theme.accentColor.withOpacity(0.2),
+                          color: accentColor.withValues(alpha: 0.2),
                           borderRadius: BorderRadius.circular(15.r),
 
-                          border: Border.all(
-                            color: theme.accentColor,
-                            width: 2,
-                          ),
+                          border: Border.all(color: accentColor, width: 2),
                         ),
 
                         child: Text(
@@ -171,7 +166,7 @@ class FanTemperatureSection extends StatelessWidget {
                             icon: Icon(
                               Icons.add,
                               size: 30.sp,
-                              color: theme.textColor,
+                              color: accentColor,
                             ),
                           ),
                           IconButton(
@@ -179,7 +174,7 @@ class FanTemperatureSection extends StatelessWidget {
                             icon: Icon(
                               Icons.remove,
                               size: 30.sp,
-                              color: theme.textColor,
+                              color: accentColor,
                             ),
                           ),
                         ],

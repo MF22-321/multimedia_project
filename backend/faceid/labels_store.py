@@ -10,6 +10,15 @@ def save_labels(labels: dict) -> None:
     LABELS_PATH.parent.mkdir(parents=True, exist_ok=True)
     LABELS_PATH.write_text(json.dumps(labels, indent=2), encoding="utf-8")
 
+
+def remove_label(labels: dict, driver_id: str) -> bool:
+    if driver_id not in labels:
+        return False
+
+    labels.pop(driver_id)
+    save_labels(labels)
+    return True
+
 def ensure_label(labels: dict, driver_id: str) -> int:
     """
     labels: { "Raihan": 0, "Reiner": 1, ... }

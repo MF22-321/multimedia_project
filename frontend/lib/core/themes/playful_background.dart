@@ -11,7 +11,6 @@ class PlayfulParticlesBackground extends StatefulWidget {
 
 class _PlayfulParticlesBackgroundState extends State<PlayfulParticlesBackground>
     with SingleTickerProviderStateMixin {
-
   late AnimationController controller;
 
   final Random random = Random();
@@ -34,18 +33,14 @@ class _PlayfulParticlesBackgroundState extends State<PlayfulParticlesBackground>
       );
     }
 
-    controller = AnimationController(
-      vsync: this,
-      duration: const Duration(days: 1),
-    )
-      ..addListener(updateBubbles)
-      ..repeat();
+    controller =
+        AnimationController(vsync: this, duration: const Duration(days: 1))
+          ..addListener(updateBubbles)
+          ..repeat();
   }
 
   void updateBubbles() {
-
     for (final b in bubbles) {
-
       b.y -= b.speed;
 
       if (b.y < -0.1) {
@@ -59,10 +54,7 @@ class _PlayfulParticlesBackgroundState extends State<PlayfulParticlesBackground>
 
   @override
   Widget build(BuildContext context) {
-    return CustomPaint(
-      painter: _PlayfulPainter(bubbles),
-      size: Size.infinite,
-    );
+    return CustomPaint(painter: _PlayfulPainter(bubbles), size: Size.infinite);
   }
 
   @override
@@ -73,7 +65,6 @@ class _PlayfulParticlesBackgroundState extends State<PlayfulParticlesBackground>
 }
 
 class _Bubble {
-
   double x;
   double y;
   double size;
@@ -90,28 +81,21 @@ class _Bubble {
 }
 
 class _PlayfulPainter extends CustomPainter {
-
   final List<_Bubble> bubbles;
 
   _PlayfulPainter(this.bubbles);
 
   @override
   void paint(Canvas canvas, Size size) {
-
     final paint = Paint();
 
     for (final b in bubbles) {
-
       final x = b.x * size.width;
       final y = b.y * size.height;
 
-      paint.color = const Color(0xFFFFB8A8).withOpacity(b.opacity);
+      paint.color = const Color(0xFFFFB8A8).withValues(alpha: b.opacity);
 
-      canvas.drawCircle(
-        Offset(x, y),
-        b.size,
-        paint,
-      );
+      canvas.drawCircle(Offset(x, y), b.size, paint);
     }
   }
 

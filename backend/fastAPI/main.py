@@ -1,4 +1,5 @@
 import asyncio
+import logging
 import shutil
 import threading
 import time
@@ -10,8 +11,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse, Response
 
 from backend.faceid import FaceID
-from backend.faceid.config import DATASET_DIR
-from backend.faceid.labels_store import load_labels, ensure_label
+from backend.faceid.config import DATASET_DIR, LBPH_MODEL_PATH, PROFILES_DIR
+from backend.faceid.labels_store import load_labels, ensure_label, remove_label
 from backend.faceid.lbph_model import train_lbph
 from backend.fastAPI.routes.drowsiness_routes import router as drowsiness_router
 
@@ -24,6 +25,7 @@ from backend.engine.camera_stream import (
 
 app = FastAPI(title="FaceID Backend")
 app.include_router(drowsiness_router)
+logger = logging.getLogger(__name__)
 
 app.add_middleware(
     CORSMiddleware,
@@ -47,7 +49,7 @@ def get_faceid():
             vote_min_ratio=0.60,
             vote_min_samples=6,
         )
-        print("[API] recognizer initialized")
+        logger.info("[API] recognizer initialized")
     return faceid
 
 
@@ -66,7 +68,7 @@ def reload_faceid():
         vote_min_ratio=0.60,
         vote_min_samples=6,
     )
-    print("[API] recognizer reloaded")
+    logger.info("[API] recognizer reloaded")
 
 
 def decode_image(file_bytes: bytes):
@@ -127,7 +129,7 @@ def save_face_samples_from_live_camera(
             saved_paths.append(str(out_path))
             sample_idx += 1
             last_save_time = now
-            print(f"[BURST] saved {out_path}")
+            logger.info("[BURST] saved %s", out_path)
 
         time.sleep(0.01)
 
@@ -136,7 +138,7 @@ def save_face_samples_from_live_camera(
 
 @app.on_event("startup")
 def start_camera():
-    print("[SYSTEM] Starting camera thread...")
+    logger.info("[SYSTEM] Starting camera thread...")
     thread = threading.Thread(target=camera_loop, daemon=True)
     thread.start()
 
@@ -184,17 +186,42 @@ def get_drivers():
 
 @app.delete("/driver/{name}")
 def delete_driver(name: str):
-    path = DATASET_DIR / name
-    if path.exists():
-        shutil.rmtree(path)
-        return {"success": True}
-    return {"success": False}
+    driver_name = name.strip()
+
+    if not driver_name:
+        return {"success": False, "message": "Driver name is required"}
+
+    path = DATASET_DIR / driver_name
+    if not path.exists():
+        return {"success": False, "message": "Driver not found"}
+
+    shutil.rmtree(path)
+
+    profile_path = PROFILES_DIR / f"{driver_name}.json"
+    if profile_path.exists():
+        profile_path.unlink()
+
+    labels = load_labels()
+    remove_label(labels, driver_name)
+
+    trained = train_lbph(labels)
+    if trained is None and LBPH_MODEL_PATH.exists():
+        LBPH_MODEL_PATH.unlink()
+
+    reload_faceid()
+    reload_recognizer()
+
+    return {
+        "success": True,
+        "message": "Driver deleted and recognizer reloaded",
+        "driver_name": driver_name,
+    }
 
 
 @app.websocket("/ws/camera")
 async def websocket_camera(websocket: WebSocket):
     await websocket.accept()
-    print("[WS] Client connected")
+    logger.info("[WS] Client connected")
 
     try:
         while True:
@@ -220,7 +247,7 @@ async def websocket_camera(websocket: WebSocket):
             await asyncio.sleep(0.03)
 
     except Exception as e:
-        print("[WS] Client disconnected:", e)
+        logger.info("[WS] Client disconnected: %s", e)
 
 @app.get("/capture_face")
 def capture_face():
@@ -255,7 +282,7 @@ async def recognize(image: UploadFile = File(...)):
     last_bbox = recognizer.last_bbox
 
     if raw_name is not None:
-        print(f"[/recognize] registered: {raw_name} ({raw_conf})")
+        logger.info("[/recognize] registered: %s (%s)", raw_name, raw_conf)
         return {
             "success": True,
             "status": "registered",
@@ -265,7 +292,7 @@ async def recognize(image: UploadFile = File(...)):
             "bbox": last_bbox,
         }
 
-    print("[/recognize] unknown")
+    logger.info("[/recognize] unknown")
     return {
         "success": True,
         "status": "unknown",
@@ -320,7 +347,7 @@ async def enroll(
     reload_faceid()
     reload_recognizer()
 
-    print(f"[/enroll] success: {driver_name} -> {out_path}")
+    logger.info("[/enroll] success: %s -> %s", driver_name, out_path)
 
     return {
         "success": True,
@@ -349,9 +376,11 @@ async def enroll_live_burst(
         labels = load_labels()
         label_id = ensure_label(labels, driver_name)
 
-        print(
-            f"[/enroll_live_burst] start | "
-            f"name={driver_name}, duration={duration_sec}, target={target_samples}"
+        logger.info(
+            "[/enroll_live_burst] start | name=%s, duration=%s, target=%s",
+            driver_name,
+            duration_sec,
+            target_samples,
         )
 
         saved_paths = save_face_samples_from_live_camera(
@@ -361,7 +390,7 @@ async def enroll_live_burst(
             interval_sec=0.12,
         )
 
-        print(f"[/enroll_live_burst] saved_paths count = {len(saved_paths)}")
+        logger.info("[/enroll_live_burst] saved_paths count = %s", len(saved_paths))
 
         if len(saved_paths) == 0:
             return {
@@ -372,7 +401,7 @@ async def enroll_live_burst(
             }
 
         rec = train_lbph(labels)
-        print(f"[/enroll_live_burst] train_lbph result = {rec}")
+        logger.info("[/enroll_live_burst] train_lbph result = %s", rec)
 
         if rec is None:
             return {
@@ -386,9 +415,10 @@ async def enroll_live_burst(
         reload_faceid()
         reload_recognizer()
 
-        print(
-            f"[/enroll_live_burst] success | "
-            f"name={driver_name}, saved_count={len(saved_paths)}"
+        logger.info(
+            "[/enroll_live_burst] success | name=%s, saved_count=%s",
+            driver_name,
+            len(saved_paths),
         )
 
         return {
@@ -401,8 +431,7 @@ async def enroll_live_burst(
         }
 
     except Exception as e:
-        import traceback
-        traceback.print_exc()
+        logger.exception("[/enroll_live_burst] failed")
         return {
             "success": False,
             "message": f"Burst enroll exception: {str(e)}"

@@ -1,6 +1,7 @@
 import 'package:carousel_slider/carousel_slider.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:frontend/core/localization/app_strings.dart';
 import 'package:frontend/core/themes/car_theme.dart';
 import 'package:frontend/features/personalize/presentation/page/custom_theme_page.dart';
 
@@ -21,7 +22,7 @@ class MultimediaThemeSection extends StatelessWidget {
     return ValueListenableBuilder(
       valueListenable: CarThemes.currentTheme,
       builder: (context, themeType, _) {
-       final theme = CarThemes.getTheme(themeType);
+        final theme = CarThemes.getTheme(themeType);
 
         return AnimatedContainer(
           duration: const Duration(milliseconds: 400),
@@ -41,7 +42,7 @@ class MultimediaThemeSection extends StatelessWidget {
             children: [
               /// TITLE
               Text(
-                "Multimedia Theme Settings",
+                AppStrings.multimediaThemeSettings,
                 style: TextStyle(
                   fontSize: 20.sp,
                   color: theme.textColor,
@@ -91,7 +92,9 @@ class MultimediaThemeSection extends StatelessWidget {
                           boxShadow: selected
                               ? [
                                   BoxShadow(
-                                    color: theme.accentColor.withOpacity(0.5),
+                                    color: theme.accentColor.withValues(
+                                      alpha: 0.5,
+                                    ),
                                     blurRadius: 20,
                                   ),
                                 ]
@@ -161,7 +164,7 @@ class MultimediaThemeSection extends StatelessWidget {
                       borderRadius: BorderRadius.circular(25.r),
                     ),
                     child: Text(
-                      "Custom Theme",
+                      AppStrings.customTheme,
                       style: TextStyle(
                         fontSize: 16.sp,
                         fontWeight: FontWeight.bold,

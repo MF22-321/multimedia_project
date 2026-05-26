@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:frontend/core/localization/app_strings.dart';
 import 'package:frontend/core/themes/car_theme.dart';
 import 'package:frontend/features/auth/presentation/widget/fan_temperature_widget.dart';
 import 'package:frontend/features/auth/presentation/widget/multimedia_theme_section_widget.dart';
@@ -48,7 +49,6 @@ class ProfileSettingsPanel extends StatelessWidget {
         valueListenable: CarThemes.currentTheme,
         builder: (context, themeType, _) {
           final theme = CarThemes.getTheme(themeType);
-
           return AnimatedContainer(
             duration: const Duration(milliseconds: 400),
             decoration: BoxDecoration(
@@ -57,9 +57,7 @@ class ProfileSettingsPanel extends StatelessWidget {
                 begin: Alignment.centerLeft,
                 end: Alignment.bottomRight,
               ),
-              borderRadius: BorderRadius.only(
-                topLeft: Radius.circular(40.r),
-              ),
+              borderRadius: BorderRadius.only(topLeft: Radius.circular(40.r)),
               border: Border(
                 top: BorderSide(color: theme.accentColor, width: 2.w),
                 left: BorderSide(color: theme.accentColor, width: 2.w),
@@ -74,7 +72,7 @@ class ProfileSettingsPanel extends StatelessWidget {
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 20).w,
                   child: Text(
-                    "Profile Settings",
+                    AppStrings.profileSettings,
                     style: TextStyle(
                       fontSize: 26.sp,
                       fontWeight: FontWeight.bold,
@@ -85,11 +83,7 @@ class ProfileSettingsPanel extends StatelessWidget {
 
                 SizedBox(height: 21.h),
 
-                Divider(
-                  color: theme.accentColor,
-                  thickness: 2.h,
-                  height: 2.h,
-                ),
+                Divider(color: theme.accentColor, thickness: 2.h, height: 2.h),
 
                 /// CONTENT
                 Expanded(

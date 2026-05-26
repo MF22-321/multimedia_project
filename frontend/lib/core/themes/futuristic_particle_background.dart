@@ -12,7 +12,6 @@ class FuturisticParticlesBackground extends StatefulWidget {
 class _FuturisticParticlesBackgroundState
     extends State<FuturisticParticlesBackground>
     with SingleTickerProviderStateMixin {
-
   late AnimationController controller;
 
   final List<_Particle> particles = [];
@@ -35,15 +34,9 @@ class _FuturisticParticlesBackgroundState
 
     for (double x = 0; x < size.width; x += gridSpacing) {
       for (double y = 0; y < size.height; y += gridSpacing) {
-
         if (random.nextDouble() > 0.7) continue;
 
-        particles.add(
-          _Particle(
-            Offset(x, y),
-            random.nextDouble(),
-          ),
-        );
+        particles.add(_Particle(Offset(x, y), random.nextDouble()));
       }
     }
 
@@ -54,11 +47,7 @@ class _FuturisticParticlesBackgroundState
   Widget build(BuildContext context) {
     return LayoutBuilder(
       builder: (context, constraints) {
-
-        final size = Size(
-          constraints.maxWidth,
-          constraints.maxHeight,
-        );
+        final size = Size(constraints.maxWidth, constraints.maxHeight);
 
         if (!initialized) {
           _generateParticles(size);
@@ -68,10 +57,7 @@ class _FuturisticParticlesBackgroundState
           animation: controller,
           builder: (context, child) {
             return CustomPaint(
-              painter: _DigitalParticlePainter(
-                particles,
-                controller.value,
-              ),
+              painter: _DigitalParticlePainter(particles, controller.value),
               size: Size.infinite,
             );
           },
@@ -95,7 +81,6 @@ class _Particle {
 }
 
 class _DigitalParticlePainter extends CustomPainter {
-
   final List<_Particle> particles;
   final double animation;
 
@@ -103,25 +88,17 @@ class _DigitalParticlePainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
-
     const particleColor = Color(0xFF00E5FF);
 
-    final paint = Paint()
-      ..style = PaintingStyle.fill;
+    final paint = Paint()..style = PaintingStyle.fill;
 
     for (final p in particles) {
+      final brightness = (sin(animation * 2 * pi + p.phase * 6) + 1) / 2;
 
-      final brightness =
-          (sin(animation * 2 * pi + p.phase * 6) + 1) / 2;
-
-      paint.color = particleColor.withOpacity(brightness);
+      paint.color = particleColor.withValues(alpha: brightness);
 
       canvas.drawRect(
-        Rect.fromCenter(
-          center: p.position,
-          width: 3,
-          height: 3,
-        ),
+        Rect.fromCenter(center: p.position, width: 3, height: 3),
         paint,
       );
     }

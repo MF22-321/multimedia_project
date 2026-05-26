@@ -4,6 +4,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:frontend/core/model/driver_preference.dart';
+import 'package:frontend/core/navigation/app_language_control.dart';
 import 'package:frontend/core/navigation/driver_session.dart';
 import 'package:frontend/core/services/drive_pref_service.dart';
 import 'package:frontend/core/services/faceid_api.dart';
@@ -105,14 +106,14 @@ class _AddDriverPageState extends State<AddDriverPage> {
     } finally {
       _timer?.cancel();
 
-      if (!mounted) return;
-
-      setState(() {
-        isCapturing = false;
-        isScanning = true; // 🔥 tetap camera mode
-        phaseText = "Scanning...";
-      });
-      _startRecognitionPolling(); // ✅ aman
+      if (mounted) {
+        setState(() {
+          isCapturing = false;
+          isScanning = true; // 🔥 tetap camera mode
+          phaseText = "Scanning...";
+        });
+        _startRecognitionPolling(); // ✅ aman
+      }
     }
   }
 
@@ -139,7 +140,7 @@ class _AddDriverPageState extends State<AddDriverPage> {
           });
 
           /// 🔥 2. LOAD PREFERENCE (JIKA ADA)
-          final pref = await DriverHiveService.load(name.toLowerCase());
+          final pref = DriverHiveService.load(name.toLowerCase());
 
           if (pref != null && !_prefLoaded) {
             setState(() {
@@ -180,6 +181,7 @@ class _AddDriverPageState extends State<AddDriverPage> {
     final current = detectedDriverName!;
     final rawName = current; // 🔥 langsung pakai hasil face
     final key = rawName.trim().toLowerCase();
+    final existingPreference = DriverHiveService.load(rawName);
 
     await DriverHiveService.save(
       DriverPreference(
@@ -189,8 +191,13 @@ class _AddDriverPageState extends State<AddDriverPage> {
         temperature: temperature,
         cartridge: selectedCartridge,
         themeIndex: selectedTheme,
+        languageCode:
+            existingPreference?.languageCode ??
+            AppLanguageControl.defaultLanguageCode,
       ),
     );
+
+    if (!mounted) return;
 
     DriverSession.setDriver(rawName);
 
@@ -367,7 +374,9 @@ class _AddDriverPageState extends State<AddDriverPage> {
                                                         ),
                                                     decoration: BoxDecoration(
                                                       color: Colors.green
-                                                          .withOpacity(0.9),
+                                                          .withValues(
+                                                            alpha: 0.9,
+                                                          ),
                                                       borderRadius:
                                                           BorderRadius.circular(
                                                             12,

@@ -1,252 +1,170 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:frontend/core/navigation/app_language_control.dart';
 import 'package:frontend/core/navigation/drowsiness_control.dart';
+import 'package:frontend/core/navigation/driver_session.dart';
+import 'package:frontend/core/navigation/pothole_detection_control.dart';
+import 'package:frontend/core/provider/pothole_provider.dart';
 import 'package:frontend/core/themes/car_theme.dart';
-
+import 'package:provider/provider.dart';
 
 class SettingsContent extends StatefulWidget {
   const SettingsContent({super.key});
 
   @override
-  State<SettingsContent> createState() =>
-      _SettingsPageState();
+  State<SettingsContent> createState() => _SettingsPageState();
 }
 
-class _SettingsPageState
-    extends State<SettingsContent> {
-  bool potholeEnabled =
-      true;
-
-  String selectedLanguage =
-      'English';
+class _SettingsPageState extends State<SettingsContent> {
+  @override
+  void initState() {
+    super.initState();
+    AppLanguageControl.loadForCurrentDriver();
+    DriverSession.currentDriver.addListener(_loadLanguagePreference);
+    AppLanguageControl.languageCode.addListener(_refreshLanguageText);
+  }
 
   @override
-  Widget build(
-    BuildContext context,
-  ) {
+  void dispose() {
+    DriverSession.currentDriver.removeListener(_loadLanguagePreference);
+    AppLanguageControl.languageCode.removeListener(_refreshLanguageText);
+    super.dispose();
+  }
 
-    final currentTheme =
-        CarThemes.currentTheme
-            .value;
+  void _loadLanguagePreference() {
+    AppLanguageControl.loadForCurrentDriver();
+  }
 
-    final theme =
-        CarThemes.getTheme(
-      currentTheme,
-    );
+  void _refreshLanguageText() {
+    if (mounted) setState(() {});
+  }
 
-    final accentColor =
+  @override
+  Widget build(BuildContext context) {
+    final currentTheme = CarThemes.currentTheme.value;
+    final isEnglish = AppLanguageControl.isEnglish;
 
-        currentTheme ==
-                CarThemeType
-                    .comfort
+    final theme = CarThemes.getTheme(currentTheme);
 
-            ? const Color(
-                0xFF6CB4FF,
-              )
-
-            : theme.accentColor;
+    final accentColor = currentTheme == CarThemeType.comfort
+        ? const Color(0xFF6CB4FF)
+        : theme.accentColor;
 
     return Scaffold(
-
-      backgroundColor:
-          Colors.black,
+      backgroundColor: Colors.black,
 
       body: Container(
-
         width: double.infinity,
         height: double.infinity,
 
         decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
 
-          gradient:
-              LinearGradient(
+            end: Alignment.bottomRight,
 
-            begin:
-                Alignment.topLeft,
-
-            end:
-                Alignment.bottomRight,
-
-            colors:
-                theme
-                    .backgroundGradient,
+            colors: theme.backgroundGradient,
           ),
         ),
 
         child: SafeArea(
-
           child: Padding(
-
-            padding:
-                EdgeInsets.all(
-              24.w,
-            ),
+            padding: EdgeInsets.all(24.w),
 
             child: Row(
-
               children: [
-
                 /// =========================
                 /// CONTENT
                 /// =========================
                 Expanded(
-
                   child: Container(
+                    padding: EdgeInsets.all(30.w),
 
-                    padding:
-                        EdgeInsets.all(
-                      30.w,
-                    ),
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(40.r),
 
-                    decoration:
-                        BoxDecoration(
-
-                      borderRadius:
-                          BorderRadius.circular(
-                        40.r,
-                      ),
-
-                      color: Colors
-                          .white
-                          .withOpacity(
-                        0.05,
-                      ),
+                      color: Colors.white.withValues(alpha: 0.05),
 
                       border: Border.all(
-
-                        color: Colors
-                            .white
-                            .withOpacity(
-                          0.08,
-                        ),
+                        color: Colors.white.withValues(alpha: 0.08),
                       ),
 
                       boxShadow: [
-
                         BoxShadow(
+                          color: accentColor.withValues(alpha: 0.08),
 
-                          color:
-                              accentColor
-                                  .withOpacity(
-                            0.08,
-                          ),
+                          blurRadius: 30,
 
-                          blurRadius:
-                              30,
-
-                          spreadRadius:
-                              2,
+                          spreadRadius: 2,
                         ),
                       ],
                     ),
 
                     child: Column(
-
-                      crossAxisAlignment:
-                          CrossAxisAlignment
-                              .start,
+                      crossAxisAlignment: CrossAxisAlignment.start,
 
                       children: [
-
                         /// =========================
                         /// HEADER
                         /// =========================
                         Row(
-
                           children: [
-
                             Container(
-
                               width: 64.w,
                               height: 64.w,
 
-                              decoration:
-                                  BoxDecoration(
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
 
-                                shape:
-                                    BoxShape.circle,
-
-                                color:
-                                    accentColor,
+                                color: accentColor,
 
                                 boxShadow: [
-
                                   BoxShadow(
+                                    color: accentColor.withValues(alpha: 0.4),
 
-                                    color:
-                                        accentColor
-                                            .withOpacity(
-                                      0.4,
-                                    ),
-
-                                    blurRadius:
-                                        25,
+                                    blurRadius: 25,
                                   ),
                                 ],
                               ),
 
-                              child:
-                                  Icon(
-
+                              child: Icon(
                                 Icons.settings,
 
-                                color:
-                                    Colors.white,
+                                color: Colors.white,
 
-                                size:
-                                    30.sp,
+                                size: 30.sp,
                               ),
                             ),
 
-                            SizedBox(
-                              width: 18.w,
-                            ),
+                            SizedBox(width: 18.w),
 
                             Column(
-
-                              crossAxisAlignment:
-                                  CrossAxisAlignment.start,
+                              crossAxisAlignment: CrossAxisAlignment.start,
 
                               children: [
-
                                 Text(
+                                  isEnglish ? 'Settings' : 'Pengaturan',
 
-                                  'Settings',
+                                  style: TextStyle(
+                                    color: Colors.white,
 
-                                  style:
-                                      TextStyle(
+                                    fontSize: 38.sp,
 
-                                    color:
-                                        Colors.white,
-
-                                    fontSize:
-                                        38.sp,
-
-                                    fontWeight:
-                                        FontWeight.bold,
+                                    fontWeight: FontWeight.bold,
                                   ),
                                 ),
 
-                                SizedBox(
-                                  height:
-                                      4.h,
-                                ),
+                                SizedBox(height: 4.h),
 
                                 Text(
+                                  isEnglish
+                                      ? 'Smart Vehicle Features'
+                                      : 'Fitur Kendaraan Pintar',
 
-                                  'Smart Vehicle Features',
+                                  style: TextStyle(
+                                    color: Colors.white.withValues(alpha: 0.6),
 
-                                  style:
-                                      TextStyle(
-
-                                    color: Colors
-                                        .white
-                                        .withOpacity(
-                                      0.6,
-                                    ),
-
-                                    fontSize:
-                                        18.sp,
+                                    fontSize: 18.sp,
                                   ),
                                 ),
                               ],
@@ -254,303 +172,214 @@ class _SettingsPageState
                           ],
                         ),
 
-                        SizedBox(
-                          height: 40.h,
-                        ),
+                        SizedBox(height: 40.h),
 
                         /// =========================
                         /// DROWSINESS
                         /// =========================
                         ValueListenableBuilder(
-                          valueListenable:
-                              DrowsinessControl
-                                  .enabled,
-                          builder: (
-                            context,
-                            drowsinessEnabled,
-                            _,
-                          ) {
+                          valueListenable: DrowsinessControl.enabled,
+                          builder: (context, drowsinessEnabled, _) {
                             return buildFeatureCard(
+                              icon: Icons.bedtime_rounded,
 
-                              icon:
-                                  Icons
-                                      .bedtime_rounded,
+                              title: isEnglish
+                                  ? 'Drowsiness Alert'
+                                  : 'Peringatan Kantuk',
 
-                              title:
-                                  'Drowsiness Alert',
+                              description: isEnglish
+                                  ? 'Enable automatic drowsiness detection and warning.'
+                                  : 'Aktifkan fitur untuk mendeteksi kantuk dan memberi peringatan otomatis.',
 
-                              description:
-                                  'Aktifkan fitur untuk mendeteksi kantuk dan memberi peringatan otomatis.',
+                              value: drowsinessEnabled,
 
-                              value:
-                                  drowsinessEnabled,
+                              accentColor: accentColor,
 
-                              accentColor:
-                                  accentColor,
-
-                              onChanged:
-                                  (value) {
-                                DrowsinessControl
-                                        .enabled
-                                        .value =
-                                    value;
+                              onChanged: (value) {
+                                DrowsinessControl.enabled.value = value;
                               },
                             );
                           },
                         ),
 
-                        SizedBox(
-                          height: 24.h,
-                        ),
+                        SizedBox(height: 24.h),
 
                         /// =========================
                         /// POTHOLE
                         /// =========================
-                        buildFeatureCard(
+                        ValueListenableBuilder(
+                          valueListenable: PotholeDetectionControl.enabled,
+                          builder: (context, potholeEnabled, _) {
+                            return buildFeatureCard(
+                              icon: Icons.traffic_rounded,
 
-                          icon:
-                              Icons
-                                  .traffic_rounded,
+                              title: isEnglish
+                                  ? 'Pothole Detection'
+                                  : 'Deteksi Lubang Jalan',
 
-                          title:
-                              'Pothole Detection',
+                              description: isEnglish
+                                  ? 'Detect potholes in realtime and show hazard notifications.'
+                                  : 'Deteksi lubang jalan secara realtime dan tampilkan notifikasi bahaya.',
 
-                          description:
-                              'Deteksi lubang jalan secara realtime dan tampilkan notifikasi bahaya.',
+                              value: potholeEnabled,
 
-                          value:
-                              potholeEnabled,
+                              accentColor: accentColor,
 
-                          accentColor:
-                              accentColor,
+                              onChanged: (value) {
+                                PotholeDetectionControl.enabled.value = value;
 
-                          onChanged:
-                              (value) {
-
-                            setState(() {
-
-                              potholeEnabled =
-                                  value;
-                            });
+                                if (value) {
+                                  context
+                                      .read<PotholeProvider>()
+                                      .loadPotholes();
+                                }
+                              },
+                            );
                           },
                         ),
 
-                        SizedBox(
-                          height: 24.h,
-                        ),
+                        SizedBox(height: 24.h),
 
                         /// =========================
                         /// LANGUAGE
                         /// =========================
-                        Container(
+                        ValueListenableBuilder(
+                          valueListenable: AppLanguageControl.languageCode,
+                          builder: (context, languageCode, _) {
+                            final isEnglish =
+                                languageCode == AppLanguageControl.englishCode;
 
-                          padding:
-                              EdgeInsets.all(
-                            24.w,
-                          ),
+                            return Container(
+                              padding: EdgeInsets.all(24.w),
 
-                          decoration:
-                              BoxDecoration(
+                              decoration: BoxDecoration(
+                                borderRadius: BorderRadius.circular(30.r),
 
-                            borderRadius:
-                                BorderRadius.circular(
-                              30.r,
-                            ),
+                                color: Colors.white.withValues(alpha: 0.05),
 
-                            color: Colors
-                                .white
-                                .withOpacity(
-                              0.05,
-                            ),
-
-                            border:
-                                Border.all(
-
-                              color: Colors
-                                  .white
-                                  .withOpacity(
-                                0.06,
+                                border: Border.all(
+                                  color: Colors.white.withValues(alpha: 0.06),
+                                ),
                               ),
-                            ),
-                          ),
 
-                          child: Row(
+                              child: Row(
+                                children: [
+                                  /// ICON
+                                  Container(
+                                    width: 72.w,
+                                    height: 72.w,
 
-                            children: [
+                                    decoration: BoxDecoration(
+                                      shape: BoxShape.circle,
 
-                              /// ICON
-                              Container(
+                                      color: accentColor.withValues(alpha: 0.15),
+                                    ),
 
-                                width: 72.w,
-                                height: 72.w,
+                                    child: Icon(
+                                      Icons.language,
 
-                                decoration:
-                                    BoxDecoration(
+                                      color: accentColor,
 
-                                  shape:
-                                      BoxShape.circle,
-
-                                  color:
-                                      accentColor
-                                          .withOpacity(
-                                    0.15,
+                                      size: 34.sp,
+                                    ),
                                   ),
-                                ),
 
-                                child:
-                                    Icon(
+                                  SizedBox(width: 20.w),
 
-                                  Icons.language,
+                                  /// TEXT
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
 
-                                  color:
-                                      accentColor,
+                                      children: [
+                                        Text(
+                                          isEnglish ? 'Language' : 'Bahasa',
 
-                                  size:
-                                      34.sp,
-                                ),
-                              ),
+                                          style: TextStyle(
+                                            color: Colors.white,
 
-                              SizedBox(
-                                width: 20.w,
-                              ),
+                                            fontSize: 26.sp,
 
-                              /// TEXT
-                              Expanded(
-
-                                child:
-                                    Column(
-
-                                  crossAxisAlignment:
-                                      CrossAxisAlignment.start,
-
-                                  children: [
-
-                                    Text(
-
-                                      'Language',
-
-                                      style:
-                                          TextStyle(
-
-                                        color:
-                                            Colors.white,
-
-                                        fontSize:
-                                            26.sp,
-
-                                        fontWeight:
-                                            FontWeight.bold,
-                                      ),
-                                    ),
-
-                                    SizedBox(
-                                      height:
-                                          6.h,
-                                    ),
-
-                                    Text(
-
-                                      'Pilih bahasa sistem infotainment.',
-
-                                      style:
-                                          TextStyle(
-
-                                        color: Colors
-                                            .white
-                                            .withOpacity(
-                                          0.55,
+                                            fontWeight: FontWeight.bold,
+                                          ),
                                         ),
 
-                                        fontSize:
-                                            16.sp,
+                                        SizedBox(height: 6.h),
+
+                                        Text(
+                                          isEnglish
+                                              ? 'Choose the infotainment system language.'
+                                              : 'Pilih bahasa sistem infotainment.',
+
+                                          style: TextStyle(
+                                            color: Colors.white.withValues(
+                                              alpha: 0.55,
+                                            ),
+
+                                            fontSize: 16.sp,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+
+                                  /// BUTTONS
+                                  Container(
+                                    padding: EdgeInsets.all(6.w),
+
+                                    decoration: BoxDecoration(
+                                      borderRadius: BorderRadius.circular(20.r),
+
+                                      color: Colors.white.withValues(
+                                        alpha: 0.06,
                                       ),
                                     ),
-                                  ],
-                                ),
-                              ),
 
-                              /// BUTTONS
-                              Container(
+                                    child: Row(
+                                      children: [
+                                        buildLanguageButton(
+                                          title: 'Bahasa',
 
-                                padding:
-                                    EdgeInsets.all(
-                                  6.w,
-                                ),
+                                          isSelected: languageCode ==
+                                              AppLanguageControl
+                                                  .defaultLanguageCode,
 
-                                decoration:
-                                    BoxDecoration(
+                                          accentColor: accentColor,
 
-                                  borderRadius:
-                                      BorderRadius.circular(
-                                    20.r,
+                                          onTap: () {
+                                            AppLanguageControl
+                                                .setLanguageForCurrentDriver(
+                                              AppLanguageControl
+                                                  .defaultLanguageCode,
+                                            );
+                                          },
+                                        ),
+
+                                        SizedBox(width: 10.w),
+
+                                        buildLanguageButton(
+                                          title: 'English',
+
+                                          isSelected: languageCode ==
+                                              AppLanguageControl.englishCode,
+
+                                          accentColor: accentColor,
+
+                                          onTap: () {
+                                            AppLanguageControl
+                                                .setLanguageForCurrentDriver(
+                                              AppLanguageControl.englishCode,
+                                            );
+                                          },
+                                        ),
+                                      ],
+                                    ),
                                   ),
-
-                                  color: Colors
-                                      .white
-                                      .withOpacity(
-                                    0.06,
-                                  ),
-                                ),
-
-                                child: Row(
-
-                                  children: [
-
-                                    buildLanguageButton(
-
-                                      title:
-                                          'English',
-
-                                      isSelected:
-                                          selectedLanguage ==
-                                              'English',
-
-                                      accentColor:
-                                          accentColor,
-
-                                      onTap:
-                                          () {
-
-                                        setState(() {
-
-                                          selectedLanguage =
-                                              'English';
-                                        });
-                                      },
-                                    ),
-
-                                    SizedBox(
-                                      width:
-                                          10.w,
-                                    ),
-
-                                    buildLanguageButton(
-
-                                      title:
-                                          'Bahasa',
-
-                                      isSelected:
-                                          selectedLanguage ==
-                                              'Bahasa',
-
-                                      accentColor:
-                                          accentColor,
-
-                                      onTap:
-                                          () {
-
-                                        setState(() {
-
-                                          selectedLanguage =
-                                              'Bahasa';
-                                        });
-                                      },
-                                    ),
-                                  ],
-                                ),
+                                ],
                               ),
-                            ],
-                          ),
+                            );
+                          },
                         ),
                       ],
                     ),
@@ -568,67 +397,33 @@ class _SettingsPageState
   /// FEATURE CARD
   /// =========================
   Widget buildFeatureCard({
-
     required IconData icon,
     required String title,
     required String description,
     required bool value,
     required Color accentColor,
-    required Function(bool)
-        onChanged,
+    required Function(bool) onChanged,
   }) {
-
     return AnimatedContainer(
+      duration: const Duration(milliseconds: 250),
 
-      duration:
-          const Duration(
-        milliseconds: 250,
-      ),
+      padding: EdgeInsets.all(24.w),
 
-      padding:
-          EdgeInsets.all(
-        24.w,
-      ),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(30.r),
 
-      decoration:
-          BoxDecoration(
-
-        borderRadius:
-            BorderRadius.circular(
-          30.r,
-        ),
-
-        color: Colors.white
-            .withOpacity(
-          0.05,
-        ),
+        color: Colors.white.withValues(alpha: 0.05),
 
         border: Border.all(
-
           color: value
-
-              ? accentColor
-                  .withOpacity(
-                0.25,
-              )
-
-              : Colors.white
-                  .withOpacity(
-                0.06,
-              ),
+              ? accentColor.withValues(alpha: 0.25)
+              : Colors.white.withValues(alpha: 0.06),
         ),
 
         boxShadow: [
-
           if (value)
-
             BoxShadow(
-
-              color:
-                  accentColor
-                      .withOpacity(
-                0.18,
-              ),
+              color: accentColor.withValues(alpha: 0.18),
 
               blurRadius: 25,
               spreadRadius: 2,
@@ -637,91 +432,50 @@ class _SettingsPageState
       ),
 
       child: Row(
-
         children: [
-
           /// ICON
           Container(
-
             width: 72.w,
             height: 72.w,
 
-            decoration:
-                BoxDecoration(
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
 
-              shape:
-                  BoxShape.circle,
-
-              color:
-                  accentColor
-                      .withOpacity(
-                0.15,
-              ),
+              color: accentColor.withValues(alpha: 0.15),
             ),
 
-            child: Icon(
-
-              icon,
-
-              color:
-                  accentColor,
-
-              size: 34.sp,
-            ),
+            child: Icon(icon, color: accentColor, size: 34.sp),
           ),
 
-          SizedBox(
-            width: 20.w,
-          ),
+          SizedBox(width: 20.w),
 
           /// TEXT
           Expanded(
-
             child: Column(
-
-              crossAxisAlignment:
-                  CrossAxisAlignment
-                      .start,
+              crossAxisAlignment: CrossAxisAlignment.start,
 
               children: [
-
                 Text(
-
                   title,
 
-                  style:
-                      TextStyle(
+                  style: TextStyle(
+                    color: Colors.white,
 
-                    color:
-                        Colors.white,
+                    fontSize: 26.sp,
 
-                    fontSize:
-                        26.sp,
-
-                    fontWeight:
-                        FontWeight.bold,
+                    fontWeight: FontWeight.bold,
                   ),
                 ),
 
-                SizedBox(
-                  height: 8.h,
-                ),
+                SizedBox(height: 8.h),
 
                 Text(
-
                   description,
 
-                  style:
-                      TextStyle(
+                  style: TextStyle(
+                    color: Colors.white.withValues(alpha: 0.55),
 
-                    color: Colors
-                        .white
-                        .withOpacity(
-                      0.55,
-                    ),
-
-                    fontSize:
-                        16.sp,
+                    fontSize: 16.sp,
 
                     height: 1.5,
                   ),
@@ -730,20 +484,13 @@ class _SettingsPageState
             ),
           ),
 
-          SizedBox(
-            width: 20.w,
-          ),
+          SizedBox(width: 20.w),
 
           /// SWITCH
           Switch(
-
             value: value,
-
-            activeColor:
-                accentColor,
-
-            onChanged:
-                onChanged,
+            activeThumbColor: accentColor,
+            onChanged: onChanged,
           ),
         ],
       ),
@@ -754,75 +501,42 @@ class _SettingsPageState
   /// LANGUAGE BUTTON
   /// =========================
   Widget buildLanguageButton({
-
     required String title,
     required bool isSelected,
     required Color accentColor,
     required VoidCallback onTap,
   }) {
-
     return GestureDetector(
-
       onTap: onTap,
 
       child: AnimatedContainer(
+        duration: const Duration(milliseconds: 250),
 
-        duration:
-            const Duration(
-          milliseconds: 250,
-        ),
+        padding: EdgeInsets.symmetric(horizontal: 22.w, vertical: 14.h),
 
-        padding:
-            EdgeInsets.symmetric(
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(16.r),
 
-          horizontal: 22.w,
-          vertical: 14.h,
-        ),
-
-        decoration:
-            BoxDecoration(
-
-          borderRadius:
-              BorderRadius.circular(
-            16.r,
-          ),
-
-          color: isSelected
-
-              ? accentColor
-
-              : Colors.transparent,
+          color: isSelected ? accentColor : Colors.transparent,
 
           boxShadow: [
-
             if (isSelected)
-
               BoxShadow(
-
-                color:
-                    accentColor
-                        .withOpacity(
-                  0.35,
-                ),
-
+                color: accentColor.withValues(alpha: 0.35),
                 blurRadius: 18,
               ),
           ],
         ),
 
         child: Text(
-
           title,
 
           style: TextStyle(
-
-            color:
-                Colors.white,
+            color: Colors.white,
 
             fontSize: 16.sp,
 
-            fontWeight:
-                FontWeight.bold,
+            fontWeight: FontWeight.bold,
           ),
         ),
       ),

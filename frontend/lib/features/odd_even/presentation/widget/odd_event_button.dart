@@ -21,10 +21,7 @@ class OddEvenButton extends StatelessWidget {
         onPressed: onPressed,
         child: Text(
           "Oke",
-          style: TextStyle(
-            fontSize: 22.sp,
-            color: Colors.white,
-          ),
+          style: TextStyle(fontSize: 22.sp, color: Colors.white),
         ),
       ),
     );

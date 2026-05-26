@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:frontend/core/navigation/app_routes.dart';
 import 'package:frontend/features/boot/presentation/widget/dotted_background.dart';
 import 'package:frontend/features/boot/presentation/widget/toyota_logo_animation.dart';
 
@@ -17,7 +18,7 @@ class _BootPageState extends State<BootPage> {
 
     Timer(const Duration(seconds: 6), () {
       if (mounted) {
-        Navigator.pushReplacementNamed(context, "/warning");
+        Navigator.pushReplacementNamed(context, AppRoutes.warning);
       }
     });
   }
@@ -41,7 +42,10 @@ class _BootPageState extends State<BootPage> {
             child: Container(
               decoration: BoxDecoration(
                 gradient: RadialGradient(
-                  colors: [Colors.transparent, Colors.black.withOpacity(0.6)],
+                  colors: [
+                    Colors.transparent,
+                    Colors.black.withValues(alpha: 0.6),
+                  ],
                   radius: 1.0,
                 ),
               ),

@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:typed_data';
 import 'package:flutter_libserialport/flutter_libserialport.dart';
 import 'package:frontend/core/model/gps_data.dart';
+import 'package:frontend/core/utils/app_logger.dart';
 
 class SerialService {
   SerialPort? _port;
@@ -45,7 +46,7 @@ class SerialService {
 
       // print hanya jika berubah
       if (ports.toString() != _lastPorts.toString()) {
-        print("AVAILABLE PORTS: $ports");
+        AppLogger.info("AVAILABLE PORTS: $ports");
         _lastPorts = List.from(ports);
       }
 
@@ -57,7 +58,7 @@ class SerialService {
         }
       }
     } catch (e) {
-      print("SCAN ERROR: $e");
+      AppLogger.error("SCAN ERROR: $e");
     }
   }
 
@@ -83,7 +84,7 @@ class SerialService {
       _connected = true;
       _buffer = "";
 
-      print("CONNECTED TO $portName");
+      AppLogger.info("CONNECTED TO $portName");
 
       _readerSub = _reader!.stream.listen(
         _onDataReceived,
@@ -94,7 +95,7 @@ class SerialService {
 
       return true;
     } catch (e) {
-      print("CONNECT FAIL $portName : $e");
+      AppLogger.error("CONNECT FAIL $portName : $e");
       return false;
     }
   }
@@ -113,19 +114,19 @@ class SerialService {
 
         if (line.isEmpty) continue;
 
-        print("SERIAL: $line");
+        AppLogger.info("SERIAL: $line");
 
         if (line.startsWith("GPS")) {
           try {
             final gps = GPSData.fromSerial(line);
             _controller.add(gps);
           } catch (e) {
-            print("PARSE ERROR: $e");
+            AppLogger.error("PARSE ERROR: $e");
           }
         }
       }
     } catch (e) {
-      print("READ ERROR: $e");
+      AppLogger.error("READ ERROR: $e");
       _handleDisconnect();
     }
   }
@@ -134,7 +135,7 @@ class SerialService {
   void _handleDisconnect() {
     if (!_connected) return;
 
-    print("DISCONNECTED $_currentPort");
+    AppLogger.info("DISCONNECTED $_currentPort");
 
     try {
       _readerSub?.cancel();

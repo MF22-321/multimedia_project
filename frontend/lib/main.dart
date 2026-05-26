@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:frontend/core/navigation/app_routes.dart';
 import 'package:frontend/core/provider/gps_provider.dart';
 import 'package:frontend/core/provider/music_provider.dart';
 import 'package:frontend/core/provider/pothole_provider.dart';
@@ -115,17 +116,18 @@ class MyApp extends StatelessWidget {
               useMaterial3: true,
             ),
 
-            initialRoute: "/",
+            initialRoute: AppRoutes.boot,
 
             routes: {
-              "/": (context) => const BootPage(),
-              "/warning": (context) => const WarningPage(),
-              "/odd-even": (context) => const OddEvenPage(),
-              "/driver-select": (context) => const DriverSelectPage(),
-              "/add-driver": (context) => const AddDriverPage(),
-              "/personalize": (context) => const PersonalizePage(),
-              "/home": (context) => const HomePage(),
-              "/fragrance_settings": (context) => const SmartFragrancePage(),
+              AppRoutes.boot: (context) => const BootPage(),
+              AppRoutes.warning: (context) => const WarningPage(),
+              AppRoutes.oddEven: (context) => const OddEvenPage(),
+              AppRoutes.driverSelect: (context) => const DriverSelectPage(),
+              AppRoutes.addDriver: (context) => const AddDriverPage(),
+              AppRoutes.personalize: (context) => const PersonalizePage(),
+              AppRoutes.home: (context) => const HomePage(),
+              AppRoutes.fragranceSettings: (context) =>
+                  const SmartFragrancePage(),
             },
           );
         },

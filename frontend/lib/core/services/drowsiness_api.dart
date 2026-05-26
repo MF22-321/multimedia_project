@@ -1,10 +1,8 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
+import 'package:frontend/core/services/backend_config.dart';
 
 class DrowsinessApi {
-  /// 🔥 BASE URL DIPISAH
-  static const String _baseUrl = "http://127.0.0.1:8000";
-
   /// ==============================
   /// 🚗 START DROWSINESS DETECTION
   /// ==============================
@@ -13,13 +11,9 @@ class DrowsinessApi {
   }) async {
     try {
       final response = await http.post(
-        Uri.parse("$_baseUrl/start_drowsiness"),
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: jsonEncode({
-          "driver_name": driverName,
-        }),
+        Uri.parse("${BackendConfig.httpBase}/start_drowsiness"),
+        headers: {"Content-Type": "application/json"},
+        body: jsonEncode({"driver_name": driverName}),
       );
 
       if (response.statusCode != 200) {
@@ -38,7 +32,7 @@ class DrowsinessApi {
   static Future<Map<String, dynamic>> stopDrowsiness() async {
     try {
       final response = await http.post(
-        Uri.parse("$_baseUrl/stop_drowsiness"),
+        Uri.parse("${BackendConfig.httpBase}/stop_drowsiness"),
       );
 
       if (response.statusCode != 200) {
@@ -57,7 +51,7 @@ class DrowsinessApi {
   static Future<Map<String, dynamic>> getDrowsinessStatus() async {
     try {
       final response = await http.get(
-        Uri.parse("$_baseUrl/drowsiness_status"),
+        Uri.parse("${BackendConfig.httpBase}/drowsiness_status"),
       );
 
       if (response.statusCode != 200) {

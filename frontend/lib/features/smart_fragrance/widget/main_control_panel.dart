@@ -80,7 +80,7 @@ class MainControlPanel extends StatelessWidget {
                         fontWeight: FontWeight.w700,
                         color: isAutoMode
                             ? AppColors.textDark
-                            : AppColors.textDark.withOpacity(0.8),
+                            : AppColors.textDark.withValues(alpha: 0.8),
                       ),
                     ),
                   ),
@@ -111,10 +111,7 @@ class MainControlPanel extends StatelessWidget {
             ),
             child: Text(
               'Save',
-              style: TextStyle(
-                fontSize: 22.sp,
-                fontWeight: FontWeight.w500,
-              ),
+              style: TextStyle(fontSize: 22.sp, fontWeight: FontWeight.w500),
             ),
           ),
         ),

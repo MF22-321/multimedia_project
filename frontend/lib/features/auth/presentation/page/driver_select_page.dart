@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:frontend/core/navigation/app_routes.dart';
 import 'package:frontend/core/navigation/driver_session.dart';
 import 'package:frontend/core/services/faceid_api.dart';
 import 'package:frontend/features/auth/presentation/widget/driver_avatar_card.dart';
@@ -77,7 +78,7 @@ class _DriverSelectPageState extends State<DriverSelectPage> {
           _stopFaceDetection();
 
           if (mounted) {
-            Navigator.pushReplacementNamed(context, "/home");
+            Navigator.pushReplacementNamed(context, AppRoutes.home);
           }
         }
       } catch (e) {
@@ -98,7 +99,7 @@ class _DriverSelectPageState extends State<DriverSelectPage> {
     _stopFaceDetection();
 
     DriverSession.setDriver(name.trim());
-    Navigator.pushReplacementNamed(context, "/home");
+    Navigator.pushReplacementNamed(context, AppRoutes.home);
   }
 
   /// ================= GUEST =================
@@ -106,14 +107,14 @@ class _DriverSelectPageState extends State<DriverSelectPage> {
     _stopFaceDetection();
 
     DriverSession.clear();
-    Navigator.pushReplacementNamed(context, "/home");
+    Navigator.pushReplacementNamed(context, AppRoutes.home);
   }
 
   /// ================= ADD DRIVER =================
   void _goToAddDriver() {
     _stopFaceDetection();
 
-    Navigator.pushNamed(context, "/add-driver").then((_) {
+    Navigator.pushNamed(context, AppRoutes.addDriver).then((_) {
       _loadDrivers();
       _startFaceDetection();
     });

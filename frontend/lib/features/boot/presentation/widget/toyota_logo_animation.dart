@@ -18,19 +18,17 @@ class _ToyotaLogoAnimationState extends State<ToyotaLogoAnimation>
   void initState() {
     super.initState();
 
-    _controller =
-        AnimationController(vsync: this, duration: const Duration(seconds: 2));
-
-    _fadeAnimation =
-        CurvedAnimation(parent: _controller, curve: Curves.easeIn);
-
-    _scaleAnimation =
-        Tween<double>(begin: 0.8, end: 1.0).animate(
-      CurvedAnimation(
-        parent: _controller,
-        curve: Curves.easeOutBack,
-      ),
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(seconds: 2),
     );
+
+    _fadeAnimation = CurvedAnimation(parent: _controller, curve: Curves.easeIn);
+
+    _scaleAnimation = Tween<double>(
+      begin: 0.8,
+      end: 1.0,
+    ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeOutBack));
 
     _controller.forward();
   }
@@ -50,16 +48,11 @@ class _ToyotaLogoAnimationState extends State<ToyotaLogoAnimation>
         child: Text(
           "TOYOTA",
           style: TextStyle(
-            fontSize: 90.sp, 
+            fontSize: 90.sp,
             fontWeight: FontWeight.bold,
             color: Colors.red.shade700,
-            letterSpacing: 8.w, 
-            shadows: [
-              Shadow(
-                blurRadius: 40.r, 
-                color: Colors.red.shade900,
-              ),
-            ],
+            letterSpacing: 8.w,
+            shadows: [Shadow(blurRadius: 40.r, color: Colors.red.shade900)],
           ),
         ),
       ),

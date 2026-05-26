@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'package:frontend/core/utils/app_logger.dart';
 import 'package:mqtt_client/mqtt_client.dart';
 import 'package:mqtt_client/mqtt_server_client.dart';
 
@@ -21,25 +22,26 @@ class MQTTService {
     client.keepAlivePeriod = 20;
 
     client.onConnected = () {
-      print('MQTT Connected');
+      AppLogger.info('MQTT connected');
       client.subscribe('humidifier/state', MqttQos.atLeastOnce);
     };
 
     client.onDisconnected = () {
-      print('MQTT Disconnected');
+      AppLogger.info('MQTT disconnected');
     };
 
     try {
       await client.connect();
     } catch (e) {
-      print('MQTT Error: $e');
+      AppLogger.error('MQTT error: $e');
       client.disconnect();
     }
 
     client.updates?.listen((events) {
       final rec = events[0].payload as MqttPublishMessage;
-      final payload =
-          MqttPublishPayload.bytesToStringAsString(rec.payload.message);
+      final payload = MqttPublishPayload.bytesToStringAsString(
+        rec.payload.message,
+      );
 
       try {
         final data = jsonDecode(payload);

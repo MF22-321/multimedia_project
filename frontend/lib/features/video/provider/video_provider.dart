@@ -4,13 +4,14 @@ import 'package:frontend/core/services/overlay_service.dart';
 import '../../../core/services/lan_service.dart';
 import '../../../core/utils/action_parser.dart';
 
-
 class VideoProvider extends ChangeNotifier {
   final LanService _lanService = LanService();
 
   StreamSubscription? _subscription;
 
   void init(BuildContext context) {
+    final overlayState = Overlay.of(context, rootOverlay: true);
+
     _lanService.connect();
 
     _subscription = _lanService.stream.listen((message) {
@@ -25,10 +26,7 @@ class VideoProvider extends ChangeNotifier {
         return;
       }
 
-      overlay.show(
-        context: context,
-        videoAsset: videoPath,
-      );
+      overlay.showOnOverlay(overlayState: overlayState, videoAsset: videoPath);
     });
   }
 

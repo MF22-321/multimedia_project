@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:media_kit/media_kit.dart';
 import 'package:media_kit_video/media_kit_video.dart';
 
-
 class VideoPlayerPage extends StatefulWidget {
   final String videoAsset;
   final VoidCallback onFinish;
@@ -80,7 +79,7 @@ class _VideoPlayerPageState extends State<VideoPlayerPage>
     return FadeTransition(
       opacity: _fadeAnimation,
       child: Container(
-        color: Colors.black.withOpacity(0.95),
+        color: Colors.black.withValues(alpha: 0.95),
         child: Stack(
           children: [
             /// 🎬 VIDEO
@@ -102,7 +101,7 @@ class _VideoPlayerPageState extends State<VideoPlayerPage>
                 child: Container(
                   padding: const EdgeInsets.all(10),
                   decoration: BoxDecoration(
-                    color: Colors.black.withOpacity(0.6),
+                    color: Colors.black.withValues(alpha: 0.6),
                     shape: BoxShape.circle,
                   ),
                   child: const Icon(Icons.close, color: Colors.white, size: 28),
@@ -117,7 +116,7 @@ class _VideoPlayerPageState extends State<VideoPlayerPage>
               child: Text(
                 "Instruction Video",
                 style: TextStyle(
-                  color: Colors.white.withOpacity(0.7),
+                  color: Colors.white.withValues(alpha: 0.7),
                   fontSize: 16,
                 ),
               ),

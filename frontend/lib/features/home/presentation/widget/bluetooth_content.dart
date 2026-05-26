@@ -3,6 +3,8 @@ import 'dart:async';
 import 'package:dbus/dbus.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:frontend/core/localization/app_strings.dart';
+import 'package:frontend/core/utils/app_logger.dart';
 
 import '../../../../core/themes/car_theme.dart';
 
@@ -47,79 +49,44 @@ class _BluetoothPageState extends State<BluetoothContent>
   /// =========================
   /// START SCAN
   /// =========================
- Future<void> startScan()
-async {
+  Future<void> startScan() async {
+    setState(() {
+      isScanning = true;
+    });
 
-  setState(() {
+    AppLogger.info('\n========== BLUETOOTH SCAN ==========');
 
-    isScanning = true;
-  });
+    try {
+      final adapter = DBusRemoteObject(
+        client,
 
-  print(
-    '\n========== BLUETOOTH SCAN =========='
-  );
+        name: 'org.bluez',
 
-  try {
+        path: DBusObjectPath('/org/bluez/hci0'),
+      );
 
-    final adapter =
-        DBusRemoteObject(
+      AppLogger.info('ADAPTER READY');
 
-      client,
+      /// START DISCOVERY
+      await adapter.callMethod('org.bluez.Adapter1', 'StartDiscovery', []);
 
-      name: 'org.bluez',
+      AppLogger.info('DISCOVERY STARTED');
 
-      path: DBusObjectPath(
-        '/org/bluez/hci0',
-      ),
-    );
+      /// FETCH DEVICE
+      await fetchDevices();
 
-    print(
-      'ADAPTER READY'
-    );
+      /// AUTO REFRESH
+      scanTimer?.cancel();
 
-    /// START DISCOVERY
-    await adapter.callMethod(
-
-      'org.bluez.Adapter1',
-
-      'StartDiscovery',
-
-      [],
-    );
-
-    print(
-      'DISCOVERY STARTED'
-    );
-
-    /// FETCH DEVICE
-    await fetchDevices();
-
-    /// AUTO REFRESH
-    scanTimer?.cancel();
-
-    scanTimer = Timer.periodic(
-
-      const Duration(
-        seconds: 4,
-      ),
-
-      (_) {
-
-        print(
-          'REFRESH DEVICE...'
-        );
+      scanTimer = Timer.periodic(const Duration(seconds: 4), (_) {
+        AppLogger.info('REFRESH DEVICE...');
 
         fetchDevices();
-      },
-    );
-
-  } catch (e) {
-
-    print(
-      'SCAN ERROR => $e',
-    );
+      });
+    } catch (e) {
+      AppLogger.error('SCAN ERROR => $e');
+    }
   }
-}
 
   /// =========================
   /// FETCH DEVICES
@@ -152,7 +119,7 @@ async {
         if (interfaces.containsKey('org.bluez.Device1')) {
           final props = interfaces['org.bluez.Device1'];
 
-          final name = props['Name'] ?? 'Unknown Device';
+          final name = props['Name'] ?? AppStrings.unknownDevice;
 
           final connected = props['Connected'] ?? false;
 
@@ -280,9 +247,11 @@ async {
                     decoration: BoxDecoration(
                       borderRadius: BorderRadius.circular(40.r),
 
-                      color: Colors.white.withOpacity(0.05),
+                      color: Colors.white.withValues(alpha: 0.05),
 
-                      border: Border.all(color: Colors.white.withOpacity(0.08)),
+                      border: Border.all(
+                        color: Colors.white.withValues(alpha: 0.08),
+                      ),
                     ),
 
                     child: Column(
@@ -308,7 +277,7 @@ async {
                                 decoration: BoxDecoration(
                                   shape: BoxShape.circle,
 
-                                  color: Colors.white.withOpacity(0.06),
+                                  color: Colors.white.withValues(alpha: 0.06),
                                 ),
 
                                 child: Icon(
@@ -335,7 +304,7 @@ async {
 
                                 boxShadow: [
                                   BoxShadow(
-                                    color: accentColor.withOpacity(0.45),
+                                    color: accentColor.withValues(alpha: 0.45),
 
                                     blurRadius: 20,
                                   ),
@@ -400,8 +369,8 @@ async {
 
                             Text(
                               isScanning
-                                  ? 'Scanning Devices...'
-                                  : 'Bluetooth Idle',
+                                  ? AppStrings.scanningDevices
+                                  : AppStrings.bluetoothIdle,
 
                               style: TextStyle(
                                 color: Colors.white,
@@ -441,13 +410,13 @@ async {
                                   borderRadius: BorderRadius.circular(28.r),
 
                                   color: connected
-                                      ? accentColor.withOpacity(0.12)
-                                      : Colors.white.withOpacity(0.04),
+                                      ? accentColor.withValues(alpha: 0.12)
+                                      : Colors.white.withValues(alpha: 0.04),
 
                                   border: Border.all(
                                     color: connected
-                                        ? accentColor.withOpacity(0.3)
-                                        : Colors.white.withOpacity(0.05),
+                                        ? accentColor.withValues(alpha: 0.3)
+                                        : Colors.white.withValues(alpha: 0.05),
                                   ),
                                 ),
 
@@ -462,7 +431,9 @@ async {
                                       decoration: BoxDecoration(
                                         shape: BoxShape.circle,
 
-                                        color: accentColor.withOpacity(0.15),
+                                        color: accentColor.withValues(
+                                          alpha: 0.15,
+                                        ),
                                       ),
 
                                       child: Icon(
@@ -484,7 +455,7 @@ async {
 
                                         children: [
                                           Text(
-                                            device['name'],
+                                            AppStrings.bluetooth,
 
                                             style: TextStyle(
                                               color: Colors.white,
@@ -501,14 +472,15 @@ async {
                                             children: [
                                               Text(
                                                 connected
-                                                    ? 'Connected'
-                                                    : 'Available',
+                                                    ? AppStrings.connected
+                                                    : AppStrings.available,
 
                                                 style: TextStyle(
                                                   color: connected
                                                       ? accentColor
-                                                      : Colors.white
-                                                            .withOpacity(0.5),
+                                                      : Colors.white.withValues(
+                                                          alpha: 0.5,
+                                                        ),
 
                                                   fontSize: 15.sp,
                                                 ),
@@ -521,7 +493,7 @@ async {
 
                                                 style: TextStyle(
                                                   color: Colors.white
-                                                      .withOpacity(0.45),
+                                                      .withValues(alpha: 0.45),
 
                                                   fontSize: 14.sp,
                                                 ),
@@ -559,18 +531,19 @@ async {
                                           ),
 
                                           color: connected
-                                              ? Colors.redAccent.withOpacity(
-                                                  0.18,
+                                              ? Colors.redAccent.withValues(
+                                                  alpha: 0.18,
                                                 )
                                               : accentColor,
 
                                           boxShadow: [
                                             BoxShadow(
                                               color: connected
-                                                  ? Colors.redAccent
-                                                        .withOpacity(0.25)
-                                                  : accentColor.withOpacity(
-                                                      0.35,
+                                                  ? Colors.redAccent.withValues(
+                                                      alpha: 0.25,
+                                                    )
+                                                  : accentColor.withValues(
+                                                      alpha: 0.35,
                                                     ),
 
                                               blurRadius: 18,
@@ -579,8 +552,9 @@ async {
                                         ),
 
                                         child: Text(
-                                          connected ? 'Disconnect' : 'Connect',
-
+                                            connected
+                                                ? AppStrings.disconnect
+                                                : AppStrings.connect,
                                           style: TextStyle(
                                             color: Colors.white,
 
@@ -614,9 +588,11 @@ async {
                     decoration: BoxDecoration(
                       borderRadius: BorderRadius.circular(40.r),
 
-                      color: Colors.white.withOpacity(0.05),
+                      color: Colors.white.withValues(alpha: 0.05),
 
-                      border: Border.all(color: Colors.white.withOpacity(0.08)),
+                      border: Border.all(
+                        color: Colors.white.withValues(alpha: 0.08),
+                      ),
                     ),
 
                     child: Center(
@@ -640,11 +616,13 @@ async {
                                   decoration: BoxDecoration(
                                     shape: BoxShape.circle,
 
-                                    color: accentColor.withOpacity(0.12),
+                                    color: accentColor.withValues(alpha: 0.12),
 
                                     boxShadow: [
                                       BoxShadow(
-                                        color: accentColor.withOpacity(0.25),
+                                        color: accentColor.withValues(
+                                          alpha: 0.25,
+                                        ),
 
                                         blurRadius: 45,
                                       ),
@@ -666,7 +644,7 @@ async {
                           SizedBox(height: 36.h),
 
                           Text(
-                            'Bluetooth Connection',
+                            AppStrings.bluetoothConnection,
 
                             style: TextStyle(
                               color: Colors.white,
@@ -680,12 +658,12 @@ async {
                           SizedBox(height: 14.h),
 
                           Text(
-                            'Pair your smartphone,\nheadphone, or other devices.',
+                            AppStrings.pairYourSmartphone,
 
                             textAlign: TextAlign.center,
 
                             style: TextStyle(
-                              color: Colors.white.withOpacity(0.55),
+                              color: Colors.white.withValues(alpha: 0.55),
 
                               fontSize: 18.sp,
 

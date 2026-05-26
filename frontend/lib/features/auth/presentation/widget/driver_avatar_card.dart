@@ -29,7 +29,6 @@ class _DriverAvatarCardState extends State<DriverAvatarCard> {
         onExit: (_) => setState(() => isHovered = false),
         child: Column(
           children: [
-
             AnimatedContainer(
               duration: const Duration(milliseconds: 200),
               width: 140.w,
@@ -44,9 +43,9 @@ class _DriverAvatarCardState extends State<DriverAvatarCard> {
                 boxShadow: isHovered
                     ? [
                         BoxShadow(
-                          color: Colors.white.withOpacity(0.3),
+                          color: Colors.white.withValues(alpha: 0.3),
                           blurRadius: 20,
-                        )
+                        ),
                       ]
                     : [],
               ),
@@ -61,10 +60,7 @@ class _DriverAvatarCardState extends State<DriverAvatarCard> {
 
             Text(
               widget.name,
-              style: TextStyle(
-                fontSize: 22.sp,
-                color: Colors.white,
-              ),
+              style: TextStyle(fontSize: 22.sp, color: Colors.white),
             ),
           ],
         ),

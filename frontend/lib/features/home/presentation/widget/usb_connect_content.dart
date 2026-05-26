@@ -4,19 +4,17 @@ import 'dart:ui';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:frontend/core/localization/app_strings.dart';
 import 'package:frontend/core/themes/car_theme.dart';
 
 class UsbConnectContent extends StatefulWidget {
   const UsbConnectContent({super.key});
 
   @override
-  State<UsbConnectContent> createState() =>
-      _UsbConnectContentState();
+  State<UsbConnectContent> createState() => _UsbConnectContentState();
 }
 
-class _UsbConnectContentState
-    extends State<UsbConnectContent> {
-
+class _UsbConnectContentState extends State<UsbConnectContent> {
   late Timer timer;
 
   DateTime now = DateTime.now();
@@ -33,8 +31,7 @@ class _UsbConnectContentState
 
   String storage = "256 GB";
 
-  String mountPath =
-      "/media/febrian/S24";
+  String mountPath = "/media/febrian/S24";
 
   String audioCodec = "AAC";
 
@@ -49,15 +46,11 @@ class _UsbConnectContentState
     super.initState();
 
     /// REALTIME CLOCK
-    timer = Timer.periodic(
-      const Duration(seconds: 1),
-      (_) {
-
-        setState(() {
-          now = DateTime.now();
-        });
-      },
-    );
+    timer = Timer.periodic(const Duration(seconds: 1), (_) {
+      setState(() {
+        now = DateTime.now();
+      });
+    });
 
     /// OPTIONAL AUTO CHECK USB
     checkUsbConnection();
@@ -65,7 +58,6 @@ class _UsbConnectContentState
 
   @override
   void dispose() {
-
     timer.cancel();
 
     super.dispose();
@@ -75,36 +67,18 @@ class _UsbConnectContentState
   /// CHECK USB DEVICE
   /// ===============================
   Future<void> checkUsbConnection() async {
-
     try {
+      final result = await Process.run('adb', ['devices']);
 
-      final result =
-          await Process.run(
-            'adb',
-            ['devices'],
-          );
-
-      final output =
-          result.stdout.toString();
+      final output = result.stdout.toString();
 
       setState(() {
+        usbConnected = output.contains('device');
 
-        usbConnected =
-            output.contains(
-              'device',
-            );
-
-        adbStatus =
-            usbConnected
-            ? "Connected"
-            : "Disconnected";
+        adbStatus = usbConnected ? AppStrings.connected : AppStrings.disconnected;
       });
-
     } catch (e) {
-
-      debugPrint(
-        e.toString(),
-      );
+      debugPrint(e.toString());
     }
   }
 
@@ -112,19 +86,13 @@ class _UsbConnectContentState
   /// CONNECT USB AUDIO
   /// ===============================
   Future<void> connectUsbAudio() async {
-
     setState(() {
       isScanning = true;
     });
 
-    await Future.delayed(
-      const Duration(
-        seconds: 2,
-      ),
-    );
+    await Future.delayed(const Duration(seconds: 2));
 
     setState(() {
-
       usbAudioConnected = true;
 
       isScanning = false;
@@ -138,49 +106,34 @@ class _UsbConnectContentState
   /// DISCONNECT
   /// ===============================
   void disconnectUsb() {
-
     setState(() {
-
       usbConnected = false;
 
       usbAudioConnected = false;
 
-      adbStatus = "Disconnected";
+      adbStatus = AppStrings.disconnected;
     });
   }
 
   /// ===============================
   /// ACCENT COLOR
   /// ===============================
-  Color getAccentColor(
-    CarThemeType type,
-    CarThemeData theme,
-  ) {
-
+  Color getAccentColor(CarThemeType type, CarThemeData theme) {
     switch (type) {
-
       case CarThemeType.comfort:
-        return const Color(
-          0xFF6CB4FF,
-        );
+        return const Color(0xFF6CB4FF);
 
       case CarThemeType.sport:
         return Colors.redAccent;
 
       case CarThemeType.futuristic:
-        return const Color(
-          0xFF00E5FF,
-        );
+        return const Color(0xFF00E5FF);
 
       case CarThemeType.retro:
-        return const Color(
-          0xFFFF2BC2,
-        );
+        return const Color(0xFFFF2BC2);
 
       case CarThemeType.playful:
-        return const Color(
-          0xFFC6A883,
-        );
+        return const Color(0xFFC6A883);
 
       case CarThemeType.custom:
         return theme.buttonColor;
@@ -189,20 +142,11 @@ class _UsbConnectContentState
 
   @override
   Widget build(BuildContext context) {
+    final currentTheme = CarThemes.currentTheme.value;
 
-    final currentTheme =
-        CarThemes.currentTheme.value;
+    final theme = CarThemes.getTheme(currentTheme);
 
-    final theme =
-        CarThemes.getTheme(
-          currentTheme,
-        );
-
-    final accent =
-        getAccentColor(
-          currentTheme,
-          theme,
-        );
+    final accent = getAccentColor(currentTheme, theme);
 
     return Scaffold(
       backgroundColor: Colors.black,
@@ -217,14 +161,12 @@ class _UsbConnectContentState
 
             end: Alignment.bottomRight,
 
-            colors:
-                theme.backgroundGradient,
+            colors: theme.backgroundGradient,
           ),
         ),
 
         child: Stack(
           children: [
-
             /// =========================
             /// AMBIENT GLOW
             /// =========================
@@ -239,9 +181,7 @@ class _UsbConnectContentState
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
 
-                  color: accent.withOpacity(
-                    0.16,
-                  ),
+                  color: accent.withValues(alpha: 0.16),
                 ),
               ),
             ),
@@ -257,9 +197,7 @@ class _UsbConnectContentState
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
 
-                  color: accent.withOpacity(
-                    0.08,
-                  ),
+                  color: accent.withValues(alpha: 0.08),
                 ),
               ),
             ),
@@ -268,105 +206,65 @@ class _UsbConnectContentState
             /// BLUR
             /// =========================
             BackdropFilter(
-              filter: ImageFilter.blur(
-                sigmaX: 30,
-                sigmaY: 30,
-              ),
+              filter: ImageFilter.blur(sigmaX: 30, sigmaY: 30),
 
-              child: Container(
-                color: Colors.black
-                    .withOpacity(
-                      0.12,
-                    ),
-              ),
+              child: Container(color: Colors.black.withValues(alpha: 0.12)),
             ),
 
             SafeArea(
               child: Padding(
-                padding: EdgeInsets.all(
-                  24.w,
-                ),
+                padding: EdgeInsets.all(24.w),
 
                 child: Column(
                   children: [
-
                     /// =====================
                     /// TOP BAR
                     /// =====================
                     Container(
                       height: 90.h,
 
-                      padding:
-                          EdgeInsets.symmetric(
-                            horizontal: 28.w,
-                          ),
+                      padding: EdgeInsets.symmetric(horizontal: 28.w),
 
                       decoration: BoxDecoration(
-                        borderRadius:
-                            BorderRadius.circular(
-                              30.r,
-                            ),
+                        borderRadius: BorderRadius.circular(30.r),
 
-                        color: Colors.white
-                            .withOpacity(
-                              0.05,
-                            ),
+                        color: Colors.white.withValues(alpha: 0.05),
 
                         border: Border.all(
-                          color: Colors.white
-                              .withOpacity(
-                                0.08,
-                              ),
+                          color: Colors.white.withValues(alpha: 0.08),
                         ),
                       ),
 
                       child: Row(
-                        mainAxisAlignment:
-                            MainAxisAlignment
-                                .spaceBetween,
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
 
                         children: [
-
                           /// LEFT
                           Row(
                             children: [
-
                               GestureDetector(
                                 onTap: () {
-                                  Navigator.pop(
-                                    context,
-                                  );
+                                  Navigator.pop(context);
                                 },
 
                                 child: Container(
                                   width: 52.w,
                                   height: 52.w,
 
-                                  decoration:
-                                      BoxDecoration(
-                                        shape:
-                                            BoxShape
-                                                .circle,
+                                  decoration: BoxDecoration(
+                                    shape: BoxShape.circle,
 
-                                        color: Colors
-                                            .white
-                                            .withOpacity(
-                                              0.06,
-                                            ),
+                                    color: Colors.white.withValues(alpha: 0.06),
 
-                                        border:
-                                            Border.all(
-                                              color: Colors
-                                                  .white
-                                                  .withOpacity(
-                                                    0.08,
-                                                  ),
-                                            ),
+                                    border: Border.all(
+                                      color: Colors.white.withValues(
+                                        alpha: 0.08,
                                       ),
+                                    ),
+                                  ),
 
                                   child: Icon(
-                                    Icons
-                                        .arrow_back_ios_new,
+                                    Icons.arrow_back_ios_new,
 
                                     color: accent,
 
@@ -375,22 +273,17 @@ class _UsbConnectContentState
                                 ),
                               ),
 
-                              SizedBox(
-                                width: 18.w,
-                              ),
+                              SizedBox(width: 18.w),
 
                               Container(
                                 width: 52.w,
                                 height: 52.w,
 
-                                decoration:
-                                    BoxDecoration(
-                                      shape:
-                                          BoxShape
-                                              .circle,
+                                decoration: BoxDecoration(
+                                  shape: BoxShape.circle,
 
-                                      color: accent,
-                                    ),
+                                  color: accent,
+                                ),
 
                                 child: Icon(
                                   Icons.usb,
@@ -401,49 +294,35 @@ class _UsbConnectContentState
                                 ),
                               ),
 
-                              SizedBox(
-                                width: 16.w,
-                              ),
+                              SizedBox(width: 16.w),
 
                               Column(
-                                mainAxisAlignment:
-                                    MainAxisAlignment
-                                        .center,
+                                mainAxisAlignment: MainAxisAlignment.center,
 
-                                crossAxisAlignment:
-                                    CrossAxisAlignment
-                                        .start,
+                                crossAxisAlignment: CrossAxisAlignment.start,
 
                                 children: [
-
                                   Text(
-                                    'USB Connect',
+                                    AppStrings.usbConnect,
 
                                     style: TextStyle(
-                                      color:
-                                          Colors.white,
+                                      color: Colors.white,
 
                                       fontSize: 24.sp,
 
-                                      fontWeight:
-                                          FontWeight
-                                              .bold,
+                                      fontWeight: FontWeight.bold,
                                     ),
                                   ),
 
-                                  SizedBox(
-                                    height: 4.h,
-                                  ),
+                                  SizedBox(height: 4.h),
 
                                   Text(
-                                    'USB Audio Hub',
+                                    AppStrings.usbAudioHub,
 
                                     style: TextStyle(
-                                      color: Colors
-                                          .white60,
+                                      color: Colors.white60,
 
-                                      fontSize:
-                                          14.sp,
+                                      fontSize: 14.sp,
                                     ),
                                   ),
                                 ],
@@ -453,16 +332,11 @@ class _UsbConnectContentState
 
                           /// RIGHT
                           Column(
-                            crossAxisAlignment:
-                                CrossAxisAlignment
-                                    .end,
+                            crossAxisAlignment: CrossAxisAlignment.end,
 
-                            mainAxisAlignment:
-                                MainAxisAlignment
-                                    .center,
+                            mainAxisAlignment: MainAxisAlignment.center,
 
                             children: [
-
                               Text(
                                 '${now.hour.toString().padLeft(2, '0')}:${now.minute.toString().padLeft(2, '0')}',
 
@@ -471,25 +345,19 @@ class _UsbConnectContentState
 
                                   fontSize: 28.sp,
 
-                                  fontWeight:
-                                      FontWeight
-                                          .bold,
+                                  fontWeight: FontWeight.bold,
                                 ),
                               ),
 
-                              SizedBox(
-                                height: 4.h,
-                              ),
+                              SizedBox(height: 4.h),
 
                               Text(
                                 '${now.day}/${now.month}/${now.year}',
 
                                 style: TextStyle(
-                                  color:
-                                      Colors.white60,
+                                  color: Colors.white60,
 
-                                  fontSize:
-                                      13.sp,
+                                  fontSize: 13.sp,
                                 ),
                               ),
                             ],
@@ -498,103 +366,68 @@ class _UsbConnectContentState
                       ),
                     ),
 
-                    SizedBox(
-                      height: 24.h,
-                    ),
+                    SizedBox(height: 24.h),
 
                     /// =====================
                     /// MAIN CONTENT
                     /// =====================
                     Expanded(
                       child: SingleChildScrollView(
-                        physics:
-                            const BouncingScrollPhysics(),
+                        physics: const BouncingScrollPhysics(),
 
                         child: Column(
                           children: [
-
                             /// =================
                             /// HERO CARD
                             /// =================
                             Container(
                               width: double.infinity,
 
-                              padding:
-                                  EdgeInsets.all(
-                                    28.w,
+                              padding: EdgeInsets.all(28.w),
+
+                              decoration: BoxDecoration(
+                                borderRadius: BorderRadius.circular(40.r),
+
+                                color: Colors.white.withValues(alpha: 0.05),
+
+                                border: Border.all(
+                                  color: Colors.white.withValues(alpha: 0.08),
+                                ),
+
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: accent.withValues(alpha: 0.14),
+
+                                    blurRadius: 30,
                                   ),
-
-                              decoration:
-                                  BoxDecoration(
-                                    borderRadius:
-                                        BorderRadius.circular(
-                                          40.r,
-                                        ),
-
-                                    color: Colors
-                                        .white
-                                        .withOpacity(
-                                          0.05,
-                                        ),
-
-                                    border:
-                                        Border.all(
-                                          color: Colors
-                                              .white
-                                              .withOpacity(
-                                                0.08,
-                                              ),
-                                        ),
-
-                                    boxShadow: [
-                                      BoxShadow(
-                                        color: accent
-                                            .withOpacity(
-                                              0.14,
-                                            ),
-
-                                        blurRadius:
-                                            30,
-                                      ),
-                                    ],
-                                  ),
+                                ],
+                              ),
 
                               child: Row(
                                 children: [
-
                                   /// DEVICE IMAGE
                                   Container(
                                     width: 180.w,
                                     height: 180.w,
 
-                                    decoration:
-                                        BoxDecoration(
-                                          shape:
-                                              BoxShape
-                                                  .circle,
+                                    decoration: BoxDecoration(
+                                      shape: BoxShape.circle,
 
-                                          color: Colors
-                                              .white
-                                              .withOpacity(
-                                                0.05,
-                                              ),
+                                      color: Colors.white.withValues(
+                                        alpha: 0.05,
+                                      ),
 
-                                          boxShadow: [
-                                            BoxShadow(
-                                              color: accent
-                                                  .withOpacity(
-                                                    0.35,
-                                                  ),
+                                      boxShadow: [
+                                        BoxShadow(
+                                          color: accent.withValues(alpha: 0.35),
 
-                                              blurRadius:
-                                                  40,
-                                            ),
-                                          ],
+                                          blurRadius: 40,
                                         ),
+                                      ],
+                                    ),
 
                                     child: Icon(
-                                      Icons
-                                          .phone_android,
+                                      Icons.phone_android,
 
                                       color: accent,
 
@@ -602,66 +435,46 @@ class _UsbConnectContentState
                                     ),
                                   ),
 
-                                  SizedBox(
-                                    width: 30.w,
-                                  ),
+                                  SizedBox(width: 30.w),
 
                                   /// INFO
                                   Expanded(
                                     child: Column(
                                       crossAxisAlignment:
-                                          CrossAxisAlignment
-                                              .start,
+                                          CrossAxisAlignment.start,
 
                                       children: [
-
                                         Text(
                                           deviceName,
 
-                                          style:
-                                              TextStyle(
-                                                color:
-                                                    Colors.white,
+                                          style: TextStyle(
+                                            color: Colors.white,
 
-                                                fontSize:
-                                                    34.sp,
+                                            fontSize: 34.sp,
 
-                                                fontWeight:
-                                                    FontWeight.bold,
-                                              ),
+                                            fontWeight: FontWeight.bold,
+                                          ),
                                         ),
 
-                                        SizedBox(
-                                          height:
-                                              10.h,
-                                        ),
+                                        SizedBox(height: 10.h),
 
                                         Text(
-                                          'USB Audio Connected',
+AppStrings.usbAudioConnected,
 
-                                          style:
-                                              TextStyle(
-                                                color:
-                                                    Colors.white70,
+                                          style: TextStyle(
+                                            color: Colors.white70,
 
-                                                fontSize:
-                                                    18.sp,
-                                              ),
+                                            fontSize: 18.sp,
+                                          ),
                                         ),
 
-                                        SizedBox(
-                                          height:
-                                              24.h,
-                                        ),
+                                        SizedBox(height: 24.h),
 
                                         Wrap(
-                                          spacing:
-                                              12.w,
-                                          runSpacing:
-                                              12.h,
+                                          spacing: 12.w,
+                                          runSpacing: 12.h,
 
                                           children: [
-
                                             _statusChip(
                                               Icons.usb,
                                               usbMode,
@@ -675,8 +488,7 @@ class _UsbConnectContentState
                                             ),
 
                                             _statusChip(
-                                              Icons
-                                                  .developer_mode,
+                                              Icons.developer_mode,
                                               adbStatus,
                                               accent,
                                             ),
@@ -689,9 +501,7 @@ class _UsbConnectContentState
                               ),
                             ),
 
-                            SizedBox(
-                              height: 24.h,
-                            ),
+                            SizedBox(height: 24.h),
 
                             /// =================
                             /// GRID
@@ -699,67 +509,50 @@ class _UsbConnectContentState
                             GridView(
                               shrinkWrap: true,
 
-                              physics:
-                                  const NeverScrollableScrollPhysics(),
+                              physics: const NeverScrollableScrollPhysics(),
 
                               gridDelegate:
                                   SliverGridDelegateWithFixedCrossAxisCount(
-                                    crossAxisCount:
-                                        2,
+                                    crossAxisCount: 2,
 
-                                    crossAxisSpacing:
-                                        24.w,
+                                    crossAxisSpacing: 24.w,
 
-                                    mainAxisSpacing:
-                                        24.h,
+                                    mainAxisSpacing: 24.h,
 
-                                    childAspectRatio:
-                                        1.45,
+                                    childAspectRatio: 1.45,
                                   ),
 
                               children: [
-
                                 /// USB AUDIO
                                 _glassCard(
-                                  title:
-                                      'USB Audio',
+                                  title: AppStrings.usbAudio,
 
-                                  accent:
-                                      accent,
+                                  accent: accent,
 
                                   child: Column(
                                     children: [
-
                                       _infoTile(
                                         Icons.music_note,
-                                        'Codec',
+                                        AppStrings.codec,
                                         audioCodec,
                                         accent,
                                       ),
 
-                                      SizedBox(
-                                        height:
-                                            18.h,
-                                      ),
+                                      SizedBox(height: 18.h),
 
                                       _infoTile(
-                                        Icons
-                                            .graphic_eq,
-                                        'Sample Rate',
+                                        Icons.graphic_eq,
+                                        AppStrings.sampleRateLabel,
                                         sampleRate,
                                         accent,
                                       ),
 
-                                      SizedBox(
-                                        height:
-                                            18.h,
-                                      ),
+                                      SizedBox(height: 18.h),
 
                                       _infoTile(
-                                        Icons
-                                            .speaker,
-                                        'Output',
-                                        'Car Speaker',
+                                        Icons.speaker,
+                                        AppStrings.output,
+                                        AppStrings.carSpeaker,
                                         accent,
                                       ),
                                     ],
@@ -768,45 +561,33 @@ class _UsbConnectContentState
 
                                 /// DEVICE INFO
                                 _glassCard(
-                                  title:
-                                      'Device Information',
+                                  title: AppStrings.deviceInformation,
 
-                                  accent:
-                                      accent,
+                                  accent: accent,
 
                                   child: Column(
                                     children: [
-
                                       _infoTile(
-                                        Icons
-                                            .smartphone,
-                                        'Device',
+                                        Icons.smartphone,
+                                        AppStrings.device,
                                         deviceName,
                                         accent,
                                       ),
 
-                                      SizedBox(
-                                        height:
-                                            18.h,
-                                      ),
+                                      SizedBox(height: 18.h),
 
                                       _infoTile(
-                                        Icons
-                                            .android,
-                                        'Version',
+                                        Icons.android,
+                                        AppStrings.version,
                                         androidVersion,
                                         accent,
                                       ),
 
-                                      SizedBox(
-                                        height:
-                                            18.h,
-                                      ),
+                                      SizedBox(height: 18.h),
 
                                       _infoTile(
-                                        Icons
-                                            .folder,
-                                        'Mount',
+                                        Icons.folder,
+                                        AppStrings.mount,
                                         mountPath,
                                         accent,
                                       ),
@@ -816,81 +597,51 @@ class _UsbConnectContentState
 
                                 /// STORAGE
                                 _glassCard(
-                                  title:
-                                      'Storage Information',
+                                  title: AppStrings.storageInformation,
 
-                                  accent:
-                                      accent,
+                                  accent: accent,
 
                                   child: Column(
                                     children: [
+                                      _storageBar(AppStrings.music, 0.72, accent),
 
-                                      _storageBar(
-                                        'Music',
-                                        0.72,
-                                        accent,
-                                      ),
+                                      SizedBox(height: 20.h),
 
-                                      SizedBox(
-                                        height:
-                                            20.h,
-                                      ),
+                                      _storageBar(AppStrings.videos, 0.38, accent),
 
-                                      _storageBar(
-                                        'Videos',
-                                        0.38,
-                                        accent,
-                                      ),
+                                      SizedBox(height: 20.h),
 
-                                      SizedBox(
-                                        height:
-                                            20.h,
-                                      ),
-
-                                      _storageBar(
-                                        'Photos',
-                                        0.54,
-                                        accent,
-                                      ),
+                                      _storageBar(AppStrings.photos, 0.54, accent),
                                     ],
                                   ),
                                 ),
 
                                 /// CONNECTION STATUS
                                 _glassCard(
-                                  title:
-                                      'Connection Status',
+                                  title: AppStrings.connectionStatus,
 
-                                  accent:
-                                      accent,
+                                  accent: accent,
 
                                   child: Column(
                                     children: [
-
                                       _connectionTile(
-                                        'USB Connected',
+                                        AppStrings.usbConnected,
                                         usbConnected,
                                         accent,
                                       ),
 
-                                      SizedBox(
-                                        height:
-                                            18.h,
-                                      ),
+                                      SizedBox(height: 18.h),
 
                                       _connectionTile(
-                                        'ADB Connected',
+                                        AppStrings.adbConnected,
                                         usbConnected,
                                         accent,
                                       ),
 
-                                      SizedBox(
-                                        height:
-                                            18.h,
-                                      ),
+                                      SizedBox(height: 18.h),
 
                                       _connectionTile(
-                                        'USB Audio Ready',
+                                        AppStrings.usbAudioReady,
                                         usbAudioConnected,
                                         accent,
                                       ),
@@ -900,86 +651,58 @@ class _UsbConnectContentState
                               ],
                             ),
 
-                            SizedBox(
-                              height: 24.h,
-                            ),
+                            SizedBox(height: 24.h),
 
                             /// =================
                             /// ACTION BUTTONS
                             /// =================
                             Row(
                               children: [
+                                Expanded(
+                                  child: _actionButton(
+                                    title: AppStrings.connectAudio,
+
+                                    icon: Icons.headphones,
+
+                                    accent: accent,
+
+                                    loading: isScanning,
+
+                                    onTap: connectUsbAudio,
+                                  ),
+                                ),
+
+                                SizedBox(width: 24.w),
 
                                 Expanded(
-                                  child:
-                                      _actionButton(
-                                        title:
-                                            'Connect Audio',
+                                  child: _actionButton(
+                                    title: AppStrings.openMusic,
 
-                                        icon:
-                                            Icons
-                                                .headphones,
+                                    icon: Icons.music_note,
 
-                                        accent:
-                                            accent,
+                                    accent: accent,
 
-                                        loading:
-                                            isScanning,
-
-                                        onTap:
-                                            connectUsbAudio,
-                                      ),
+                                    onTap: () {},
+                                  ),
                                 ),
 
-                                SizedBox(
-                                  width: 24.w,
-                                ),
+                                SizedBox(width: 24.w),
 
                                 Expanded(
-                                  child:
-                                      _actionButton(
-                                        title:
-                                            'Open Music',
+                                  child: _actionButton(
+                                    title: AppStrings.disconnectUsb,
 
-                                        icon:
-                                            Icons
-                                                .music_note,
+                                    icon: Icons.usb_off,
 
-                                        accent:
-                                            accent,
+                                    accent: Colors.redAccent,
 
-                                        onTap:
-                                            () {},
-                                      ),
-                                ),
-
-                                SizedBox(
-                                  width: 24.w,
-                                ),
-
-                                Expanded(
-                                  child:
-                                      _actionButton(
-                                        title:
-                                            'Disconnect USB',
-
-                                        icon:
-                                            Icons
-                                                .usb_off,
-
-                                        accent:
-                                            Colors.redAccent,
-
-                                        onTap:
-                                            disconnectUsb,
-                                      ),
+                                    onTap: disconnectUsb,
+                                  ),
                                 ),
                               ],
                             ),
 
-                            SizedBox(
-                              height: 30.h,
-                            ),
+                            SizedBox(height: 30.h),
                           ],
                         ),
                       ),
@@ -1002,39 +725,25 @@ class _UsbConnectContentState
     required Widget child,
     required Color accent,
   }) {
-
     return Container(
-      padding: EdgeInsets.all(
-        24.w,
-      ),
+      padding: EdgeInsets.all(24.w),
 
       decoration: BoxDecoration(
-        borderRadius:
-            BorderRadius.circular(
-              34.r,
-            ),
+        borderRadius: BorderRadius.circular(34.r),
 
-        color: Colors.white
-            .withOpacity(0.05),
+        color: Colors.white.withValues(alpha: 0.05),
 
-        border: Border.all(
-          color: Colors.white
-              .withOpacity(0.08),
-        ),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
       ),
 
       child: Column(
-        crossAxisAlignment:
-            CrossAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.start,
 
-        mainAxisSize:
-            MainAxisSize.min,
+        mainAxisSize: MainAxisSize.min,
 
         children: [
-
           Row(
             children: [
-
               Container(
                 width: 10.w,
                 height: 10.w,
@@ -1045,9 +754,7 @@ class _UsbConnectContentState
                 ),
               ),
 
-              SizedBox(
-                width: 10.w,
-              ),
+              SizedBox(width: 10.w),
 
               Text(
                 title,
@@ -1057,8 +764,7 @@ class _UsbConnectContentState
 
                   fontSize: 22.sp,
 
-                  fontWeight:
-                      FontWeight.bold,
+                  fontWeight: FontWeight.bold,
                 ),
               ),
             ],
@@ -1075,39 +781,21 @@ class _UsbConnectContentState
   /// ===============================
   /// STATUS CHIP
   /// ===============================
-  Widget _statusChip(
-    IconData icon,
-    String title,
-    Color accent,
-  ) {
-
+  Widget _statusChip(IconData icon, String title, Color accent) {
     return Container(
-      padding: EdgeInsets.symmetric(
-        horizontal: 16.w,
-        vertical: 12.h,
-      ),
+      padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 12.h),
 
       decoration: BoxDecoration(
-        borderRadius:
-            BorderRadius.circular(
-              20.r,
-            ),
+        borderRadius: BorderRadius.circular(20.r),
 
-        color: Colors.white
-            .withOpacity(0.06),
+        color: Colors.white.withValues(alpha: 0.06),
       ),
 
       child: Row(
-        mainAxisSize:
-            MainAxisSize.min,
+        mainAxisSize: MainAxisSize.min,
 
         children: [
-
-          Icon(
-            icon,
-            color: accent,
-            size: 18.sp,
-          ),
+          Icon(icon, color: accent, size: 18.sp),
 
           SizedBox(width: 8.w),
 
@@ -1119,8 +807,7 @@ class _UsbConnectContentState
 
               fontSize: 14.sp,
 
-              fontWeight:
-                  FontWeight.w600,
+              fontWeight: FontWeight.w600,
             ),
           ),
         ],
@@ -1131,16 +818,9 @@ class _UsbConnectContentState
   /// ===============================
   /// INFO TILE
   /// ===============================
-  Widget _infoTile(
-    IconData icon,
-    String title,
-    String value,
-    Color accent,
-  ) {
-
+  Widget _infoTile(IconData icon, String title, String value, Color accent) {
     return Row(
       children: [
-
         Container(
           width: 52.w,
           height: 52.w,
@@ -1148,37 +828,23 @@ class _UsbConnectContentState
           decoration: BoxDecoration(
             shape: BoxShape.circle,
 
-            color: accent.withOpacity(
-              0.18,
-            ),
+            color: accent.withValues(alpha: 0.18),
           ),
 
-          child: Icon(
-            icon,
-            color: accent,
-            size: 24.sp,
-          ),
+          child: Icon(icon, color: accent, size: 24.sp),
         ),
 
         SizedBox(width: 16.w),
 
         Expanded(
           child: Column(
-            crossAxisAlignment:
-                CrossAxisAlignment
-                    .start,
+            crossAxisAlignment: CrossAxisAlignment.start,
 
             children: [
-
               Text(
                 title,
 
-                style: TextStyle(
-                  color:
-                      Colors.white70,
-
-                  fontSize: 14.sp,
-                ),
+                style: TextStyle(color: Colors.white70, fontSize: 14.sp),
               ),
 
               SizedBox(height: 4.h),
@@ -1186,16 +852,14 @@ class _UsbConnectContentState
               Text(
                 value,
 
-                overflow:
-                    TextOverflow.ellipsis,
+                overflow: TextOverflow.ellipsis,
 
                 style: TextStyle(
                   color: Colors.white,
 
                   fontSize: 18.sp,
 
-                  fontWeight:
-                      FontWeight.bold,
+                  fontWeight: FontWeight.bold,
                 ),
               ),
             ],
@@ -1208,25 +872,15 @@ class _UsbConnectContentState
   /// ===============================
   /// STORAGE BAR
   /// ===============================
-  Widget _storageBar(
-    String title,
-    double value,
-    Color accent,
-  ) {
-
+  Widget _storageBar(String title, double value, Color accent) {
     return Column(
-      crossAxisAlignment:
-          CrossAxisAlignment.start,
+      crossAxisAlignment: CrossAxisAlignment.start,
 
       children: [
-
         Row(
-          mainAxisAlignment:
-              MainAxisAlignment
-                  .spaceBetween,
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
 
           children: [
-
             Text(
               title,
 
@@ -1235,8 +889,7 @@ class _UsbConnectContentState
 
                 fontSize: 16.sp,
 
-                fontWeight:
-                    FontWeight.w600,
+                fontWeight: FontWeight.w600,
               ),
             ),
 
@@ -1248,8 +901,7 @@ class _UsbConnectContentState
 
                 fontSize: 15.sp,
 
-                fontWeight:
-                    FontWeight.bold,
+                fontWeight: FontWeight.bold,
               ),
             ),
           ],
@@ -1258,23 +910,16 @@ class _UsbConnectContentState
         SizedBox(height: 12.h),
 
         ClipRRect(
-          borderRadius:
-              BorderRadius.circular(
-                30.r,
-              ),
+          borderRadius: BorderRadius.circular(30.r),
 
           child: LinearProgressIndicator(
             value: value,
 
             minHeight: 8.h,
 
-            backgroundColor:
-                Colors.white12,
+            backgroundColor: Colors.white12,
 
-            valueColor:
-                AlwaysStoppedAnimation(
-                  accent,
-                ),
+            valueColor: AlwaysStoppedAnimation(accent),
           ),
         ),
       ],
@@ -1284,15 +929,9 @@ class _UsbConnectContentState
   /// ===============================
   /// CONNECTION TILE
   /// ===============================
-  Widget _connectionTile(
-    String title,
-    bool active,
-    Color accent,
-  ) {
-
+  Widget _connectionTile(String title, bool active, Color accent) {
     return Row(
       children: [
-
         Container(
           width: 14.w,
           height: 14.w,
@@ -1300,15 +939,11 @@ class _UsbConnectContentState
           decoration: BoxDecoration(
             shape: BoxShape.circle,
 
-            color: active
-                ? Colors.greenAccent
-                : Colors.redAccent,
+            color: active ? Colors.greenAccent : Colors.redAccent,
 
             boxShadow: [
               BoxShadow(
-                color: active
-                    ? Colors.greenAccent
-                    : Colors.redAccent,
+                color: active ? Colors.greenAccent : Colors.redAccent,
 
                 blurRadius: 12,
               ),
@@ -1327,27 +962,20 @@ class _UsbConnectContentState
 
               fontSize: 16.sp,
 
-              fontWeight:
-                  FontWeight.w600,
+              fontWeight: FontWeight.w600,
             ),
           ),
         ),
 
         Text(
-          active
-              ? 'Active'
-              : 'Offline',
+          active ? AppStrings.active : AppStrings.offline,
 
           style: TextStyle(
-            color:
-                active
-                ? accent
-                : Colors.redAccent,
+            color: active ? accent : Colors.redAccent,
 
             fontSize: 15.sp,
 
-            fontWeight:
-                FontWeight.bold,
+            fontWeight: FontWeight.bold,
           ),
         ),
       ],
@@ -1364,86 +992,54 @@ class _UsbConnectContentState
     required VoidCallback onTap,
     bool loading = false,
   }) {
-
     return GestureDetector(
-      onTap: loading
-          ? null
-          : onTap,
+      onTap: loading ? null : onTap,
 
       child: AnimatedContainer(
-        duration: const Duration(
-          milliseconds: 250,
-        ),
+        duration: const Duration(milliseconds: 250),
 
         height: 82.h,
 
         decoration: BoxDecoration(
-          borderRadius:
-              BorderRadius.circular(
-                28.r,
-              ),
+          borderRadius: BorderRadius.circular(28.r),
 
-          color: Colors.white
-              .withOpacity(0.05),
+          color: Colors.white.withValues(alpha: 0.05),
 
-          border: Border.all(
-            color: accent.withOpacity(
-              0.25,
-            ),
-          ),
+          border: Border.all(color: accent.withValues(alpha: 0.25)),
 
           boxShadow: [
-            BoxShadow(
-              color: accent.withOpacity(
-                0.14,
-              ),
-
-              blurRadius: 20,
-            ),
+            BoxShadow(color: accent.withValues(alpha: 0.14), blurRadius: 20),
           ],
         ),
 
         child: Row(
-          mainAxisAlignment:
-              MainAxisAlignment.center,
+          mainAxisAlignment: MainAxisAlignment.center,
 
           children: [
-
             loading
                 ? SizedBox(
                     width: 24.w,
                     height: 24.w,
 
-                    child:
-                        CircularProgressIndicator(
-                          strokeWidth: 2,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
 
-                          valueColor:
-                              AlwaysStoppedAnimation(
-                                accent,
-                              ),
-                        ),
+                      valueColor: AlwaysStoppedAnimation(accent),
+                    ),
                   )
-                : Icon(
-                    icon,
-                    color: accent,
-                    size: 28.sp,
-                  ),
+                : Icon(icon, color: accent, size: 28.sp),
 
             SizedBox(width: 14.w),
 
             Text(
-              loading
-                  ? 'Connecting...'
-                  : title,
+              loading ? 'Connecting...' : title,
 
               style: TextStyle(
                 color: Colors.white,
 
                 fontSize: 18.sp,
 
-                fontWeight:
-                    FontWeight.bold,
+                fontWeight: FontWeight.bold,
               ),
             ),
           ],

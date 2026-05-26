@@ -5,11 +5,14 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:frontend/core/localization/app_strings.dart';
 import 'package:frontend/core/model/pothole.dart';
+import 'package:frontend/core/navigation/app_language_control.dart';
 import 'package:frontend/core/provider/gps_provider.dart';
 import 'package:frontend/core/provider/pothole_provider.dart';
 import 'package:frontend/core/services/route_service.dart';
 import 'package:frontend/core/themes/car_theme.dart';
+import 'package:frontend/core/utils/pothole_detection_engine.dart';
 import 'package:http/http.dart' as http;
 import 'package:latlong2/latlong.dart';
 import 'package:provider/provider.dart';
@@ -25,7 +28,10 @@ class _MapDetailPageState extends State<MapDetailPage> {
   final MapController _mapController = MapController();
   final TextEditingController _searchController = TextEditingController();
   final RouteService _routeService = RouteService();
+  PotholeProvider? _potholeProvider;
 
+  Pothole? _hazardAhead;
+  double? _hazardAheadDistanceKm;
   double _zoom = 18;
   bool _followCar = true;
   bool _alertsEnabled = true;
@@ -38,6 +44,9 @@ class _MapDetailPageState extends State<MapDetailPage> {
   LatLng? _destinationPosition;
   String? _destinationName;
   String? _routeError;
+  String _navTitle = AppStrings.readyForNavigation;
+  String _navSubtitle = AppStrings.searchDestinationToStart;
+  double _remainingDistanceKm = 0;
   double _currentHeading = 0;
   double _smoothHeading = 0;
   double _smoothMapRotation = 0;
@@ -45,23 +54,44 @@ class _MapDetailPageState extends State<MapDetailPage> {
   List<LatLng> _routePoints = [];
   List<_PlaceSearchResult> _searchResults = [];
   Timer? _searchDebounce;
+  IconData _navIcon = Icons.navigation;
 
   @override
   void initState() {
     super.initState();
+    AppLanguageControl.languageCode.addListener(_onLanguageChanged);
 
     Future.microtask(() {
       if (mounted) {
-        context.read<PotholeProvider>().loadPotholes();
+        final potholeProvider = context.read<PotholeProvider>();
+        _potholeProvider = potholeProvider;
+        potholeProvider.bindGps(context.read<GPSProvider>());
+        potholeProvider.attachRealtime();
       }
     });
   }
 
   @override
   void dispose() {
+    AppLanguageControl.languageCode.removeListener(_onLanguageChanged);
     _searchDebounce?.cancel();
     _searchController.dispose();
+    _potholeProvider?.detachRealtime();
     super.dispose();
+  }
+
+  void _onLanguageChanged() {
+    if (!mounted) return;
+
+    setState(() {
+      if (_destinationPosition == null || _routePoints.length < 2) {
+        _navTitle = AppStrings.readyForNavigation;
+        _navSubtitle = AppStrings.searchDestinationToStart;
+      } else if (_routeError != null) {
+        _navTitle = AppStrings.routeUnavailable;
+        _navSubtitle = AppStrings.pleaseTryAnotherDestination;
+      }
+    });
   }
 
   double _distanceKm(LatLng a, LatLng b) {
@@ -121,29 +151,6 @@ class _MapDetailPageState extends State<MapDetailPage> {
     _mapController.move(position, _zoom);
   }
 
-  List<Pothole> _activeHazards(List<Pothole> potholes) {
-    return potholes.where((p) => p.category != "normal").toList()
-      ..sort((a, b) => b.severity.compareTo(a.severity));
-  }
-
-  Pothole? _nearestHazard(LatLng position, List<Pothole> hazards) {
-    if (hazards.isEmpty) return null;
-
-    Pothole? nearest;
-    double? nearestDistance;
-
-    for (final hazard in hazards) {
-      final distance = _distanceKm(position, LatLng(hazard.lat, hazard.lng));
-
-      if (nearestDistance == null || distance < nearestDistance) {
-        nearest = hazard;
-        nearestDistance = distance;
-      }
-    }
-
-    return nearest;
-  }
-
   double _routeLengthKm(List<LatLng> points) {
     if (points.length < 2) return 0;
 
@@ -196,14 +203,13 @@ class _MapDetailPageState extends State<MapDetailPage> {
       }
 
       final decoded = jsonDecode(response.body) as List;
-      final results =
-          decoded
-              .map((item) {
-                final json = item as Map<String, dynamic>;
-                return _PlaceSearchResult.fromJson(json);
-              })
-              .where((item) => item.name.isNotEmpty)
-              .toList();
+      final results = decoded
+          .map((item) {
+            final json = item as Map<String, dynamic>;
+            return _PlaceSearchResult.fromJson(json);
+          })
+          .where((item) => item.name.isNotEmpty)
+          .toList();
 
       setState(() {
         _searchResults = results;
@@ -215,7 +221,7 @@ class _MapDetailPageState extends State<MapDetailPage> {
       setState(() {
         _searchResults = [];
         _isSearching = false;
-        _routeError = "Destination search unavailable";
+        _routeError = AppStrings.destinationSearchUnavailable;
       });
     }
   }
@@ -245,7 +251,11 @@ class _MapDetailPageState extends State<MapDetailPage> {
       _searchResults = [];
       _routePoints = [];
       _routeDistanceKm = 0;
+      _remainingDistanceKm = 0;
       _routeError = null;
+      _navTitle = AppStrings.calculatingRoute;
+      _navSubtitle = AppStrings.preparingNavigation;
+      _navIcon = Icons.route;
       _searchController.text = result.name;
     });
 
@@ -256,22 +266,133 @@ class _MapDetailPageState extends State<MapDetailPage> {
 
       if (!mounted) return;
 
+      final distance = _routeLengthKm(route);
+
       setState(() {
         _routePoints = route;
-        _routeDistanceKm = _routeLengthKm(route);
+        _routeDistanceKm = distance;
+        _remainingDistanceKm = distance;
         _isRouting = false;
+        _followCar = true;
+
+        _navTitle = AppStrings.continueStraight;
+        _navSubtitle = AppStrings.kmRemaining(distance);
+        _navIcon = Icons.straight;
       });
 
-      _mapController.move(result.position, 15);
+      _updateNavigationInstruction(start);
+      _updateCamera(start);
     } catch (_) {
       if (!mounted) return;
 
       setState(() {
         _isRouting = false;
-        _routeError = "Route could not be loaded";
+        _routeError = AppStrings.routeCouldNotBeLoaded;
+        _followCar = true;
+
+        _navTitle = AppStrings.routeUnavailable;
+        _navSubtitle = AppStrings.pleaseTryAnotherDestination;
+        _navIcon = Icons.info_outline;
       });
 
-      _mapController.move(result.position, 15);
+      _updateCamera(start);
+    }
+  }
+
+  int _nearestRouteIndex(LatLng current, List<LatLng> route) {
+    int nearestIndex = 0;
+    double nearestDistance = double.infinity;
+
+    for (int i = 0; i < route.length; i++) {
+      final distance = _distanceKm(current, route[i]);
+      if (distance < nearestDistance) {
+        nearestDistance = distance;
+        nearestIndex = i;
+      }
+    }
+
+    return nearestIndex;
+  }
+
+  double _bearingBetween(LatLng from, LatLng to) {
+    final lat1 = from.latitude * pi / 180;
+    final lat2 = to.latitude * pi / 180;
+    final dLon = (to.longitude - from.longitude) * pi / 180;
+
+    final y = sin(dLon) * cos(lat2);
+    final x = cos(lat1) * sin(lat2) - sin(lat1) * cos(lat2) * cos(dLon);
+
+    return (atan2(y, x) * 180 / pi + 360) % 360;
+  }
+
+  void _updateNavigationInstruction(LatLng current) {
+    if (_destinationPosition == null || _routePoints.length < 2) {
+      _navTitle = AppStrings.readyForNavigation;
+      _navSubtitle = AppStrings.searchDestinationToStart;
+      _navIcon = Icons.navigation;
+      _remainingDistanceKm = 0;
+      return;
+    }
+
+    final nearestIndex = _nearestRouteIndex(current, _routePoints);
+
+    if (nearestIndex >= _routePoints.length - 2) {
+      final distanceToDestination = _distanceKm(current, _routePoints.last);
+
+      _remainingDistanceKm = distanceToDestination;
+
+      if (distanceToDestination < 0.01) {
+        _navTitle = AppStrings.destinationReached;
+        _navSubtitle = AppStrings.youHaveArrived;
+        _navIcon = Icons.flag;
+      } else {
+        _navTitle = AppStrings.arrivingSoon;
+        _navSubtitle = AppStrings.metersRemaining(
+          (distanceToDestination * 1000).round(),
+        );
+        _navIcon = Icons.flag;
+      }
+
+      return;
+    }
+
+    final nextIndex = (nearestIndex + 8).clamp(0, _routePoints.length - 1);
+    final nextPoint = _routePoints[nextIndex];
+
+    final routeBearing = _bearingBetween(current, nextPoint);
+    final diff = ((routeBearing - _currentHeading + 540) % 360) - 180;
+
+    double remaining = 0;
+    for (int i = nearestIndex + 1; i < _routePoints.length; i++) {
+      remaining += _distanceKm(_routePoints[i - 1], _routePoints[i]);
+    }
+
+    _remainingDistanceKm = remaining;
+
+    if (diff.abs() < 25) {
+      _navTitle = AppStrings.continueStraight;
+      _navSubtitle = AppStrings.kmRemaining(remaining);
+      _navIcon = Icons.straight;
+    } else if (diff >= 25 && diff < 70) {
+      _navTitle = AppStrings.slightRightAhead;
+      _navSubtitle = AppStrings.kmRemaining(remaining);
+      _navIcon = Icons.turn_slight_right;
+    } else if (diff <= -25 && diff > -70) {
+      _navTitle = AppStrings.slightLeftAhead;
+      _navSubtitle = AppStrings.kmRemaining(remaining);
+      _navIcon = Icons.turn_slight_left;
+    } else if (diff >= 70 && diff < 140) {
+      _navTitle = AppStrings.turnRightAhead;
+      _navSubtitle = AppStrings.kmRemaining(remaining);
+      _navIcon = Icons.turn_right;
+    } else if (diff <= -70 && diff > -140) {
+      _navTitle = AppStrings.turnLeftAhead;
+      _navSubtitle = AppStrings.kmRemaining(remaining);
+      _navIcon = Icons.turn_left;
+    } else {
+      _navTitle = AppStrings.makeUTurn;
+      _navSubtitle = AppStrings.realignToRoute;
+      _navIcon = Icons.u_turn_left;
     }
   }
 
@@ -282,9 +403,33 @@ class _MapDetailPageState extends State<MapDetailPage> {
       _searchResults = [];
       _routePoints = [];
       _routeDistanceKm = 0;
+      _remainingDistanceKm = 0;
       _routeError = null;
+      _navTitle = AppStrings.readyForNavigation;
+      _navSubtitle = AppStrings.searchDestinationToStart;
+      _navIcon = Icons.navigation;
       _searchController.clear();
     });
+  }
+
+  Pothole? _findHazardAhead(LatLng current, List<Pothole> hazards) {
+    final closest = PotholeDetectionEngine.findHazardAhead(
+      current: current,
+      heading: _currentHeading,
+      hazards: hazards,
+      radiusKm: 0.08,
+    );
+
+    if (closest == null) {
+      _hazardAheadDistanceKm = null;
+      return null;
+    }
+
+    _hazardAheadDistanceKm = _distanceKm(
+      current,
+      LatLng(closest.lat, closest.lng),
+    );
+    return closest;
   }
 
   @override
@@ -292,10 +437,9 @@ class _MapDetailPageState extends State<MapDetailPage> {
     return Consumer2<GPSProvider, PotholeProvider>(
       builder: (context, gps, potholeProvider, _) {
         final hasGps = gps.current != null;
-        final rawPosition =
-            hasGps
-                ? LatLng(gps.current!.lat, gps.current!.lng)
-                : const LatLng(-6.3, 107.2);
+        final rawPosition = hasGps
+            ? LatLng(gps.current!.lat, gps.current!.lng)
+            : const LatLng(-6.3, 107.2);
 
         if (hasGps) {
           _currentHeading = gps.current!.heading;
@@ -305,16 +449,29 @@ class _MapDetailPageState extends State<MapDetailPage> {
             _currentHeading,
             0.11,
           );
-          _smoothCarPosition =
-              _smoothCarPosition == null
-                  ? rawPosition
-                  : _lerpLatLng(_smoothCarPosition!, rawPosition, 0.22);
+          _smoothCarPosition = _smoothCarPosition == null
+              ? rawPosition
+              : _lerpLatLng(_smoothCarPosition!, rawPosition, 0.22);
           _updateCamera(_smoothCarPosition!);
         }
 
         final position = _smoothCarPosition ?? rawPosition;
-        final hazards = _activeHazards(potholeProvider.potholes);
-        final nearestHazard = _nearestHazard(position, hazards);
+        if (hasGps) {
+          _updateNavigationInstruction(position);
+        }
+        final hazards = potholeProvider.activeHazards;
+        _hazardAhead = hasGps ? _findHazardAhead(position, hazards) : null;
+        final potholeRouteSegments = PotholeDetectionEngine.routeHazardPoints(
+          _routePoints,
+          hazards,
+          "pothole",
+        );
+
+        final bumperRouteSegments = PotholeDetectionEngine.routeHazardPoints(
+          _routePoints,
+          hazards,
+          "bumper",
+        );
 
         return ValueListenableBuilder(
           valueListenable: CarThemes.currentTheme,
@@ -353,26 +510,21 @@ class _MapDetailPageState extends State<MapDetailPage> {
                         ),
                         if (_trafficLayer)
                           CircleLayer(
-                            circles:
-                                hazards.map((hazard) {
-                                  final isPothole =
-                                      hazard.category == "pothole";
+                            circles: hazards.map((hazard) {
+                              final isPothole = hazard.category == "pothole";
 
-                                  return CircleMarker(
-                                    point: LatLng(hazard.lat, hazard.lng),
-                                    radius: isPothole ? 58 : 42,
-                                    useRadiusInMeter: true,
-                                    color: (isPothole
-                                            ? Colors.red
-                                            : Colors.amber)
-                                        .withValues(alpha: 0.18),
-                                    borderStrokeWidth: 2,
-                                    borderColor: (isPothole
-                                            ? Colors.red
-                                            : Colors.amber)
+                              return CircleMarker(
+                                point: LatLng(hazard.lat, hazard.lng),
+                                radius: isPothole ? 58 : 42,
+                                useRadiusInMeter: true,
+                                color: (isPothole ? Colors.red : Colors.amber)
+                                    .withValues(alpha: 0.18),
+                                borderStrokeWidth: 2,
+                                borderColor:
+                                    (isPothole ? Colors.red : Colors.amber)
                                         .withValues(alpha: 0.5),
-                                  );
-                                }).toList(),
+                              );
+                            }).toList(),
                           ),
                         if (_routePoints.isNotEmpty)
                           PolylineLayer(
@@ -386,6 +538,19 @@ class _MapDetailPageState extends State<MapDetailPage> {
                                 points: _routePoints,
                                 strokeWidth: 4.w,
                                 color: accent,
+                              ),
+                              // ================= POTHOLE ROUTE =================
+                              Polyline(
+                                points: potholeRouteSegments,
+                                strokeWidth: 8,
+                                color: Colors.redAccent,
+                              ),
+
+                              // ================= BUMPER ROUTE =================
+                              Polyline(
+                                points: bumperRouteSegments,
+                                strokeWidth: 8,
+                                color: Colors.yellowAccent,
                               ),
                             ],
                           ),
@@ -485,14 +650,12 @@ class _MapDetailPageState extends State<MapDetailPage> {
                               ),
                             ...hazards.map((hazard) {
                               final isPothole = hazard.category == "pothole";
-                              final color =
-                                  isPothole
-                                      ? Colors.redAccent
-                                      : Colors.amberAccent;
-                              final icon =
-                                  isPothole
-                                      ? Icons.report_problem
-                                      : Icons.speed;
+                              final color = isPothole
+                                  ? Colors.redAccent
+                                  : Colors.amberAccent;
+                              final icon = isPothole
+                                  ? Icons.report_problem
+                                  : Icons.speed;
 
                               return Marker(
                                 point: LatLng(hazard.lat, hazard.lng),
@@ -602,21 +765,16 @@ class _MapDetailPageState extends State<MapDetailPage> {
                               crossAxisAlignment: CrossAxisAlignment.stretch,
                               children: [
                                 _RoutePanel(
+                                  navTitle: _navTitle,
+                                  navSubtitle: _navSubtitle,
+                                  navIcon: _navIcon,
+                                  hazardAhead: _hazardAhead,
+                                  hazardAheadDistance: _hazardAheadDistanceKm,
+                                  remainingDistanceKm: _remainingDistanceKm,
                                   accent: accent,
                                   hasGps: hasGps,
                                   speed: gps.current?.speed ?? 0,
                                   heading: _currentHeading,
-                                  nearestHazard: nearestHazard,
-                                  nearestDistance:
-                                      nearestHazard == null
-                                          ? null
-                                          : _distanceKm(
-                                            position,
-                                            LatLng(
-                                              nearestHazard.lat,
-                                              nearestHazard.lng,
-                                            ),
-                                          ),
                                   destinationName: _destinationName,
                                   routeDistanceKm: _routeDistanceKm,
                                   isRouting: _isRouting,
@@ -626,11 +784,10 @@ class _MapDetailPageState extends State<MapDetailPage> {
                                   accent: accent,
                                   hazards: hazards,
                                   position: position,
-                                  distanceBuilder:
-                                      (hazard) => _distanceKm(
-                                        position,
-                                        LatLng(hazard.lat, hazard.lng),
-                                      ),
+                                  distanceBuilder: (hazard) => _distanceKm(
+                                    position,
+                                    LatLng(hazard.lat, hazard.lng),
+                                  ),
                                   alertsEnabled: _alertsEnabled,
                                   trafficLayer: _trafficLayer,
                                   followCar: _followCar,
@@ -662,6 +819,11 @@ class _MapDetailPageState extends State<MapDetailPage> {
                             zoom: _zoom,
                             hazardCount: hazards.length,
                             alertsEnabled: _alertsEnabled,
+                            speed: gps.current?.speed ?? 0,
+                            heading: _currentHeading,
+                            remainingDistanceKm: _remainingDistanceKm,
+                            hazardAhead: _hazardAhead,
+                            hazardAheadDistance: _hazardAheadDistanceKm,
                           ),
                         ],
                       ),
@@ -703,14 +865,14 @@ class _TopCommandBar extends StatelessWidget {
           _IconAction(
             icon: Icons.arrow_back,
             accent: accent,
-            tooltip: "Back",
+            tooltip: AppStrings.back,
             onTap: onBack,
           ),
           SizedBox(width: 16.w),
           Icon(Icons.map, color: accent, size: 26.sp),
           SizedBox(width: 10.w),
           Text(
-            "Smart Navigation",
+            AppStrings.smartNavigation,
             style: TextStyle(
               color: Colors.white,
               fontSize: 20.sp,
@@ -728,7 +890,7 @@ class _TopCommandBar extends StatelessWidget {
           ),
           SizedBox(width: 7.w),
           Text(
-            hasGps ? "GPS locked" : "Searching GPS",
+            hasGps ? AppStrings.gpsLocked : AppStrings.searchingGps,
             style: TextStyle(
               color: Colors.white70,
               fontSize: 13.sp,
@@ -738,11 +900,15 @@ class _TopCommandBar extends StatelessWidget {
           const Spacer(),
           _ChipStatus(
             icon: Icons.route,
-            label: "Adaptive route",
+            label: AppStrings.adaptiveRoute,
             accent: accent,
           ),
           SizedBox(width: 10.w),
-          _ChipStatus(icon: Icons.shield, label: "Road guard", accent: accent),
+          _ChipStatus(
+            icon: Icons.shield,
+            label: AppStrings.roadGuard,
+            accent: accent,
+          ),
         ],
       ),
     );
@@ -809,7 +975,7 @@ class _DestinationSearchBar extends StatelessWidget {
                       ),
                       decoration: InputDecoration(
                         border: InputBorder.none,
-                        hintText: "Search destination",
+                        hintText: AppStrings.searchDestination,
                         hintStyle: TextStyle(
                           color: Colors.white38,
                           fontSize: 15.sp,
@@ -921,11 +1087,10 @@ class _DestinationSearchBar extends StatelessWidget {
                       ),
                     );
                   },
-                  separatorBuilder:
-                      (_, __) => Divider(
-                        height: 1,
-                        color: Colors.white.withValues(alpha: 0.08),
-                      ),
+                  separatorBuilder: (_, __) => Divider(
+                    height: 1,
+                    color: Colors.white.withValues(alpha: 0.08),
+                  ),
                   itemCount: results.length,
                 ),
               )
@@ -939,10 +1104,9 @@ class _DestinationSearchBar extends StatelessWidget {
               _SearchStatusCard(
                 accent: Colors.greenAccent,
                 icon: Icons.flag,
-                text:
-                    routeDistanceKm > 0
-                        ? "$destinationName - ${routeDistanceKm.toStringAsFixed(1)} km"
-                        : destinationName!,
+                text: routeDistanceKm > 0
+                    ? "$destinationName - ${routeDistanceKm.toStringAsFixed(1)} km"
+                    : destinationName!,
               ),
           ],
         ),
@@ -999,35 +1163,44 @@ class _RoutePanel extends StatelessWidget {
     required this.hasGps,
     required this.speed,
     required this.heading,
-    required this.nearestHazard,
-    required this.nearestDistance,
     required this.destinationName,
     required this.routeDistanceKm,
     required this.isRouting,
+    required this.navTitle,
+    required this.navSubtitle,
+    required this.navIcon,
+    required this.remainingDistanceKm,
+    required this.hazardAhead,
+    required this.hazardAheadDistance,
   });
 
   final Color accent;
   final bool hasGps;
   final double speed;
   final double heading;
-  final Pothole? nearestHazard;
-  final double? nearestDistance;
   final String? destinationName;
   final double routeDistanceKm;
   final bool isRouting;
+  final String navTitle;
+  final String navSubtitle;
+  final IconData navIcon;
+  final double remainingDistanceKm;
+  final Pothole? hazardAhead;
+  final double? hazardAheadDistance;
 
   @override
   Widget build(BuildContext context) {
-    final hazardTitle =
-        nearestHazard == null
-            ? "Clear road"
-            : nearestHazard!.category == "pothole"
-            ? "Pothole ahead"
-            : "Speed bump ahead";
-    final hazardDistance =
-        nearestDistance == null
-            ? "No hazard nearby"
-            : "${(nearestDistance! * 1000).round()} m";
+    final hasHazardAhead = hazardAhead != null && hazardAheadDistance != null;
+
+    final hazardAheadTitle = !hasHazardAhead
+        ? AppStrings.routeClear
+        : hazardAhead!.category == "pothole"
+        ? AppStrings.potholeAhead
+        : AppStrings.speedBumpAhead;
+
+    final hazardAheadSubtitle = !hasHazardAhead
+        ? AppStrings.noHazardInFront
+        : AppStrings.metersAhead((hazardAheadDistance! * 1000).round());
 
     return Container(
       width: 310.w,
@@ -1043,7 +1216,7 @@ class _RoutePanel extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              "Destination",
+              AppStrings.destination,
               style: TextStyle(
                 color: Colors.white54,
                 fontSize: 11.sp,
@@ -1052,7 +1225,7 @@ class _RoutePanel extends StatelessWidget {
             ),
             SizedBox(height: 6.h),
             Text(
-              destinationName ?? "Search a destination",
+              destinationName ?? AppStrings.searchADestination,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
               style: TextStyle(
@@ -1064,10 +1237,10 @@ class _RoutePanel extends StatelessWidget {
             SizedBox(height: 5.h),
             Text(
               isRouting
-                  ? "Calculating route..."
+                  ? AppStrings.calculatingRoute
                   : routeDistanceKm > 0
-                  ? "${routeDistanceKm.toStringAsFixed(1)} km route loaded"
-                  : "Ready for navigation",
+                  ? AppStrings.routeLoaded(routeDistanceKm)
+                  : AppStrings.readyForNavigation,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
               style: TextStyle(
@@ -1081,7 +1254,7 @@ class _RoutePanel extends StatelessWidget {
               children: [
                 Expanded(
                   child: _MetricTile(
-                    label: "Speed",
+                    label: AppStrings.speed,
                     value: speed.toStringAsFixed(0),
                     unit: "km/h",
                     accent: accent,
@@ -1090,7 +1263,7 @@ class _RoutePanel extends StatelessWidget {
                 SizedBox(width: 10.w),
                 Expanded(
                   child: _MetricTile(
-                    label: "Heading",
+                    label: AppStrings.heading,
                     value: heading.toStringAsFixed(0),
                     unit: "deg",
                     accent: accent,
@@ -1102,8 +1275,15 @@ class _RoutePanel extends StatelessWidget {
             Container(
               padding: EdgeInsets.all(13.w),
               decoration: BoxDecoration(
-                color: Colors.white.withValues(alpha: 0.08),
+                color: hasHazardAhead
+                    ? Colors.redAccent.withValues(alpha: 0.14)
+                    : Colors.white.withValues(alpha: 0.08),
                 borderRadius: BorderRadius.circular(15.r),
+                border: Border.all(
+                  color: hasHazardAhead
+                      ? Colors.redAccent.withValues(alpha: 0.5)
+                      : Colors.transparent,
+                ),
               ),
               child: Row(
                 children: [
@@ -1112,14 +1292,17 @@ class _RoutePanel extends StatelessWidget {
                     height: 40.w,
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
-                      color: accent.withValues(alpha: 0.14),
+                      color: hasHazardAhead
+                          ? Colors.redAccent.withValues(alpha: 0.18)
+                          : Colors.greenAccent.withValues(alpha: 0.12),
                     ),
                     child: Icon(
-                      nearestHazard == null
-                          ? Icons.check_circle
-                          : Icons.warning_rounded,
-                      color:
-                          nearestHazard == null ? Colors.greenAccent : accent,
+                      hasHazardAhead
+                          ? Icons.warning_rounded
+                          : Icons.check_circle,
+                      color: hasHazardAhead
+                          ? Colors.redAccent
+                          : Colors.greenAccent,
                       size: 23.sp,
                     ),
                   ),
@@ -1129,7 +1312,7 @@ class _RoutePanel extends StatelessWidget {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          hazardTitle,
+                          hazardAheadTitle,
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                           style: TextStyle(
@@ -1140,7 +1323,7 @@ class _RoutePanel extends StatelessWidget {
                         ),
                         SizedBox(height: 3.h),
                         Text(
-                          hazardDistance,
+                          hazardAheadSubtitle,
                           style: TextStyle(
                             color: Colors.white60,
                             fontSize: 12.sp,
@@ -1156,21 +1339,23 @@ class _RoutePanel extends StatelessWidget {
             SizedBox(height: 13.h),
             _RouteStep(
               accent: accent,
-              icon: Icons.straight,
-              title: "Continue ahead",
-              subtitle: hasGps ? "Keep current lane" : "Waiting for GPS fix",
+              icon: navIcon,
+              title: navTitle,
+              subtitle: hasGps ? navSubtitle : AppStrings.waitingGpsFix,
               active: true,
             ),
             _RouteStep(
               accent: accent,
-              icon: Icons.turn_right,
-              title: "Next maneuver",
-              subtitle: "Route guidance standby",
-              active: false,
+              icon: Icons.route,
+              title: AppStrings.routeTracking,
+              subtitle: remainingDistanceKm > 0
+                  ? AppStrings.kmRemaining(remainingDistanceKm)
+                  : AppStrings.noActiveRoute,
+              active: remainingDistanceKm > 0,
             ),
             SizedBox(height: 6.h),
             Text(
-              "Navigation surface",
+              AppStrings.navigationSurface,
               style: TextStyle(
                 color: Colors.white38,
                 fontSize: 10.sp,
@@ -1241,37 +1426,37 @@ class _HazardPanel extends StatelessWidget {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 _IconAction(
-                  icon:
-                      followCar ? Icons.my_location : Icons.location_searching,
+                  icon: followCar
+                      ? Icons.my_location
+                      : Icons.location_searching,
                   accent: followCar ? Colors.greenAccent : accent,
-                  tooltip: "Follow vehicle",
+                  tooltip: AppStrings.followVehicle,
                   onTap: onFollow,
                 ),
                 _IconAction(
-                  icon:
-                      alertsEnabled
-                          ? Icons.notifications_active
-                          : Icons.notifications_off,
+                  icon: alertsEnabled
+                      ? Icons.notifications_active
+                      : Icons.notifications_off,
                   accent: alertsEnabled ? Colors.greenAccent : Colors.redAccent,
-                  tooltip: "Toggle alerts",
+                  tooltip: AppStrings.toggleAlerts,
                   onTap: onAlertToggle,
                 ),
                 _IconAction(
                   icon: trafficLayer ? Icons.layers : Icons.layers_clear,
                   accent: trafficLayer ? accent : Colors.white54,
-                  tooltip: "Toggle hazard layer",
+                  tooltip: AppStrings.toggleHazardLayer,
                   onTap: onTrafficToggle,
                 ),
                 _IconAction(
                   icon: Icons.add,
                   accent: accent,
-                  tooltip: "Zoom in",
+                  tooltip: AppStrings.zoomIn,
                   onTap: onZoomIn,
                 ),
                 _IconAction(
                   icon: Icons.remove,
                   accent: accent,
-                  tooltip: "Zoom out",
+                  tooltip: AppStrings.zoomOut,
                   onTap: onZoomOut,
                 ),
               ],
@@ -1298,7 +1483,7 @@ class _HazardPanel extends StatelessWidget {
                       ),
                       SizedBox(width: 8.w),
                       Text(
-                        "Road Alerts",
+                        AppStrings.roadAlerts,
                         style: TextStyle(
                           color: Colors.white,
                           fontSize: 18.sp,
@@ -1321,7 +1506,7 @@ class _HazardPanel extends StatelessWidget {
                     Expanded(
                       child: Center(
                         child: Text(
-                          "No active hazard",
+                          AppStrings.noActiveHazard,
                           style: TextStyle(
                             color: Colors.white54,
                             fontSize: 14.sp,
@@ -1337,8 +1522,9 @@ class _HazardPanel extends StatelessWidget {
                         itemBuilder: (context, index) {
                           final hazard = closest[index];
                           final isPothole = hazard.category == "pothole";
-                          final color =
-                              isPothole ? Colors.redAccent : Colors.amberAccent;
+                          final color = isPothole
+                              ? Colors.redAccent
+                              : Colors.amberAccent;
 
                           return _HazardTile(
                             color: color,
@@ -1367,15 +1553,29 @@ class _TelemetryStrip extends StatelessWidget {
     required this.zoom,
     required this.hazardCount,
     required this.alertsEnabled,
+    required this.speed,
+    required this.heading,
+    required this.remainingDistanceKm,
+    required this.hazardAhead,
+    required this.hazardAheadDistance,
   });
 
   final Color accent;
   final double zoom;
   final int hazardCount;
   final bool alertsEnabled;
+  final double speed;
+  final double heading;
+  final double remainingDistanceKm;
+  final Pothole? hazardAhead;
+  final double? hazardAheadDistance;
 
   @override
   Widget build(BuildContext context) {
+    final hazardAheadLabel = hazardAhead?.category == "pothole"
+        ? AppStrings.pothole
+        : AppStrings.speedBump;
+
     return Container(
       height: 64.h,
       padding: EdgeInsets.symmetric(horizontal: 18.w),
@@ -1386,30 +1586,50 @@ class _TelemetryStrip extends StatelessWidget {
       ),
       child: Row(
         children: [
-          _StripMetric(label: "Mode", value: "Drive", accent: accent),
-          _DividerLine(),
           _StripMetric(
-            label: "Map Zoom",
-            value: zoom.toStringAsFixed(0),
+            label: AppStrings.speed,
+            value: "${speed.toStringAsFixed(0)} km/h",
             accent: accent,
           ),
           _DividerLine(),
           _StripMetric(
-            label: "Hazards",
+            label: AppStrings.heading,
+            value: "${heading.toStringAsFixed(0)}°",
+            accent: accent,
+          ),
+          _DividerLine(),
+          _StripMetric(
+            label: AppStrings.remaining,
+            value: remainingDistanceKm > 0
+                ? "${remainingDistanceKm.toStringAsFixed(1)} km"
+                : "--",
+            accent: accent,
+          ),
+          _DividerLine(),
+          _StripMetric(
+            label: AppStrings.hazards,
             value: hazardCount.toString(),
-            accent: accent,
+            accent: hazardCount > 0 ? Colors.orangeAccent : Colors.greenAccent,
           ),
           _DividerLine(),
           _StripMetric(
-            label: "Alerts",
-            value: alertsEnabled ? "Armed" : "Muted",
+            label: AppStrings.ahead,
+            value: hazardAhead == null
+                ? AppStrings.clear
+                : "$hazardAheadLabel ${(hazardAheadDistance! * 1000).round()}m",
+            accent: hazardAhead == null ? Colors.greenAccent : Colors.redAccent,
+          ),
+          _DividerLine(),
+          _StripMetric(
+            label: AppStrings.alerts,
+            value: alertsEnabled ? AppStrings.armed : AppStrings.muted,
             accent: alertsEnabled ? Colors.greenAccent : Colors.redAccent,
           ),
           const Spacer(),
-          Icon(Icons.explore, color: accent, size: 22.sp),
+          Icon(Icons.directions_car, color: accent, size: 22.sp),
           SizedBox(width: 8.w),
           Text(
-            "Toyota In Car Connectivity",
+            AppStrings.smartPotholeNavigation,
             style: TextStyle(
               color: Colors.white54,
               fontSize: 12.sp,
@@ -1570,6 +1790,10 @@ class _HazardTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final categoryLabel = category == "pothole"
+        ? AppStrings.pothole
+        : AppStrings.speedBump;
+
     return Container(
       padding: EdgeInsets.all(12.w),
       decoration: BoxDecoration(
@@ -1589,7 +1813,7 @@ class _HazardTile extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  category.toUpperCase(),
+                  categoryLabel.toUpperCase(),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: TextStyle(
@@ -1600,7 +1824,7 @@ class _HazardTile extends StatelessWidget {
                 ),
                 SizedBox(height: 3.h),
                 Text(
-                  "Severity ${severity.toStringAsFixed(1)}",
+                  AppStrings.severityValue(severity),
                   style: TextStyle(
                     color: Colors.white54,
                     fontSize: 11.sp,

@@ -3,6 +3,7 @@ import 'dart:ui';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:frontend/core/localization/app_strings.dart';
 import 'package:frontend/core/themes/car_theme.dart';
 
 class CarInfoContent extends StatefulWidget {
@@ -14,7 +15,6 @@ class CarInfoContent extends StatefulWidget {
 
 class _CarInfoPageState extends State<CarInfoContent>
     with SingleTickerProviderStateMixin {
-
   int selectedDriveMode = 0;
 
   late AnimationController _floatingController;
@@ -33,20 +33,15 @@ class _CarInfoPageState extends State<CarInfoContent>
     )..repeat(reverse: true);
 
     /// REALTIME CLOCK
-    timer = Timer.periodic(
-      const Duration(seconds: 1),
-      (_) {
-
-        setState(() {
-          now = DateTime.now();
-        });
-      },
-    );
+    timer = Timer.periodic(const Duration(seconds: 1), (_) {
+      setState(() {
+        now = DateTime.now();
+      });
+    });
   }
 
   @override
   void dispose() {
-
     _floatingController.dispose();
 
     timer.cancel();
@@ -57,13 +52,8 @@ class _CarInfoPageState extends State<CarInfoContent>
   /// ===============================
   /// ACCENT COLOR
   /// ===============================
-  Color getAccentColor(
-    CarThemeType type,
-    CarThemeData theme,
-  ) {
-
+  Color getAccentColor(CarThemeType type, CarThemeData theme) {
     switch (type) {
-
       case CarThemeType.comfort:
         return const Color(0xFF6CB4FF);
 
@@ -86,18 +76,11 @@ class _CarInfoPageState extends State<CarInfoContent>
 
   @override
   Widget build(BuildContext context) {
+    final currentTheme = CarThemes.currentTheme.value;
 
-    final currentTheme =
-        CarThemes.currentTheme.value;
+    final theme = CarThemes.getTheme(currentTheme);
 
-    final theme =
-        CarThemes.getTheme(currentTheme);
-
-    final accent =
-        getAccentColor(
-          currentTheme,
-          theme,
-        );
+    final accent = getAccentColor(currentTheme, theme);
 
     return Scaffold(
       backgroundColor: Colors.black,
@@ -117,7 +100,6 @@ class _CarInfoPageState extends State<CarInfoContent>
 
         child: Stack(
           children: [
-
             /// =========================
             /// AMBIENT GLOW
             /// =========================
@@ -132,7 +114,7 @@ class _CarInfoPageState extends State<CarInfoContent>
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
 
-                  color: accent.withOpacity(0.18),
+                  color: accent.withValues(alpha: 0.18),
                 ),
               ),
             ),
@@ -148,7 +130,7 @@ class _CarInfoPageState extends State<CarInfoContent>
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
 
-                  color: accent.withOpacity(0.08),
+                  color: accent.withValues(alpha: 0.08),
                 ),
               ),
             ),
@@ -157,16 +139,9 @@ class _CarInfoPageState extends State<CarInfoContent>
             /// BLUR
             /// =========================
             BackdropFilter(
-              filter: ImageFilter.blur(
-                sigmaX: 30,
-                sigmaY: 30,
-              ),
+              filter: ImageFilter.blur(sigmaX: 30, sigmaY: 30),
 
-              child: Container(
-                color: Colors.black.withOpacity(
-                  0.1,
-                ),
-              ),
+              child: Container(color: Colors.black.withValues(alpha: 0.1)),
             ),
 
             SafeArea(
@@ -175,51 +150,37 @@ class _CarInfoPageState extends State<CarInfoContent>
 
                 child: Column(
                   children: [
-
                     /// =====================
                     /// TOP BAR
                     /// =====================
                     Container(
                       height: 90.h,
 
-                      padding: EdgeInsets.symmetric(
-                        horizontal: 28.w,
-                      ),
+                      padding: EdgeInsets.symmetric(horizontal: 28.w),
 
                       decoration: BoxDecoration(
-                        borderRadius:
-                            BorderRadius.circular(
-                              30.r,
-                            ),
+                        borderRadius: BorderRadius.circular(30.r),
 
-                        color: Colors.white
-                            .withOpacity(0.05),
+                        color: Colors.white.withValues(alpha: 0.05),
 
                         border: Border.all(
-                          color: Colors.white
-                              .withOpacity(0.08),
+                          color: Colors.white.withValues(alpha: 0.08),
                         ),
                       ),
 
                       child: Row(
-                        mainAxisAlignment:
-                            MainAxisAlignment
-                                .spaceBetween,
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
 
                         children: [
-
                           /// =================
                           /// LEFT
                           /// =================
                           Row(
                             children: [
-
                               /// BACK BUTTON
                               GestureDetector(
                                 onTap: () {
-                                  Navigator.pop(
-                                    context,
-                                  );
+                                  Navigator.pop(context);
                                 },
 
                                 child: Container(
@@ -227,26 +188,19 @@ class _CarInfoPageState extends State<CarInfoContent>
                                   height: 52.w,
 
                                   decoration: BoxDecoration(
-                                    shape:
-                                        BoxShape.circle,
+                                    shape: BoxShape.circle,
 
-                                    color: Colors.white
-                                        .withOpacity(
-                                          0.06,
-                                        ),
+                                    color: Colors.white.withValues(alpha: 0.06),
 
                                     border: Border.all(
-                                      color: Colors
-                                          .white
-                                          .withOpacity(
-                                            0.08,
-                                          ),
+                                      color: Colors.white.withValues(
+                                        alpha: 0.08,
+                                      ),
                                     ),
                                   ),
 
                                   child: Icon(
-                                    Icons
-                                        .arrow_back_ios_new,
+                                    Icons.arrow_back_ios_new,
 
                                     color: accent,
 
@@ -263,15 +217,13 @@ class _CarInfoPageState extends State<CarInfoContent>
                                 height: 52.w,
 
                                 decoration: BoxDecoration(
-                                  shape:
-                                      BoxShape.circle,
+                                  shape: BoxShape.circle,
 
                                   color: accent,
                                 ),
 
                                 child: Icon(
-                                  Icons
-                                      .directions_car,
+                                  Icons.directions_car,
 
                                   color: Colors.white,
 
@@ -283,41 +235,30 @@ class _CarInfoPageState extends State<CarInfoContent>
 
                               /// VEHICLE INFO
                               Column(
-                                mainAxisAlignment:
-                                    MainAxisAlignment
-                                        .center,
+                                mainAxisAlignment: MainAxisAlignment.center,
 
-                                crossAxisAlignment:
-                                    CrossAxisAlignment
-                                        .start,
+                                crossAxisAlignment: CrossAxisAlignment.start,
 
                                 children: [
-
                                   Text(
                                     'Toyota Veloz',
 
                                     style: TextStyle(
-                                      color:
-                                          Colors.white,
+                                      color: Colors.white,
 
                                       fontSize: 24.sp,
 
-                                      fontWeight:
-                                          FontWeight
-                                              .bold,
+                                      fontWeight: FontWeight.bold,
                                     ),
                                   ),
 
-                                  SizedBox(
-                                    height: 4.h,
-                                  ),
+                                  SizedBox(height: 4.h),
 
                                   Text(
-                                    'Connected Vehicle',
+                                    AppStrings.connectedVehicle,
 
                                     style: TextStyle(
-                                      color: Colors
-                                          .white60,
+                                      color: Colors.white60,
 
                                       fontSize: 14.sp,
                                     ),
@@ -332,58 +273,40 @@ class _CarInfoPageState extends State<CarInfoContent>
                           /// =================
                           Row(
                             children: [
-
-                              _topBarIcon(
-                                Icons.bluetooth,
-                                accent,
-                              ),
+                              _topBarIcon(Icons.bluetooth, accent),
 
                               SizedBox(width: 16.w),
 
-                              _topBarIcon(
-                                Icons.wifi,
-                                accent,
-                              ),
+                              _topBarIcon(Icons.wifi, accent),
 
                               SizedBox(width: 24.w),
 
                               /// REALTIME CLOCK
                               Column(
-                                crossAxisAlignment:
-                                    CrossAxisAlignment
-                                        .end,
+                                crossAxisAlignment: CrossAxisAlignment.end,
 
-                                mainAxisAlignment:
-                                    MainAxisAlignment
-                                        .center,
+                                mainAxisAlignment: MainAxisAlignment.center,
 
                                 children: [
-
                                   Text(
                                     '${now.hour.toString().padLeft(2, '0')}:${now.minute.toString().padLeft(2, '0')}',
 
                                     style: TextStyle(
-                                      color:
-                                          Colors.white,
+                                      color: Colors.white,
 
                                       fontSize: 28.sp,
 
-                                      fontWeight:
-                                          FontWeight
-                                              .bold,
+                                      fontWeight: FontWeight.bold,
                                     ),
                                   ),
 
-                                  SizedBox(
-                                    height: 4.h,
-                                  ),
+                                  SizedBox(height: 4.h),
 
                                   Text(
                                     '${now.day}/${now.month}/${now.year}',
 
                                     style: TextStyle(
-                                      color: Colors
-                                          .white60,
+                                      color: Colors.white60,
 
                                       fontSize: 13.sp,
                                     ),
@@ -404,141 +327,102 @@ class _CarInfoPageState extends State<CarInfoContent>
                     Expanded(
                       child: Row(
                         children: [
-
                           /// =================
                           /// LEFT PANEL
                           /// =================
                           Container(
                             width: 330.w,
 
-                            padding: EdgeInsets.all(
-                              24.w,
-                            ),
+                            padding: EdgeInsets.all(24.w),
 
                             decoration: BoxDecoration(
-                              borderRadius:
-                                  BorderRadius.circular(
-                                    38.r,
-                                  ),
+                              borderRadius: BorderRadius.circular(38.r),
 
-                              color: Colors.white
-                                  .withOpacity(0.05),
+                              color: Colors.white.withValues(alpha: 0.05),
 
                               border: Border.all(
-                                color: Colors.white
-                                    .withOpacity(
-                                      0.08,
-                                    ),
+                                color: Colors.white.withValues(alpha: 0.08),
                               ),
                             ),
 
                             child: SingleChildScrollView(
-                              physics:
-                                  const BouncingScrollPhysics(),
+                              physics: const BouncingScrollPhysics(),
 
                               child: Column(
-                                crossAxisAlignment:
-                                    CrossAxisAlignment
-                                        .start,
+                                crossAxisAlignment: CrossAxisAlignment.start,
 
                                 children: [
-
                                   /// TITLE
                                   Text(
-                                    'Vehicle Status',
+                                    AppStrings.vehicleStatus,
 
                                     style: TextStyle(
-                                      color:
-                                          Colors.white,
+                                      color: Colors.white,
 
                                       fontSize: 26.sp,
 
-                                      fontWeight:
-                                          FontWeight
-                                              .bold,
+                                      fontWeight: FontWeight.bold,
                                     ),
                                   ),
 
-                                  SizedBox(
-                                    height: 28.h,
-                                  ),
+                                  SizedBox(height: 28.h),
 
                                   /// DRIVE MODE
                                   _glassCard(
                                     child: Column(
                                       crossAxisAlignment:
-                                          CrossAxisAlignment
-                                              .start,
+                                          CrossAxisAlignment.start,
 
                                       children: [
-
                                         Text(
-                                          'Drive Mode',
+                                          AppStrings.driveMode,
 
-                                          style:
-                                              TextStyle(
-                                                color:
-                                                    Colors
-                                                        .white,
+                                          style: TextStyle(
+                                            color: Colors.white,
 
-                                                fontSize:
-                                                    18.sp,
+                                            fontSize: 18.sp,
 
-                                                fontWeight:
-                                                    FontWeight
-                                                        .bold,
-                                              ),
+                                            fontWeight: FontWeight.bold,
+                                          ),
                                         ),
 
-                                        SizedBox(
-                                          height: 18.h,
-                                        ),
+                                        SizedBox(height: 18.h),
 
                                         Wrap(
                                           spacing: 10.w,
-                                          runSpacing:
-                                              10.h,
+                                          runSpacing: 10.h,
 
                                           children: [
-
                                             _modeChip(
-                                              title:
-                                                  'Comfort',
+                                              title: AppStrings.comfort,
 
                                               index: 0,
 
-                                              accent:
-                                                  accent,
+                                              accent: accent,
                                             ),
 
                                             _modeChip(
-                                              title:
-                                                  'Eco',
+                                              title: AppStrings.eco,
 
                                               index: 1,
 
-                                              accent:
-                                                  accent,
+                                              accent: accent,
                                             ),
 
                                             _modeChip(
-                                              title:
-                                                  'Sport',
+                                              title: AppStrings.sport,
 
                                               index: 2,
 
-                                              accent:
-                                                  accent,
+                                              accent: accent,
                                             ),
 
                                             _modeChip(
-                                              title:
-                                                  'Custom',
+                                              title: AppStrings.custom,
 
                                               index: 3,
 
-                                              accent:
-                                                  accent,
+                                              accent: accent,
                                             ),
                                           ],
                                         ),
@@ -546,132 +430,85 @@ class _CarInfoPageState extends State<CarInfoContent>
                                     ),
                                   ),
 
-                                  SizedBox(
-                                    height: 20.h,
-                                  ),
+                                  SizedBox(height: 20.h),
 
                                   /// VEHICLE STATUS
                                   _glassCard(
                                     child: Column(
                                       children: [
-
                                         _statusTile(
-                                          icon: Icons
-                                              .local_gas_station,
+                                          icon: Icons.local_gas_station,
 
-                                          title: 'Fuel',
+                                          title: AppStrings.fuel,
 
                                           value: '78%',
 
-                                          accent:
-                                              accent,
+                                          accent: accent,
                                         ),
 
-                                        SizedBox(
-                                          height: 18.h,
-                                        ),
+                                        SizedBox(height: 18.h),
 
                                         _statusTile(
-                                          icon: Icons
-                                              .battery_charging_full,
+                                          icon: Icons.battery_charging_full,
 
-                                          title:
-                                              'Battery',
+                                          title: AppStrings.battery,
 
-                                          value:
-                                              'Healthy',
+                                          value: 'Healthy',
 
-                                          accent:
-                                              accent,
+                                          accent: accent,
                                         ),
 
-                                        SizedBox(
-                                          height: 18.h,
-                                        ),
+                                        SizedBox(height: 18.h),
 
                                         _statusTile(
-                                          icon: Icons
-                                              .speed,
+                                          icon: Icons.speed,
 
-                                          title:
-                                              'Engine',
+                                          title: AppStrings.engine,
 
-                                          value:
-                                              'Normal',
+                                          value: AppStrings.normal,
 
-                                          accent:
-                                              accent,
+                                          accent: accent,
                                         ),
                                       ],
                                     ),
                                   ),
 
-                                  SizedBox(
-                                    height: 20.h,
-                                  ),
+                                  SizedBox(height: 20.h),
 
                                   /// TIRE PRESSURE
                                   _glassCard(
                                     child: Column(
                                       crossAxisAlignment:
-                                          CrossAxisAlignment
-                                              .start,
+                                          CrossAxisAlignment.start,
 
                                       children: [
-
                                         Text(
-                                          'Tire Pressure',
+                                          AppStrings.tirePressure,
 
-                                          style:
-                                              TextStyle(
-                                                color:
-                                                    Colors
-                                                        .white,
+                                          style: TextStyle(
+                                            color: Colors.white,
 
-                                                fontSize:
-                                                    18.sp,
+                                            fontSize: 18.sp,
 
-                                                fontWeight:
-                                                    FontWeight
-                                                        .bold,
-                                              ),
+                                            fontWeight: FontWeight.bold,
+                                          ),
                                         ),
 
-                                        SizedBox(
-                                          height: 18.h,
-                                        ),
+                                        SizedBox(height: 18.h),
 
-                                        _tireTile(
-                                          'Front Left',
-                                          '32 PSI',
-                                        ),
+                                        _tireTile(AppStrings.frontLeft, '32 PSI'),
 
-                                        SizedBox(
-                                          height: 12.h,
-                                        ),
+                                        SizedBox(height: 12.h),
 
-                                        _tireTile(
-                                          'Front Right',
-                                          '32 PSI',
-                                        ),
+                                        _tireTile(AppStrings.frontRight, '32 PSI'),
 
-                                        SizedBox(
-                                          height: 12.h,
-                                        ),
+                                        SizedBox(height: 12.h),
 
-                                        _tireTile(
-                                          'Rear Left',
-                                          '30 PSI',
-                                        ),
+                                        _tireTile(AppStrings.rearLeft, '30 PSI'),
 
-                                        SizedBox(
-                                          height: 12.h,
-                                        ),
+                                        SizedBox(height: 12.h),
 
-                                        _tireTile(
-                                          'Rear Right',
-                                          '30 PSI',
-                                        ),
+                                        _tireTile(AppStrings.rearRight, '30 PSI'),
                                       ],
                                     ),
                                   ),
@@ -688,175 +525,121 @@ class _CarInfoPageState extends State<CarInfoContent>
                           Expanded(
                             child: Container(
                               decoration: BoxDecoration(
-                                borderRadius:
-                                    BorderRadius.circular(
-                                      38.r,
-                                    ),
+                                borderRadius: BorderRadius.circular(38.r),
 
-                                color: Colors.white
-                                    .withOpacity(0.05),
+                                color: Colors.white.withValues(alpha: 0.05),
 
                                 border: Border.all(
-                                  color: Colors.white
-                                      .withOpacity(
-                                        0.08,
-                                      ),
+                                  color: Colors.white.withValues(alpha: 0.08),
                                 ),
                               ),
 
                               child: Column(
                                 children: [
-
                                   /// =================
                                   /// VEHICLE CONTENT
                                   /// =================
                                   Expanded(
-                                    child:
-                                        SingleChildScrollView(
-                                          physics:
-                                              const BouncingScrollPhysics(),
+                                    child: SingleChildScrollView(
+                                      physics: const BouncingScrollPhysics(),
 
-                                          child: Center(
-                                            child:
-                                                AnimatedBuilder(
-                                                  animation:
-                                                      _floatingController,
+                                      child: Center(
+                                        child: AnimatedBuilder(
+                                          animation: _floatingController,
 
-                                                  builder: (
-                                                    context,
-                                                    child,
-                                                  ) {
+                                          builder: (context, child) {
+                                            return Transform.translate(
+                                              offset: Offset(
+                                                0,
 
-                                                    return Transform.translate(
-                                                      offset:
-                                                          Offset(
-                                                            0,
+                                                _floatingController.value * -12,
+                                              ),
 
-                                                            _floatingController
-                                                                    .value *
-                                                                -12,
-                                                          ),
+                                              child: child,
+                                            );
+                                          },
 
-                                                      child:
-                                                          child,
-                                                    );
-                                                  },
+                                          child: Column(
+                                            mainAxisAlignment:
+                                                MainAxisAlignment.center,
 
-                                                  child:
-                                                      Column(
-                                                        mainAxisAlignment:
-                                                            MainAxisAlignment
-                                                                .center,
+                                            children: [
+                                              SizedBox(height: 40.h),
 
-                                                        children: [
+                                              /// VEHICLE
+                                              Container(
+                                                width: 620.w,
 
-                                                          SizedBox(
-                                                            height:
-                                                                40.h,
-                                                          ),
+                                                height: 340.h,
 
-                                                          /// VEHICLE
-                                                          Container(
-                                                            width:
-                                                                620.w,
-
-                                                            height:
-                                                                340.h,
-
-                                                            decoration:
-                                                                BoxDecoration(
-                                                                  boxShadow: [
-                                                                    BoxShadow(
-                                                                      color: accent.withOpacity(
-                                                                        0.35,
-                                                                      ),
-
-                                                                      blurRadius:
-                                                                          80,
-
-                                                                      spreadRadius:
-                                                                          8,
-                                                                    ),
-                                                                  ],
-                                                                ),
-
-                                                            child:
-                                                                Image.asset(
-                                                                  "assets/images/veloz.png",
-
-                                                                  fit:
-                                                                      BoxFit.contain,
-                                                                ),
-                                                          ),
-
-                                                          SizedBox(
-                                                            height:
-                                                                10.h,
-                                                          ),
-
-                                                          /// TITLE
-                                                          Text(
-                                                            'Toyota Veloz 2026',
-
-                                                            style:
-                                                                TextStyle(
-                                                                  color:
-                                                                      Colors.white,
-
-                                                                  fontSize:
-                                                                      34.sp,
-
-                                                                  fontWeight:
-                                                                      FontWeight.bold,
-                                                                ),
-                                                          ),
-
-                                                          SizedBox(
-                                                            height:
-                                                                10.h,
-                                                          ),
-
-                                                          /// SUBTITLE
-                                                          Text(
-                                                            'Modern Connected Vehicle',
-
-                                                            style:
-                                                                TextStyle(
-                                                                  color:
-                                                                      Colors.white60,
-
-                                                                  fontSize:
-                                                                      18.sp,
-                                                                ),
-                                                          ),
-
-                                                          SizedBox(
-                                                            height:
-                                                                40.h,
-                                                          ),
-                                                        ],
+                                                decoration: BoxDecoration(
+                                                  boxShadow: [
+                                                    BoxShadow(
+                                                      color: accent.withValues(
+                                                        alpha: 0.35,
                                                       ),
+
+                                                      blurRadius: 80,
+
+                                                      spreadRadius: 8,
+                                                    ),
+                                                  ],
                                                 ),
+
+                                                child: Image.asset(
+                                                  "assets/images/veloz.png",
+
+                                                  fit: BoxFit.contain,
+                                                ),
+                                              ),
+
+                                              SizedBox(height: 10.h),
+
+                                              /// TITLE
+                                              Text(
+                                                'Toyota Veloz 2026',
+
+                                                style: TextStyle(
+                                                  color: Colors.white,
+
+                                                  fontSize: 34.sp,
+
+                                                  fontWeight: FontWeight.bold,
+                                                ),
+                                              ),
+
+                                              SizedBox(height: 10.h),
+
+                                              /// SUBTITLE
+                                              Text(
+                                                AppStrings.modernConnectedVehicle,
+
+                                                style: TextStyle(
+                                                  color: Colors.white60,
+
+                                                  fontSize: 18.sp,
+                                                ),
+                                              ),
+
+                                              SizedBox(height: 40.h),
+                                            ],
                                           ),
                                         ),
+                                      ),
+                                    ),
                                   ),
 
                                   /// =================
                                   /// BOTTOM MENU
                                   /// =================
                                   Padding(
-                                    padding:
-                                        EdgeInsets.all(
-                                          24.w,
-                                        ),
+                                    padding: EdgeInsets.all(24.w),
 
                                     child: Row(
                                       mainAxisAlignment:
-                                          MainAxisAlignment
-                                              .spaceEvenly,
+                                          MainAxisAlignment.spaceEvenly,
 
                                       children: [
-
                                         _bottomButton(
                                           Icons.ac_unit,
                                           'Climate',
@@ -909,10 +692,7 @@ class _CarInfoPageState extends State<CarInfoContent>
   /// ===============================
   /// TOP BAR ICON
   /// ===============================
-  Widget _topBarIcon(
-    IconData icon,
-    Color accent,
-  ) {
+  Widget _topBarIcon(IconData icon, Color accent) {
     return Container(
       width: 48.w,
       height: 48.w,
@@ -920,41 +700,30 @@ class _CarInfoPageState extends State<CarInfoContent>
       decoration: BoxDecoration(
         shape: BoxShape.circle,
 
-        color: Colors.white.withOpacity(0.06),
+        color: Colors.white.withValues(alpha: 0.06),
 
-        border: Border.all(
-          color: Colors.white.withOpacity(0.08),
-        ),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
       ),
 
-      child: Icon(
-        icon,
-        color: accent,
-        size: 24.sp,
-      ),
+      child: Icon(icon, color: accent, size: 24.sp),
     );
   }
 
   /// ===============================
   /// GLASS CARD
   /// ===============================
-  Widget _glassCard({
-    required Widget child,
-  }) {
+  Widget _glassCard({required Widget child}) {
     return Container(
       width: double.infinity,
 
       padding: EdgeInsets.all(20.w),
 
       decoration: BoxDecoration(
-        borderRadius:
-            BorderRadius.circular(28.r),
+        borderRadius: BorderRadius.circular(28.r),
 
-        color: Colors.white.withOpacity(0.05),
+        color: Colors.white.withValues(alpha: 0.05),
 
-        border: Border.all(
-          color: Colors.white.withOpacity(0.06),
-        ),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.06)),
       ),
 
       child: child,
@@ -969,42 +738,29 @@ class _CarInfoPageState extends State<CarInfoContent>
     required int index,
     required Color accent,
   }) {
-
-    final active =
-        selectedDriveMode == index;
+    final active = selectedDriveMode == index;
 
     return GestureDetector(
       onTap: () {
-
         setState(() {
           selectedDriveMode = index;
         });
       },
 
       child: AnimatedContainer(
-        duration: const Duration(
-          milliseconds: 250,
-        ),
+        duration: const Duration(milliseconds: 250),
 
-        padding: EdgeInsets.symmetric(
-          horizontal: 18.w,
-          vertical: 12.h,
-        ),
+        padding: EdgeInsets.symmetric(horizontal: 18.w, vertical: 12.h),
 
         decoration: BoxDecoration(
-          borderRadius:
-              BorderRadius.circular(20.r),
+          borderRadius: BorderRadius.circular(20.r),
 
-          color: active
-              ? accent
-              : Colors.white.withOpacity(0.06),
+          color: active ? accent : Colors.white.withValues(alpha: 0.06),
 
           boxShadow: active
               ? [
                   BoxShadow(
-                    color:
-                        accent.withOpacity(0.35),
-
+                    color: accent.withValues(alpha: 0.35),
                     blurRadius: 18,
                   ),
                 ]
@@ -1015,9 +771,7 @@ class _CarInfoPageState extends State<CarInfoContent>
           title,
 
           style: TextStyle(
-            color: active
-                ? Colors.black
-                : Colors.white,
+            color: active ? Colors.black : Colors.white,
 
             fontSize: 15.sp,
 
@@ -1039,7 +793,6 @@ class _CarInfoPageState extends State<CarInfoContent>
   }) {
     return Row(
       children: [
-
         Container(
           width: 48.w,
           height: 48.w,
@@ -1047,33 +800,23 @@ class _CarInfoPageState extends State<CarInfoContent>
           decoration: BoxDecoration(
             shape: BoxShape.circle,
 
-            color: accent.withOpacity(0.18),
+            color: accent.withValues(alpha: 0.18),
           ),
 
-          child: Icon(
-            icon,
-            color: accent,
-            size: 24.sp,
-          ),
+          child: Icon(icon, color: accent, size: 24.sp),
         ),
 
         SizedBox(width: 14.w),
 
         Expanded(
           child: Column(
-            crossAxisAlignment:
-                CrossAxisAlignment.start,
+            crossAxisAlignment: CrossAxisAlignment.start,
 
             children: [
-
               Text(
                 title,
 
-                style: TextStyle(
-                  color: Colors.white70,
-
-                  fontSize: 14.sp,
-                ),
+                style: TextStyle(color: Colors.white70, fontSize: 14.sp),
               ),
 
               SizedBox(height: 4.h),
@@ -1099,24 +842,15 @@ class _CarInfoPageState extends State<CarInfoContent>
   /// ===============================
   /// TIRE TILE
   /// ===============================
-  Widget _tireTile(
-    String title,
-    String value,
-  ) {
+  Widget _tireTile(String title, String value) {
     return Row(
-      mainAxisAlignment:
-          MainAxisAlignment.spaceBetween,
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
 
       children: [
-
         Text(
           title,
 
-          style: TextStyle(
-            color: Colors.white70,
-
-            fontSize: 15.sp,
-          ),
+          style: TextStyle(color: Colors.white70, fontSize: 15.sp),
         ),
 
         Text(
@@ -1137,37 +871,24 @@ class _CarInfoPageState extends State<CarInfoContent>
   /// ===============================
   /// BOTTOM BUTTON
   /// ===============================
-  Widget _bottomButton(
-    IconData icon,
-    String title,
-    Color accent,
-  ) {
+  Widget _bottomButton(IconData icon, String title, Color accent) {
     return Container(
       width: 120.w,
       height: 88.h,
 
       decoration: BoxDecoration(
-        borderRadius:
-            BorderRadius.circular(28.r),
+        borderRadius: BorderRadius.circular(28.r),
 
-        color: Colors.white.withOpacity(0.05),
+        color: Colors.white.withValues(alpha: 0.05),
 
-        border: Border.all(
-          color: Colors.white.withOpacity(0.08),
-        ),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
       ),
 
       child: Column(
-        mainAxisAlignment:
-            MainAxisAlignment.center,
+        mainAxisAlignment: MainAxisAlignment.center,
 
         children: [
-
-          Icon(
-            icon,
-            color: accent,
-            size: 28.sp,
-          ),
+          Icon(icon, color: accent, size: 28.sp),
 
           SizedBox(height: 10.h),
 

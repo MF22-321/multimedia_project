@@ -129,7 +129,7 @@ class _FaceScanPageState extends State<FaceScanPage> {
         padding: const EdgeInsets.all(24),
         child: Column(
           children: [
-            LiveCameraWS(url: "ws://127.0.0.1:8000/ws/camera"),
+            LiveCameraWS(url: FaceIdApi.cameraWs),
             const SizedBox(height: 24),
             if (loading)
               const CircularProgressIndicator()

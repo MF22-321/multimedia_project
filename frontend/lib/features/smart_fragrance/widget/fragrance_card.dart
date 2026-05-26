@@ -75,15 +75,11 @@ class FragranceCard extends StatelessWidget {
                       child: Icon(
                         Icons.water_drop_outlined,
                         size: 28.sp,
-                        color: Colors.white.withOpacity(0.95),
+                        color: Colors.white.withValues(alpha: 0.95),
                       ),
                     ),
                     const Spacer(),
-                    Icon(
-                      icon,
-                      size: 62.sp,
-                      color: const Color(0xFFC28A63),
-                    ),
+                    Icon(icon, size: 62.sp, color: const Color(0xFFC28A63)),
                     SizedBox(height: 18.h),
                     Text(
                       title,
@@ -100,12 +96,11 @@ class FragranceCard extends StatelessWidget {
                       child: Switch(
                         value: isEnabled,
                         onChanged: (_) => onToggle(),
-                        activeColor: AppColors.whiteSoft,
+                        activeThumbColor: AppColors.whiteSoft,
                         activeTrackColor: AppColors.green,
                         inactiveThumbColor: AppColors.whiteSoft,
                         inactiveTrackColor: Colors.white24,
-                        materialTapTargetSize:
-                            MaterialTapTargetSize.shrinkWrap,
+                        materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
                       ),
                     ),
                     SizedBox(height: 8.h),
@@ -123,9 +118,7 @@ class FragranceCard extends StatelessWidget {
 class _LeftLevelIndicator extends StatelessWidget {
   final int levelPercent;
 
-  const _LeftLevelIndicator({
-    required this.levelPercent,
-  });
+  const _LeftLevelIndicator({required this.levelPercent});
 
   @override
   Widget build(BuildContext context) {
@@ -142,8 +135,8 @@ class _LeftLevelIndicator extends StatelessWidget {
               constraints.maxHeight - railTop - railBottom;
 
           final double bubbleTop =
-              railTop + ((railHeight - 64.h) * (1 - level))
-                  .clamp(0.0, railHeight - 64.h);
+              railTop +
+              ((railHeight - 64.h) * (1 - level)).clamp(0.0, railHeight - 64.h);
 
           return Stack(
             clipBehavior: Clip.none,
@@ -191,7 +184,7 @@ class _LeftLevelIndicator extends StatelessWidget {
                     ),
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.black.withOpacity(0.08),
+                        color: Colors.black.withValues(alpha: 0.08),
                         blurRadius: 6.r,
                         offset: Offset(0, 2.h),
                       ),

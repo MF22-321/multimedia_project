@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:frontend/core/localization/app_strings.dart';
 import 'package:frontend/core/themes/car_theme.dart';
 
 class PhoneContent extends StatefulWidget {
@@ -57,13 +58,13 @@ class _PhonePageState extends State<PhoneContent> {
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(30.r),
 
-          color: Colors.white.withOpacity(0.07),
+          color: Colors.white.withValues(alpha: 0.07),
 
-          border: Border.all(color: Colors.white.withOpacity(0.08)),
+          border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
 
           boxShadow: [
             BoxShadow(
-              color: theme.accentColor.withOpacity(0.08),
+              color: theme.accentColor.withValues(alpha: 0.08),
 
               blurRadius: 20,
               spreadRadius: 2,
@@ -103,9 +104,9 @@ class _PhonePageState extends State<PhoneContent> {
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(24.r),
 
-          color: Colors.white.withOpacity(0.06),
+          color: Colors.white.withValues(alpha: 0.06),
 
-          border: Border.all(color: Colors.white.withOpacity(0.08)),
+          border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
         ),
 
         child: Row(
@@ -178,9 +179,11 @@ class _PhonePageState extends State<PhoneContent> {
                     decoration: BoxDecoration(
                       borderRadius: BorderRadius.circular(40.r),
 
-                      color: Colors.white.withOpacity(0.05),
+                      color: Colors.white.withValues(alpha: 0.05),
 
-                      border: Border.all(color: Colors.white.withOpacity(0.08)),
+                      border: Border.all(
+                        color: Colors.white.withValues(alpha: 0.08),
+                      ),
                     ),
 
                     child: Column(
@@ -195,7 +198,7 @@ class _PhonePageState extends State<PhoneContent> {
                             SizedBox(width: 14.w),
 
                             Text(
-                              'Phone',
+                              AppStrings.phone,
 
                               style: TextStyle(
                                 color: Colors.white,
@@ -217,7 +220,7 @@ class _PhonePageState extends State<PhoneContent> {
                           decoration: BoxDecoration(
                             borderRadius: BorderRadius.circular(24.r),
 
-                            color: Colors.white.withOpacity(0.06),
+                            color: Colors.white.withValues(alpha: 0.06),
                           ),
 
                           child: TextField(
@@ -244,7 +247,7 @@ class _PhonePageState extends State<PhoneContent> {
                                 child: Icon(
                                   Icons.search,
 
-                                  color: Colors.white.withOpacity(0.6),
+                                  color: Colors.white.withValues(alpha: 0.6),
 
                                   size: 30.sp,
                                 ),
@@ -257,7 +260,7 @@ class _PhonePageState extends State<PhoneContent> {
                               hintText: 'Search contact...',
 
                               hintStyle: TextStyle(
-                                color: Colors.white.withOpacity(0.4),
+                                color: Colors.white.withValues(alpha: 0.4),
 
                                 fontSize: 20.sp,
                               ),
@@ -299,10 +302,10 @@ class _PhonePageState extends State<PhoneContent> {
                                 decoration: BoxDecoration(
                                   borderRadius: BorderRadius.circular(28.r),
 
-                                  color: Colors.white.withOpacity(0.05),
+                                  color: Colors.white.withValues(alpha: 0.05),
 
                                   border: Border.all(
-                                    color: Colors.white.withOpacity(0.05),
+                                    color: Colors.white.withValues(alpha: 0.05),
                                   ),
                                 ),
 
@@ -317,8 +320,8 @@ class _PhonePageState extends State<PhoneContent> {
                                       decoration: BoxDecoration(
                                         shape: BoxShape.circle,
 
-                                        color: theme.accentColor.withOpacity(
-                                          0.15,
+                                        color: theme.accentColor.withValues(
+                                          alpha: 0.15,
                                         ),
                                       ),
 
@@ -358,8 +361,8 @@ class _PhonePageState extends State<PhoneContent> {
                                             call['number'],
 
                                             style: TextStyle(
-                                              color: Colors.white.withOpacity(
-                                                0.55,
+                                              color: Colors.white.withValues(
+                                                alpha: 0.55,
                                               ),
 
                                               fontSize: 16.sp,
@@ -382,8 +385,8 @@ class _PhonePageState extends State<PhoneContent> {
 
                                         boxShadow: [
                                           BoxShadow(
-                                            color: musicAccent.withOpacity(
-                                              0.45,
+                                            color: musicAccent.withValues(
+                                              alpha: 0.45,
                                             ),
 
                                             blurRadius: 20,
@@ -422,9 +425,11 @@ class _PhonePageState extends State<PhoneContent> {
                     decoration: BoxDecoration(
                       borderRadius: BorderRadius.circular(40.r),
 
-                      color: Colors.white.withOpacity(0.05),
+                      color: Colors.white.withValues(alpha: 0.05),
 
-                      border: Border.all(color: Colors.white.withOpacity(0.08)),
+                      border: Border.all(
+                        color: Colors.white.withValues(alpha: 0.08),
+                      ),
                     ),
 
                     child: Column(
@@ -442,7 +447,7 @@ class _PhonePageState extends State<PhoneContent> {
                           decoration: BoxDecoration(
                             borderRadius: BorderRadius.circular(28.r),
 
-                            color: Colors.white.withOpacity(0.06),
+                            color: Colors.white.withValues(alpha: 0.06),
                           ),
 
                           child: Text(
@@ -541,7 +546,7 @@ class _PhonePageState extends State<PhoneContent> {
                                 decoration: BoxDecoration(
                                   shape: BoxShape.circle,
 
-                                  color: Colors.white.withOpacity(0.06),
+                                  color: Colors.white.withValues(alpha: 0.06),
                                 ),
 
                                 child: const Icon(
@@ -565,19 +570,25 @@ class _PhonePageState extends State<PhoneContent> {
                                   borderRadius: BorderRadius.circular(28.r),
 
                                   color: currentTheme == CarThemeType.comfort
-                                      ? Colors.white.withOpacity(0.06)
-                                      : theme.accentColor.withOpacity(0.12),
+                                      ? Colors.white.withValues(alpha: 0.06)
+                                      : theme.accentColor.withValues(
+                                          alpha: 0.12,
+                                        ),
 
                                   border: Border.all(
-                                    color: theme.accentColor.withOpacity(0.25),
+                                    color: theme.accentColor.withValues(
+                                      alpha: 0.25,
+                                    ),
                                   ),
 
                                   boxShadow: [
                                     BoxShadow(
                                       color:
                                           currentTheme == CarThemeType.comfort
-                                          ? Colors.white.withOpacity(0.06)
-                                          : theme.accentColor.withOpacity(0.12),
+                                          ? Colors.white.withValues(alpha: 0.06)
+                                          : theme.accentColor.withValues(
+                                              alpha: 0.12,
+                                            ),
 
                                       blurRadius: 25,
                                       spreadRadius: 2,

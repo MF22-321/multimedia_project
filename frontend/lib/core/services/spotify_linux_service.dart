@@ -1,13 +1,10 @@
 import 'package:dbus/dbus.dart';
-
+import 'package:frontend/core/utils/app_logger.dart';
 
 class SpotifyDBusService {
+  static const String service = 'org.mpris.MediaPlayer2.spotify';
 
-  static const String service =
-      'org.mpris.MediaPlayer2.spotify';
-
-  static const String path =
-      '/org/mpris/MediaPlayer2';
+  static const String path = '/org/mpris/MediaPlayer2';
 
   DBusClient? _client;
 
@@ -24,78 +21,42 @@ class SpotifyDBusService {
   }
 
   Future<Map<String, dynamic>> getMetadata() async {
-
     try {
-
-      final properties =
-          await _playerObject.getAllProperties(
+      final properties = await _playerObject.getAllProperties(
         'org.mpris.MediaPlayer2.Player',
       );
 
-      final metadata =
-          properties['Metadata'];
+      final metadata = properties['Metadata'];
 
-      final playback =
-          properties['PlaybackStatus'];
+      final playback = properties['PlaybackStatus'];
 
-      final map =
-          metadata?.asStringVariantDict() ?? {};
+      final map = metadata?.asStringVariantDict() ?? {};
 
-      final title =
-          map['xesam:title']
-              ?.asString() ??
-          '';
+      final title = map['xesam:title']?.asString() ?? '';
 
-      final artistList =
-          map['xesam:artist']
-              ?.asStringArray() ??
-          [];
+      final artistList = map['xesam:artist']?.asStringArray() ?? [];
 
-      final artist =
-          artistList.isNotEmpty
-              ? artistList.first
-              : '';
+      final artist = artistList.isNotEmpty ? artistList.first : '';
 
-      final albumArt =
-          map['mpris:artUrl']
-              ?.asString() ??
-          '';
+      final albumArt = map['mpris:artUrl']?.asString() ?? '';
 
-      final length =
-          _readDbusInteger(
-        map['mpris:length'],
-      );
+      final length = _readDbusInteger(map['mpris:length']);
 
-      final position =
-          _readDbusInteger(
-        properties['Position'],
-      );
+      final position = _readDbusInteger(properties['Position']);
 
-      final trackId =
-          _readTrackId(
-        map['mpris:trackid'],
-      );
+      final trackId = _readTrackId(map['mpris:trackid']);
 
       return {
-
         'title': title,
         'artist': artist,
         'albumArt': albumArt,
-        'position': Duration(
-          microseconds: position,
-        ),
-        'duration': Duration(
-          microseconds: length,
-        ),
+        'position': Duration(microseconds: position),
+        'duration': Duration(microseconds: length),
         'trackId': trackId,
-        'isPlaying':
-            playback?.asString() ==
-                'Playing',
+        'isPlaying': playback?.asString() == 'Playing',
       };
-
     } catch (e) {
-
-      print("DBUS ERROR => $e");
+      AppLogger.error("DBUS ERROR => $e");
 
       return {
         'title': '',
@@ -110,7 +71,6 @@ class SpotifyDBusService {
   }
 
   Future<void> playPause() async {
-
     await _playerObject.callMethod(
       'org.mpris.MediaPlayer2.Player',
       'PlayPause',
@@ -119,25 +79,14 @@ class SpotifyDBusService {
   }
 
   Future<void> play() async {
-
-    await _playerObject.callMethod(
-      'org.mpris.MediaPlayer2.Player',
-      'Play',
-      [],
-    );
+    await _playerObject.callMethod('org.mpris.MediaPlayer2.Player', 'Play', []);
   }
 
   Future<void> next() async {
-
-    await _playerObject.callMethod(
-      'org.mpris.MediaPlayer2.Player',
-      'Next',
-      [],
-    );
+    await _playerObject.callMethod('org.mpris.MediaPlayer2.Player', 'Next', []);
   }
 
   Future<void> previous() async {
-
     await _playerObject.callMethod(
       'org.mpris.MediaPlayer2.Player',
       'Previous',
@@ -149,19 +98,14 @@ class SpotifyDBusService {
     required String trackId,
     required Duration position,
   }) async {
-
-    if (trackId.isEmpty ||
-        !trackId.startsWith('/')) {
+    if (trackId.isEmpty || !trackId.startsWith('/')) {
       return;
     }
 
     await _playerObject.callMethod(
       'org.mpris.MediaPlayer2.Player',
       'SetPosition',
-      [
-        DBusObjectPath(trackId),
-        DBusInt64(position.inMicroseconds),
-      ],
+      [DBusObjectPath(trackId), DBusInt64(position.inMicroseconds)],
     );
   }
 
@@ -170,9 +114,7 @@ class SpotifyDBusService {
     _client = null;
   }
 
-  int _readDbusInteger(
-    DBusValue? value,
-  ) {
+  int _readDbusInteger(DBusValue? value) {
     if (value == null) {
       return 0;
     }
@@ -197,9 +139,7 @@ class SpotifyDBusService {
     }
   }
 
-  String _readTrackId(
-    DBusValue? value,
-  ) {
+  String _readTrackId(DBusValue? value) {
     if (value == null) {
       return '';
     }
@@ -213,5 +153,4 @@ class SpotifyDBusService {
         return '';
     }
   }
-
 }

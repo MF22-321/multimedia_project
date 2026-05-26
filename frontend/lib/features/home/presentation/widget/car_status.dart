@@ -11,15 +11,10 @@ class CarStatusCard extends StatefulWidget {
 }
 
 class _CarStatusCardState extends State<CarStatusCard> {
-
   int selectedMode = 0;
 
-  Color getMusicAccentColor(
-    CarThemeType type,
-    CarThemeData theme,
-  ) {
+  Color getMusicAccentColor(CarThemeType type, CarThemeData theme) {
     switch (type) {
-
       case CarThemeType.comfort:
         return const Color(0xFF6CB4FF);
 
@@ -42,22 +37,15 @@ class _CarStatusCardState extends State<CarStatusCard> {
 
   @override
   Widget build(BuildContext context) {
-
     return ValueListenableBuilder(
       valueListenable: CarThemes.currentTheme,
 
       builder: (context, themeType, _) {
+        final theme = CarThemes.getTheme(themeType);
 
-        final theme =
-            CarThemes.getTheme(themeType);
-
-        final musicAccent =
-            themeType == CarThemeType.comfort
-                ? getMusicAccentColor(
-                    themeType,
-                    theme,
-                  )
-                : theme.accentColor;
+        final musicAccent = themeType == CarThemeType.comfort
+            ? getMusicAccentColor(themeType, theme)
+            : theme.accentColor;
 
         return AnimatedContainer(
           duration: const Duration(milliseconds: 400),
@@ -65,55 +53,43 @@ class _CarStatusCardState extends State<CarStatusCard> {
           height: 295.h,
 
           decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(30.r),
+            borderRadius: BorderRadius.circular(30.r),
 
-        gradient: LinearGradient(
-          colors: [
-            theme.backgroundGradient.last.withOpacity(0.8),
-            theme.backgroundGradient.last.withOpacity(0.5),
-            Colors.black.withOpacity(0.4),
-          ],
-          begin: Alignment.topCenter,
-          end: Alignment.bottomCenter,
-        ),
+            gradient: LinearGradient(
+              colors: [
+                theme.backgroundGradient.last.withValues(alpha: 0.8),
+                theme.backgroundGradient.last.withValues(alpha: 0.5),
+                Colors.black.withValues(alpha: 0.4),
+              ],
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+            ),
 
-        border: Border.all(
-          color: theme.accentColor.withOpacity(0.4),
-          width: 2,
-        ),
-      ),
+            border: Border.all(
+              color: theme.accentColor.withValues(alpha: 0.4),
+              width: 2,
+            ),
+          ),
 
           child: Stack(
             children: [
-
               /// =========================
               /// CAR IMAGE
               /// =========================
               Padding(
-                padding: EdgeInsets.only(
-                  bottom: 60.h,
-                ),
+                padding: EdgeInsets.only(bottom: 60.h),
 
                 child: Center(
                   child: ValueListenableBuilder(
-                    valueListenable:
-                        CarAnimationController.menuActive,
+                    valueListenable: CarAnimationController.menuActive,
 
-                    builder: (
-                      context,
-                      menuActive,
-                      _,
-                    ) {
-
+                    builder: (context, menuActive, _) {
                       return AnimatedScale(
-                        duration: const Duration(
-                          milliseconds: 700,
-                        ),
+                        duration: const Duration(milliseconds: 700),
 
                         curve: Curves.easeOutCubic,
 
-                        scale:
-                            menuActive ? 1.2 : 1.0,
+                        scale: menuActive ? 1.2 : 1.0,
 
                         child: Hero(
                           tag: "carHero",
@@ -143,27 +119,20 @@ class _CarStatusCardState extends State<CarStatusCard> {
                 child: Container(
                   height: 62.h,
 
-                  padding: EdgeInsets.symmetric(
-                    horizontal: 10.w,
-                  ),
+                  padding: EdgeInsets.symmetric(horizontal: 10.w),
 
                   decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(
-                      0.08,
-                    ),
+                    color: Colors.white.withValues(alpha: 0.08),
 
-                    borderRadius:
-                        BorderRadius.circular(30.r),
+                    borderRadius: BorderRadius.circular(30.r),
 
                     border: Border.all(
-                      color: Colors.white
-                          .withOpacity(0.08),
+                      color: Colors.white.withValues(alpha: 0.08),
                     ),
 
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.black
-                            .withOpacity(0.25),
+                        color: Colors.black.withValues(alpha: 0.25),
 
                         blurRadius: 20,
                       ),
@@ -171,11 +140,9 @@ class _CarStatusCardState extends State<CarStatusCard> {
                   ),
 
                   child: Row(
-                    mainAxisAlignment:
-                        MainAxisAlignment.spaceAround,
+                    mainAxisAlignment: MainAxisAlignment.spaceAround,
 
                     children: [
-
                       _modeButton(
                         index: 0,
                         icon: Icons.eco,
@@ -220,48 +187,33 @@ class _CarStatusCardState extends State<CarStatusCard> {
     required String title,
     required Color accent,
   }) {
-
-    final active =
-        selectedMode == index;
+    final active = selectedMode == index;
 
     return GestureDetector(
       onTap: () {
-
         setState(() {
           selectedMode = index;
         });
       },
 
       child: AnimatedContainer(
-        duration: const Duration(
-          milliseconds: 280,
-        ),
+        duration: const Duration(milliseconds: 280),
 
-        padding: EdgeInsets.symmetric(
-          horizontal: 16.w,
-          vertical: 8.h,
-        ),
+        padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 8.h),
 
         decoration: BoxDecoration(
-          borderRadius:
-              BorderRadius.circular(18.r),
+          borderRadius: BorderRadius.circular(18.r),
 
-          color: active
-              ? accent.withOpacity(0.18)
-              : Colors.transparent,
+          color: active ? accent.withValues(alpha: 0.18) : Colors.transparent,
 
           border: Border.all(
-            color: active
-                ? accent.withOpacity(0.45)
-                : Colors.transparent,
+            color: active ? accent.withValues(alpha: 0.45) : Colors.transparent,
           ),
 
           boxShadow: active
               ? [
                   BoxShadow(
-                    color:
-                        accent.withOpacity(0.35),
-
+                    color: accent.withValues(alpha: 0.35),
                     blurRadius: 16,
                   ),
                 ]
@@ -270,28 +222,15 @@ class _CarStatusCardState extends State<CarStatusCard> {
 
         child: Row(
           children: [
-
-            Icon(
-              icon,
-
-              color: active
-                  ? accent
-                  : Colors.white70,
-
-              size: 24.sp,
-            ),
+            Icon(icon, color: active ? accent : Colors.white70, size: 24.sp),
 
             SizedBox(width: 8.w),
 
             AnimatedDefaultTextStyle(
-              duration: const Duration(
-                milliseconds: 250,
-              ),
+              duration: const Duration(milliseconds: 250),
 
               style: TextStyle(
-                color: active
-                    ? accent
-                    : Colors.white70,
+                color: active ? accent : Colors.white70,
 
                 fontSize: 15.sp,
 

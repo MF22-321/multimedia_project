@@ -44,7 +44,7 @@ class _VideoPlayerPageState extends State<VideoPlayer22> {
               icon: const Icon(Icons.close, color: Colors.white),
               onPressed: () => Navigator.pop(context),
             ),
-          )
+          ),
         ],
       ),
     );

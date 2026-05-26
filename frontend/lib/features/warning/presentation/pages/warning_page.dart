@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:frontend/core/navigation/app_routes.dart';
 import 'package:frontend/features/warning/presentation/widget/warning_button.dart';
 import '../../../boot/presentation/widget/dotted_background.dart';
 
@@ -65,7 +66,10 @@ class WarningPage extends StatelessWidget {
                   /// Button
                   WarningButton(
                     onPressed: () {
-                      Navigator.pushReplacementNamed(context, "/odd-even");
+                      Navigator.pushReplacementNamed(
+                        context,
+                        AppRoutes.oddEven,
+                      );
                     },
                   ),
                 ],

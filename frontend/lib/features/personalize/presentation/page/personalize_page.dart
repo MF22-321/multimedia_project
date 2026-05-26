@@ -1,10 +1,15 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 
+import 'package:frontend/core/localization/app_strings.dart';
+import 'package:frontend/core/navigation/app_language_control.dart';
+import 'package:frontend/core/navigation/app_routes.dart';
 import 'package:frontend/core/navigation/driver_session.dart';
 import 'package:frontend/core/services/drive_pref_service.dart';
+import 'package:frontend/core/services/faceid_api.dart';
 import 'package:frontend/core/model/driver_preference.dart';
 
 import 'package:frontend/core/themes/car_theme.dart';
@@ -13,6 +18,7 @@ import 'package:frontend/core/themes/playful_background.dart';
 import 'package:frontend/core/themes/retro_background.dart';
 
 import 'package:frontend/features/auth/presentation/widget/profile_setting_panel.dart';
+import 'package:frontend/features/face_recognition/presentation/widgets/live_camera_webview.dart';
 
 class PersonalizePage extends StatefulWidget {
   const PersonalizePage({super.key});
@@ -34,6 +40,7 @@ class _PersonalizePageState extends State<PersonalizePage> {
     super.initState();
 
     DriverSession.currentDriver.addListener(_onDriverChanged);
+    AppLanguageControl.languageCode.addListener(_onLanguageChanged);
 
     _initDriver();
   }
@@ -41,11 +48,16 @@ class _PersonalizePageState extends State<PersonalizePage> {
   @override
   void dispose() {
     DriverSession.currentDriver.removeListener(_onDriverChanged);
+    AppLanguageControl.languageCode.removeListener(_onLanguageChanged);
     super.dispose();
   }
 
   void _onDriverChanged() {
     _initDriver();
+  }
+
+  void _onLanguageChanged() {
+    if (mounted) setState(() {});
   }
 
   /// ================= INIT DRIVER =================
@@ -62,7 +74,7 @@ class _PersonalizePageState extends State<PersonalizePage> {
 
     final currentDriver = name; // 🔥 SIMPAN DULU
 
-    final pref = await DriverHiveService.load(name.toLowerCase());
+    final pref = DriverHiveService.load(name.toLowerCase());
 
     /// 🔥 CEK LAGI (ANTI RACE CONDITION)
     if (DriverSession.currentDriver.value != currentDriver) {
@@ -76,6 +88,8 @@ class _PersonalizePageState extends State<PersonalizePage> {
         temperature = pref.temperature;
         selectedTheme = pref.themeIndex;
       });
+
+      AppLanguageControl.loadForCurrentDriver();
 
       WidgetsBinding.instance.addPostFrameCallback((_) {
         CarThemes.currentTheme.value = CarThemeType.values[pref.themeIndex];
@@ -96,6 +110,7 @@ class _PersonalizePageState extends State<PersonalizePage> {
 
     final rawName = current;
     final key = rawName.trim().toLowerCase();
+    final existingPreference = DriverHiveService.load(rawName);
 
     await DriverHiveService.save(
       DriverPreference(
@@ -105,6 +120,9 @@ class _PersonalizePageState extends State<PersonalizePage> {
         temperature: temperature,
         cartridge: selectedCartridge,
         themeIndex: selectedTheme,
+        languageCode:
+            existingPreference?.languageCode ??
+            AppLanguageControl.languageCode.value,
       ),
     );
 
@@ -119,6 +137,43 @@ class _PersonalizePageState extends State<PersonalizePage> {
     debugPrint("✅ Saved preference for $rawName");
 
     if (mounted) Navigator.pop(context);
+  }
+
+  Future<void> _openDeleteAccountFlow() async {
+    final activeDriver = DriverSession.currentDriver.value;
+    if (activeDriver == null || activeDriver.trim().isEmpty) return;
+
+    final verified = await showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => _DeleteDriverFaceDialog(driverName: activeDriver),
+    );
+
+    if (verified != true || !mounted) return;
+
+    try {
+      await FaceIdApi.deleteDriver(activeDriver);
+      await DriverHiveService.delete(activeDriver);
+      DriverSession.clear();
+
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(AppStrings.accountDeleted)));
+
+      Navigator.pushNamedAndRemoveUntil(
+        context,
+        AppRoutes.driverSelect,
+        (_) => false,
+      );
+    } catch (e) {
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(AppStrings.deleteAccountFailed(e))),
+      );
+    }
   }
 
   @override
@@ -188,7 +243,7 @@ class _PersonalizePageState extends State<PersonalizePage> {
                             ),
                             SizedBox(width: 8.w),
                             Text(
-                              "Back",
+                              AppStrings.back,
                               style: TextStyle(
                                 color: Colors.white70,
                                 fontSize: 16.sp,
@@ -202,7 +257,7 @@ class _PersonalizePageState extends State<PersonalizePage> {
 
                       /// TITLE
                       Text(
-                        "Profile",
+                        AppStrings.profile,
                         style: TextStyle(
                           fontSize: 26.sp,
                           fontWeight: FontWeight.bold,
@@ -233,7 +288,7 @@ class _PersonalizePageState extends State<PersonalizePage> {
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Text(
-                                  "Hello,",
+                                  '${AppStrings.hello},',
                                   style: TextStyle(
                                     fontSize: 32.sp,
                                     color: Colors.white,
@@ -246,7 +301,7 @@ class _PersonalizePageState extends State<PersonalizePage> {
                                   builder: (context, driver, _) {
                                     if (driver == null) {
                                       return Text(
-                                        "Guest",
+                                        AppStrings.guest,
                                         style: TextStyle(
                                           fontSize: 70.sp,
                                           fontWeight: FontWeight.bold,
@@ -272,74 +327,291 @@ class _PersonalizePageState extends State<PersonalizePage> {
 
                                 SizedBox(height: 20.h),
 
-                                Row(
+                                Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
-                                    Text(
-                                      "Personalize your settings",
-                                      style: TextStyle(
-                                        color: Colors.white70,
-                                        fontSize: 18.sp,
-                                      ),
+                                    Row(
+                                      children: [
+                                        Text(
+                                          AppStrings.personalizeSettings,
+                                          style: TextStyle(
+                                            color: Colors.white70,
+                                            fontSize: 18.sp,
+                                          ),
+                                        ),
+                                        SizedBox(width: 10.w),
+                                        Icon(
+                                          Icons.arrow_forward,
+                                          color: Colors.white70,
+                                          size: 20.sp,
+                                        ),
+                                      ],
                                     ),
-                                    SizedBox(width: 10.w),
-                                    Icon(
-                                      Icons.arrow_forward,
-                                      color: Colors.white70,
-                                      size: 20.sp,
+
+                                    SizedBox(height: 24.h),
+
+                                    ValueListenableBuilder(
+                                      valueListenable:
+                                          AppLanguageControl.languageCode,
+                                      builder: (context, languageCode, _) {
+                                        return Container(
+                                          padding: EdgeInsets.all(20.w),
+                                          decoration: BoxDecoration(
+                                            borderRadius:
+                                                BorderRadius.circular(24.r),
+                                            color: Colors.white.withValues(
+                                              alpha: 0.06,
+                                            ),
+                                          ),
+                                          child: Row(
+                                            children: [
+                                              Expanded(
+                                                child: Column(
+                                                  crossAxisAlignment:
+                                                      CrossAxisAlignment.start,
+                                                  children: [
+                                                    Text(
+                                                      AppStrings.language,
+                                                      style: TextStyle(
+                                                        color: Colors.white,
+                                                        fontSize: 18.sp,
+                                                        fontWeight:
+                                                            FontWeight.bold,
+                                                      ),
+                                                    ),
+                                                    SizedBox(height: 6.h),
+                                                    Text(
+                                                      AppStrings.chooseLanguage,
+                                                      style: TextStyle(
+                                                        color: Colors.white70,
+                                                        fontSize: 14.sp,
+                                                      ),
+                                                    ),
+                                                  ],
+                                                ),
+                                              ),
+                                              Container(
+                                                padding: EdgeInsets.all(6.w),
+                                                decoration: BoxDecoration(
+                                                  borderRadius:
+                                                      BorderRadius.circular(
+                                                    20.r,
+                                                  ),
+                                                  color: Colors.white.withValues(
+                                                    alpha: 0.06,
+                                                  ),
+                                                ),
+                                                child: Row(
+                                                  children: [
+                                                    GestureDetector(
+                                                      onTap: () {
+                                                        AppLanguageControl
+                                                            .setLanguageForCurrentDriver(
+                                                          AppLanguageControl
+                                                              .defaultLanguageCode,
+                                                        );
+                                                      },
+                                                      child: Container(
+                                                        padding: EdgeInsets
+                                                            .symmetric(
+                                                          horizontal: 16.w,
+                                                          vertical: 10.h,
+                                                        ),
+                                                        decoration: BoxDecoration(
+                                                          borderRadius:
+                                                              BorderRadius.circular(
+                                                            16.r,
+                                                          ),
+                                                          color: languageCode ==
+                                                                  AppLanguageControl
+                                                                      .defaultLanguageCode
+                                                              ? Colors.white
+                                                                  .withValues(
+                                                                    alpha: 0.14,
+                                                                  )
+                                                              : Colors.transparent,
+                                                        ),
+                                                        child: Text(
+                                                          'Bahasa',
+                                                          style: TextStyle(
+                                                            color: Colors.white,
+                                                            fontWeight:
+                                                                languageCode ==
+                                                                        AppLanguageControl
+                                                                            .defaultLanguageCode
+                                                                    ? FontWeight.bold
+                                                                    : FontWeight.w500,
+                                                          ),
+                                                        ),
+                                                      ),
+                                                    ),
+                                                    SizedBox(width: 10.w),
+                                                    GestureDetector(
+                                                      onTap: () {
+                                                        AppLanguageControl
+                                                            .setLanguageForCurrentDriver(
+                                                          AppLanguageControl
+                                                              .englishCode,
+                                                        );
+                                                      },
+                                                      child: Container(
+                                                        padding: EdgeInsets
+                                                            .symmetric(
+                                                          horizontal: 16.w,
+                                                          vertical: 10.h,
+                                                        ),
+                                                        decoration: BoxDecoration(
+                                                          borderRadius:
+                                                              BorderRadius.circular(
+                                                            16.r,
+                                                          ),
+                                                          color: languageCode ==
+                                                                  AppLanguageControl
+                                                                      .englishCode
+                                                              ? Colors.white
+                                                                  .withValues(
+                                                                    alpha: 0.14,
+                                                                  )
+                                                              : Colors.transparent,
+                                                        ),
+                                                        child: Text(
+                                                          'English',
+                                                          style: TextStyle(
+                                                            color: Colors.white,
+                                                            fontWeight:
+                                                                languageCode ==
+                                                                        AppLanguageControl
+                                                                            .englishCode
+                                                                    ? FontWeight.bold
+                                                                    : FontWeight.w500,
+                                                          ),
+                                                        ),
+                                                      ),
+                                                    ),
+                                                  ],
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        );
+                                      },
                                     ),
+
+                                    SizedBox(height: 60.h),
                                   ],
                                 ),
 
-                                SizedBox(height: 60.h),
+                                ValueListenableBuilder<String?>(
+                                  valueListenable: DriverSession.currentDriver,
+                                  builder: (context, activeDriver, _) {
+                                    return ValueListenableBuilder(
+                                      valueListenable: CarThemes.currentTheme,
+                                      builder: (context, themeType, _) {
+                                        final theme = CarThemes.getTheme(
+                                          themeType,
+                                        );
+                                        final darkButtonText =
+                                            themeType == CarThemeType.comfort ||
+                                            themeType ==
+                                                CarThemeType.futuristic;
 
-                                /// SAVE BUTTON
-                                GestureDetector(
-                                  onTap: _savePreference,
-                                  child: ValueListenableBuilder(
-                                    valueListenable: CarThemes.currentTheme,
-                                    builder: (context, themeType, _) {
-                                      final theme = CarThemes.getTheme(
-                                        themeType,
-                                      );
-
-                                      return AnimatedContainer(
-                                        duration: const Duration(
-                                          milliseconds: 250,
-                                        ),
-                                        padding: EdgeInsets.symmetric(
-                                          horizontal: 40.w,
-                                          vertical: 16.h,
-                                        ),
-                                        decoration: BoxDecoration(
-                                          color: theme.buttonColor,
-                                          borderRadius: BorderRadius.circular(
-                                            30.r,
-                                          ),
-                                          boxShadow: [
-                                            BoxShadow(
-                                              color: theme.buttonColor
-                                                  .withOpacity(0.4),
-                                              blurRadius: 20,
+                                        return Wrap(
+                                          spacing: 14.w,
+                                          runSpacing: 12.h,
+                                          children: [
+                                            GestureDetector(
+                                              onTap: _savePreference,
+                                              child: AnimatedContainer(
+                                                duration: const Duration(
+                                                  milliseconds: 250,
+                                                ),
+                                                padding: EdgeInsets.symmetric(
+                                                  horizontal: 40.w,
+                                                  vertical: 16.h,
+                                                ),
+                                                decoration: BoxDecoration(
+                                                  color: theme.buttonColor,
+                                                  borderRadius:
+                                                      BorderRadius.circular(
+                                                    30.r,
+                                                  ),
+                                                  boxShadow: [
+                                                    BoxShadow(
+                                                      color: theme.buttonColor
+                                                          .withValues(
+                                                            alpha: 0.4,
+                                                          ),
+                                                      blurRadius: 20,
+                                                    ),
+                                                  ],
+                                                ),
+                                                child: Text(
+                                                  AppStrings.saveSettings,
+                                                  style: TextStyle(
+                                                    color: darkButtonText
+                                                        ? Colors.black
+                                                        : Colors.white,
+                                                    fontSize: 18.sp,
+                                                    fontWeight: FontWeight.bold,
+                                                  ),
+                                                ),
+                                              ),
                                             ),
+                                            if (activeDriver != null)
+                                              GestureDetector(
+                                                onTap: _openDeleteAccountFlow,
+                                                child: AnimatedContainer(
+                                                  duration: const Duration(
+                                                    milliseconds: 250,
+                                                  ),
+                                                  padding: EdgeInsets.symmetric(
+                                                    horizontal: 28.w,
+                                                    vertical: 16.h,
+                                                  ),
+                                                  decoration: BoxDecoration(
+                                                    color: Colors.redAccent
+                                                        .withValues(alpha: 0.18),
+                                                    borderRadius:
+                                                        BorderRadius.circular(
+                                                      30.r,
+                                                    ),
+                                                    border: Border.all(
+                                                      color: Colors.redAccent
+                                                          .withValues(
+                                                            alpha: 0.72,
+                                                          ),
+                                                    ),
+                                                  ),
+                                                  child: Row(
+                                                    mainAxisSize:
+                                                        MainAxisSize.min,
+                                                    children: [
+                                                      Icon(
+                                                        Icons.delete_outline,
+                                                        color: Colors.redAccent,
+                                                        size: 20.sp,
+                                                      ),
+                                                      SizedBox(width: 8.w),
+                                                      Text(
+                                                        AppStrings
+                                                            .deleteAccount,
+                                                        style: TextStyle(
+                                                          color:
+                                                              Colors.redAccent,
+                                                          fontSize: 18.sp,
+                                                          fontWeight:
+                                                              FontWeight.bold,
+                                                        ),
+                                                      ),
+                                                    ],
+                                                  ),
+                                                ),
+                                              ),
                                           ],
-                                        ),
-                                        child: Text(
-                                          "Save Settings",
-                                          style: TextStyle(
-                                            color:
-                                                themeType ==
-                                                        CarThemeType.comfort ||
-                                                    themeType ==
-                                                        CarThemeType.futuristic
-                                                ? Colors.black
-                                                : Colors.white,
-                                            fontSize: 18.sp,
-                                            fontWeight: FontWeight.bold,
-                                          ),
-                                        ),
-                                      );
-                                    },
-                                  ),
+                                        );
+                                      },
+                                    );
+                                  },
                                 ),
                               ],
                             ),
@@ -384,6 +656,220 @@ class _PersonalizePageState extends State<PersonalizePage> {
             ],
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _DeleteDriverFaceDialog extends StatefulWidget {
+  const _DeleteDriverFaceDialog({required this.driverName});
+
+  final String driverName;
+
+  @override
+  State<_DeleteDriverFaceDialog> createState() =>
+      _DeleteDriverFaceDialogState();
+}
+
+class _DeleteDriverFaceDialogState extends State<_DeleteDriverFaceDialog> {
+  Timer? _timer;
+  bool _verified = false;
+  bool _deleting = false;
+  String? _recognizedDriver;
+  Object? _error;
+
+  @override
+  void initState() {
+    super.initState();
+    _startPolling();
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    super.dispose();
+  }
+
+  bool _sameDriver(String? recognized) {
+    return recognized != null &&
+        recognized.trim().toLowerCase() ==
+            widget.driverName.trim().toLowerCase();
+  }
+
+  void _startPolling() {
+    _timer?.cancel();
+    _timer = Timer.periodic(const Duration(milliseconds: 500), (_) async {
+      try {
+        final status = await FaceIdApi.getDriverStatus();
+        final recognized = status["recognized"] == true;
+        final name = status["driver"]?.toString();
+
+        if (!mounted) return;
+
+        setState(() {
+          _recognizedDriver = name;
+          _verified = recognized && _sameDriver(name);
+          _error = null;
+        });
+      } catch (e) {
+        if (!mounted) return;
+        setState(() => _error = e);
+      }
+    });
+  }
+
+  void _confirmDelete() {
+    if (!_verified || _deleting) return;
+
+    setState(() => _deleting = true);
+    _timer?.cancel();
+    Navigator.of(context).pop(true);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final statusText = _deleting
+        ? AppStrings.deletingAccount
+        : _verified
+        ? AppStrings.faceVerified
+        : AppStrings.verifyingFace;
+
+    return Dialog(
+      backgroundColor: Colors.transparent,
+      insetPadding: EdgeInsets.symmetric(horizontal: 170.w, vertical: 60.h),
+      child: Container(
+        padding: EdgeInsets.all(22.w),
+        decoration: BoxDecoration(
+          color: const Color(0xFF101010),
+          borderRadius: BorderRadius.circular(24.r),
+          border: Border.all(
+            color: _verified ? Colors.greenAccent : Colors.redAccent,
+            width: 1.5,
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.45),
+              blurRadius: 30,
+            ),
+          ],
+        ),
+        child: Row(
+          children: [
+            LiveCameraWS(
+              url: FaceIdApi.cameraWs,
+              width: 330.w,
+              height: 330.h,
+            ),
+            SizedBox(width: 28.w),
+            Expanded(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    AppStrings.deleteDriverAccount,
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 28.sp,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  SizedBox(height: 10.h),
+                  Text(
+                    AppStrings.deleteDriverPrompt(widget.driverName),
+                    style: TextStyle(color: Colors.white70, fontSize: 15.sp),
+                  ),
+                  SizedBox(height: 22.h),
+                  Container(
+                    padding: EdgeInsets.all(14.w),
+                    decoration: BoxDecoration(
+                      color: (_verified ? Colors.greenAccent : Colors.white)
+                          .withValues(alpha: _verified ? 0.13 : 0.07),
+                      borderRadius: BorderRadius.circular(16.r),
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(
+                          _verified
+                              ? Icons.verified_user
+                              : Icons.face_retouching_natural,
+                          color: _verified
+                              ? Colors.greenAccent
+                              : Colors.orangeAccent,
+                          size: 24.sp,
+                        ),
+                        SizedBox(width: 12.w),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                statusText,
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 16.sp,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                              SizedBox(height: 4.h),
+                              Text(
+                                _recognizedDriver == null
+                                    ? AppStrings.faceNotMatched
+                                    : 'Detected: $_recognizedDriver',
+                                style: TextStyle(
+                                  color: Colors.white54,
+                                  fontSize: 12.sp,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  if (_error != null) ...[
+                    SizedBox(height: 12.h),
+                    Text(
+                      _error.toString(),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        color: Colors.redAccent,
+                        fontSize: 11.sp,
+                      ),
+                    ),
+                  ],
+                  SizedBox(height: 28.h),
+                  Row(
+                    children: [
+                      TextButton(
+                        onPressed: _deleting
+                            ? null
+                            : () => Navigator.of(context).pop(false),
+                        child: Text(AppStrings.cancel),
+                      ),
+                      SizedBox(width: 14.w),
+                      FilledButton.icon(
+                        onPressed: _verified && !_deleting
+                            ? _confirmDelete
+                            : null,
+                        style: FilledButton.styleFrom(
+                          backgroundColor: Colors.redAccent,
+                          foregroundColor: Colors.white,
+                          disabledBackgroundColor:
+                              Colors.white.withValues(alpha: 0.12),
+                          disabledForegroundColor: Colors.white38,
+                        ),
+                        icon: const Icon(Icons.delete_outline),
+                        label: Text(AppStrings.deleteNow),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

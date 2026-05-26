@@ -187,26 +187,26 @@ class _HomeScreenState extends State<SmartFragrancePage> {
                       padding: EdgeInsets.symmetric(horizontal: 44.w),
                       child: Row(
                         children: [
-                           GestureDetector(
-                        onTap: () => Navigator.pop(context),
-                        child: Row(
-                          children: [
-                            Icon(
-                              Icons.arrow_back_ios,
-                              color: Colors.white,
-                              size: 20.sp,
+                          GestureDetector(
+                            onTap: () => Navigator.pop(context),
+                            child: Row(
+                              children: [
+                                Icon(
+                                  Icons.arrow_back_ios,
+                                  color: Colors.white,
+                                  size: 20.sp,
+                                ),
+                                SizedBox(width: 8.w),
+                                Text(
+                                  "Back",
+                                  style: TextStyle(
+                                    color: Colors.white70,
+                                    fontSize: 16.sp,
+                                  ),
+                                ),
+                              ],
                             ),
-                            SizedBox(width: 8.w),
-                            Text(
-                              "Back",
-                              style: TextStyle(
-                                color: Colors.white70,
-                                fontSize: 16.sp,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
+                          ),
                           SizedBox(width: 350.w),
                           Text(
                             "Smart Fragrance Control",
@@ -312,7 +312,7 @@ class _HomeScreenState extends State<SmartFragrancePage> {
                         vertical: 8.h,
                       ),
                       decoration: BoxDecoration(
-                        color: Colors.black.withOpacity(0.65),
+                        color: Colors.black.withValues(alpha: 0.65),
                         borderRadius: BorderRadius.circular(20.r),
                       ),
                       child: Row(
@@ -343,4 +343,3 @@ class _HomeScreenState extends State<SmartFragrancePage> {
     );
   }
 }
-

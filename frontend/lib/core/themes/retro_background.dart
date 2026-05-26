@@ -11,7 +11,6 @@ class RetroParticlesBackground extends StatefulWidget {
 
 class _RetroParticlesBackgroundState extends State<RetroParticlesBackground>
     with SingleTickerProviderStateMixin {
-
   late AnimationController controller;
 
   final List<_RetroParticle> particles = [];
@@ -23,32 +22,33 @@ class _RetroParticlesBackgroundState extends State<RetroParticlesBackground>
 
     /// generate particles sekali
     for (int i = 0; i < 120; i++) {
-      particles.add(_RetroParticle(
-        x: random.nextDouble(),
-        y: random.nextDouble(),
-        speed: random.nextDouble() * 0.002 + 0.001,
-        height: random.nextDouble() * 12 + 4,
-        opacity: random.nextDouble() * 0.6 + 0.3,
-        color: [
-          const Color(0xFFFF00FF),
-          const Color(0xFFFF2BC2),
-          const Color(0xFFB517FF),
-        ][random.nextInt(3)],
-      ));
+      particles.add(
+        _RetroParticle(
+          x: random.nextDouble(),
+          y: random.nextDouble(),
+          speed: random.nextDouble() * 0.002 + 0.001,
+          height: random.nextDouble() * 12 + 4,
+          opacity: random.nextDouble() * 0.6 + 0.3,
+          color: [
+            const Color(0xFFFF00FF),
+            const Color(0xFFFF2BC2),
+            const Color(0xFFB517FF),
+          ][random.nextInt(3)],
+        ),
+      );
     }
 
-    controller = AnimationController(
-      vsync: this,
-      duration: const Duration(days: 1), // hampir infinite
-    )
-      ..addListener(updateParticles)
-      ..repeat();
+    controller =
+        AnimationController(
+            vsync: this,
+            duration: const Duration(days: 1), // hampir infinite
+          )
+          ..addListener(updateParticles)
+          ..repeat();
   }
 
   void updateParticles() {
-
     for (final p in particles) {
-
       p.y += p.speed;
 
       /// kalau sudah keluar layar spawn lagi dari atas
@@ -63,10 +63,7 @@ class _RetroParticlesBackgroundState extends State<RetroParticlesBackground>
 
   @override
   Widget build(BuildContext context) {
-    return CustomPaint(
-      painter: _RetroPainter(particles),
-      size: Size.infinite,
-    );
+    return CustomPaint(painter: _RetroPainter(particles), size: Size.infinite);
   }
 
   @override
@@ -77,7 +74,6 @@ class _RetroParticlesBackgroundState extends State<RetroParticlesBackground>
 }
 
 class _RetroParticle {
-
   double x;
   double y;
   double speed;
@@ -96,22 +92,19 @@ class _RetroParticle {
 }
 
 class _RetroPainter extends CustomPainter {
-
   final List<_RetroParticle> particles;
 
   _RetroPainter(this.particles);
 
   @override
   void paint(Canvas canvas, Size size) {
-
     final paint = Paint()..style = PaintingStyle.fill;
 
     for (final p in particles) {
-
       final x = p.x * size.width;
       final y = p.y * size.height;
 
-      paint.color = p.color.withOpacity(p.opacity);
+      paint.color = p.color.withValues(alpha: p.opacity);
 
       canvas.drawRRect(
         RRect.fromRectAndRadius(

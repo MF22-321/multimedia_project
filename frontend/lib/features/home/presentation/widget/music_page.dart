@@ -4,6 +4,7 @@ import 'dart:ui';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:frontend/core/localization/app_strings.dart';
 import 'package:frontend/core/navigation/smart_music_navigation.dart';
 import 'package:frontend/core/provider/music_provider.dart';
 import 'package:frontend/core/services/spotify_search_service.dart';
@@ -266,7 +267,7 @@ class _MusicPageState extends State<MusicPage> {
 
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
-                      color: musicAccent.withOpacity(0.18),
+                      color: musicAccent.withValues(alpha: 0.18),
                     ),
                   ),
                 ),
@@ -277,7 +278,7 @@ class _MusicPageState extends State<MusicPage> {
                 BackdropFilter(
                   filter: ImageFilter.blur(sigmaX: 30, sigmaY: 30),
 
-                  child: Container(color: Colors.black.withOpacity(0.15)),
+                  child: Container(color: Colors.black.withValues(alpha: 0.15)),
                 ),
 
                 /// ===============================
@@ -294,11 +295,11 @@ class _MusicPageState extends State<MusicPage> {
                       padding: EdgeInsets.all(26.w),
 
                       decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.03),
+                        color: Colors.white.withValues(alpha: 0.03),
 
                         border: Border(
                           right: BorderSide(
-                            color: Colors.white.withOpacity(0.06),
+                            color: Colors.white.withValues(alpha: 0.06),
                           ),
                         ),
                       ),
@@ -319,7 +320,7 @@ class _MusicPageState extends State<MusicPage> {
                               SizedBox(width: 14.w),
 
                               Text(
-                                'Music',
+                                AppStrings.music,
                                 style: TextStyle(
                                   color: Colors.white,
                                   fontSize: 30.sp,
@@ -338,7 +339,7 @@ class _MusicPageState extends State<MusicPage> {
                             padding: EdgeInsets.symmetric(horizontal: 18.w),
 
                             decoration: BoxDecoration(
-                              color: Colors.white.withOpacity(0.06),
+                              color: Colors.white.withValues(alpha: 0.06),
 
                               borderRadius: BorderRadius.circular(20.r),
                             ),
@@ -421,15 +422,15 @@ class _MusicPageState extends State<MusicPage> {
                               decoration: BoxDecoration(
                                 borderRadius: BorderRadius.circular(28.r),
 
-                                color: musicAccent.withOpacity(0.12),
+                                color: musicAccent.withValues(alpha: 0.12),
 
                                 border: Border.all(
-                                  color: musicAccent.withOpacity(0.22),
+                                  color: musicAccent.withValues(alpha: 0.22),
                                 ),
 
                                 boxShadow: [
                                   BoxShadow(
-                                    color: musicAccent.withOpacity(0.24),
+                                    color: musicAccent.withValues(alpha: 0.24),
 
                                     blurRadius: 24,
                                   ),
@@ -445,7 +446,9 @@ class _MusicPageState extends State<MusicPage> {
                                     decoration: BoxDecoration(
                                       shape: BoxShape.circle,
 
-                                      color: musicAccent.withOpacity(0.18),
+                                      color: musicAccent.withValues(
+                                        alpha: 0.18,
+                                      ),
                                     ),
 
                                     child: Icon(
@@ -535,7 +538,7 @@ class _MusicPageState extends State<MusicPage> {
                                   ),
 
                                   decoration: BoxDecoration(
-                                    color: Colors.white.withOpacity(0.05),
+                                    color: Colors.white.withValues(alpha: 0.05),
 
                                     borderRadius: BorderRadius.circular(24.r),
                                   ),
@@ -635,8 +638,8 @@ class _MusicPageState extends State<MusicPage> {
 
                                             boxShadow: [
                                               BoxShadow(
-                                                color: musicAccent.withOpacity(
-                                                  0.4,
+                                                color: musicAccent.withValues(
+                                                  alpha: 0.4,
                                                 ),
                                                 blurRadius: 16,
                                               ),
@@ -868,8 +871,9 @@ class _MusicPageState extends State<MusicPage> {
                                                                 shadows: active
                                                                     ? [
                                                                         Shadow(
-                                                                          color: musicAccent.withOpacity(
-                                                                            0.8,
+                                                                          color: musicAccent.withValues(
+                                                                            alpha:
+                                                                                0.8,
                                                                           ),
 
                                                                           blurRadius:
@@ -940,7 +944,9 @@ class _MusicPageState extends State<MusicPage> {
                                                 boxShadow: [
                                                   BoxShadow(
                                                     color: musicAccent
-                                                        .withOpacity(0.35),
+                                                        .withValues(
+                                                          alpha: 0.35,
+                                                        ),
                                                     blurRadius: 35,
                                                   ),
                                                 ],
@@ -1104,7 +1110,9 @@ class _MusicPageState extends State<MusicPage> {
 
                                       boxShadow: [
                                         BoxShadow(
-                                          color: musicAccent.withOpacity(0.45),
+                                          color: musicAccent.withValues(
+                                            alpha: 0.45,
+                                          ),
 
                                           blurRadius: 24,
                                         ),
@@ -1154,7 +1162,9 @@ class _MusicPageState extends State<MusicPage> {
                                     decoration: BoxDecoration(
                                       color: showLyrics
                                           ? musicAccent
-                                          : theme.accentColor.withOpacity(0.4),
+                                          : theme.accentColor.withValues(
+                                              alpha: 0.4,
+                                            ),
 
                                       shape: BoxShape.circle,
 
@@ -1162,7 +1172,7 @@ class _MusicPageState extends State<MusicPage> {
                                           ? [
                                               BoxShadow(
                                                 color: theme.accentColor
-                                                    .withOpacity(0.4),
+                                                    .withValues(alpha: 0.4),
                                                 blurRadius: 18,
                                               ),
                                             ]
@@ -1318,7 +1328,7 @@ class _MusicPageState extends State<MusicPage> {
         padding: EdgeInsets.symmetric(horizontal: 18.w, vertical: 11.h),
 
         decoration: BoxDecoration(
-          color: active ? musicAccent : Colors.white.withOpacity(0.06),
+          color: active ? musicAccent : Colors.white.withValues(alpha: 0.06),
 
           borderRadius: BorderRadius.circular(20.r),
         ),
@@ -1352,11 +1362,11 @@ class _MusicPageState extends State<MusicPage> {
         height: 74.w,
 
         decoration: BoxDecoration(
-          color: Colors.white.withOpacity(0.07),
+          color: Colors.white.withValues(alpha: 0.07),
 
           shape: BoxShape.circle,
 
-          border: Border.all(color: musicAccent.withOpacity(0.35)),
+          border: Border.all(color: musicAccent.withValues(alpha: 0.35)),
         ),
 
         child: Icon(icon, color: Colors.white, size: 42.sp),

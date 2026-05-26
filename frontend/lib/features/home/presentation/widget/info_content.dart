@@ -3,6 +3,7 @@ import 'dart:ui';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:frontend/core/localization/app_strings.dart';
 import 'package:frontend/core/themes/car_theme.dart';
 
 class InfoContent extends StatefulWidget {
@@ -13,7 +14,6 @@ class InfoContent extends StatefulWidget {
 }
 
 class _InfoContentState extends State<InfoContent> {
-
   late Timer timer;
 
   DateTime now = DateTime.now();
@@ -22,20 +22,15 @@ class _InfoContentState extends State<InfoContent> {
   void initState() {
     super.initState();
 
-    timer = Timer.periodic(
-      const Duration(seconds: 1),
-      (_) {
-
-        setState(() {
-          now = DateTime.now();
-        });
-      },
-    );
+    timer = Timer.periodic(const Duration(seconds: 1), (_) {
+      setState(() {
+        now = DateTime.now();
+      });
+    });
   }
 
   @override
   void dispose() {
-
     timer.cancel();
 
     super.dispose();
@@ -44,13 +39,8 @@ class _InfoContentState extends State<InfoContent> {
   /// ===============================
   /// ACCENT COLOR
   /// ===============================
-  Color getAccentColor(
-    CarThemeType type,
-    CarThemeData theme,
-  ) {
-
+  Color getAccentColor(CarThemeType type, CarThemeData theme) {
     switch (type) {
-
       case CarThemeType.comfort:
         return const Color(0xFF6CB4FF);
 
@@ -73,18 +63,11 @@ class _InfoContentState extends State<InfoContent> {
 
   @override
   Widget build(BuildContext context) {
+    final currentTheme = CarThemes.currentTheme.value;
 
-    final currentTheme =
-        CarThemes.currentTheme.value;
+    final theme = CarThemes.getTheme(currentTheme);
 
-    final theme =
-        CarThemes.getTheme(currentTheme);
-
-    final accent =
-        getAccentColor(
-          currentTheme,
-          theme,
-        );
+    final accent = getAccentColor(currentTheme, theme);
 
     return Scaffold(
       backgroundColor: Colors.black,
@@ -104,7 +87,6 @@ class _InfoContentState extends State<InfoContent> {
 
         child: Stack(
           children: [
-
             /// =========================
             /// AMBIENT GLOW
             /// =========================
@@ -119,7 +101,7 @@ class _InfoContentState extends State<InfoContent> {
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
 
-                  color: accent.withOpacity(0.18),
+                  color: accent.withValues(alpha: 0.18),
                 ),
               ),
             ),
@@ -135,7 +117,7 @@ class _InfoContentState extends State<InfoContent> {
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
 
-                  color: accent.withOpacity(0.08),
+                  color: accent.withValues(alpha: 0.08),
                 ),
               ),
             ),
@@ -144,16 +126,9 @@ class _InfoContentState extends State<InfoContent> {
             /// BLUR
             /// =========================
             BackdropFilter(
-              filter: ImageFilter.blur(
-                sigmaX: 30,
-                sigmaY: 30,
-              ),
+              filter: ImageFilter.blur(sigmaX: 30, sigmaY: 30),
 
-              child: Container(
-                color: Colors.black.withOpacity(
-                  0.12,
-                ),
-              ),
+              child: Container(color: Colors.black.withValues(alpha: 0.12)),
             ),
 
             SafeArea(
@@ -162,48 +137,34 @@ class _InfoContentState extends State<InfoContent> {
 
                 child: Column(
                   children: [
-
                     /// =====================
                     /// TOP BAR
                     /// =====================
                     Container(
                       height: 90.h,
 
-                      padding: EdgeInsets.symmetric(
-                        horizontal: 28.w,
-                      ),
+                      padding: EdgeInsets.symmetric(horizontal: 28.w),
 
                       decoration: BoxDecoration(
-                        borderRadius:
-                            BorderRadius.circular(
-                              30.r,
-                            ),
+                        borderRadius: BorderRadius.circular(30.r),
 
-                        color: Colors.white
-                            .withOpacity(0.05),
+                        color: Colors.white.withValues(alpha: 0.05),
 
                         border: Border.all(
-                          color: Colors.white
-                              .withOpacity(0.08),
+                          color: Colors.white.withValues(alpha: 0.08),
                         ),
                       ),
 
                       child: Row(
-                        mainAxisAlignment:
-                            MainAxisAlignment
-                                .spaceBetween,
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
 
                         children: [
-
                           /// LEFT
                           Row(
                             children: [
-
                               GestureDetector(
                                 onTap: () {
-                                  Navigator.pop(
-                                    context,
-                                  );
+                                  Navigator.pop(context);
                                 },
 
                                 child: Container(
@@ -211,26 +172,19 @@ class _InfoContentState extends State<InfoContent> {
                                   height: 52.w,
 
                                   decoration: BoxDecoration(
-                                    shape:
-                                        BoxShape.circle,
+                                    shape: BoxShape.circle,
 
-                                    color: Colors.white
-                                        .withOpacity(
-                                          0.06,
-                                        ),
+                                    color: Colors.white.withValues(alpha: 0.06),
 
                                     border: Border.all(
-                                      color: Colors
-                                          .white
-                                          .withOpacity(
-                                            0.08,
-                                          ),
+                                      color: Colors.white.withValues(
+                                        alpha: 0.08,
+                                      ),
                                     ),
                                   ),
 
                                   child: Icon(
-                                    Icons
-                                        .arrow_back_ios_new,
+                                    Icons.arrow_back_ios_new,
 
                                     color: accent,
 
@@ -246,8 +200,7 @@ class _InfoContentState extends State<InfoContent> {
                                 height: 52.w,
 
                                 decoration: BoxDecoration(
-                                  shape:
-                                      BoxShape.circle,
+                                  shape: BoxShape.circle,
 
                                   color: accent,
                                 ),
@@ -264,39 +217,29 @@ class _InfoContentState extends State<InfoContent> {
                               SizedBox(width: 16.w),
 
                               Column(
-                                mainAxisAlignment:
-                                    MainAxisAlignment
-                                        .center,
+                                mainAxisAlignment: MainAxisAlignment.center,
 
-                                crossAxisAlignment:
-                                    CrossAxisAlignment
-                                        .start,
+                                crossAxisAlignment: CrossAxisAlignment.start,
 
                                 children: [
-
                                   Text(
-                                    'Vehicle Information',
-
+                                    AppStrings.vehicleInformation,
                                     style: TextStyle(
-                                      color:
-                                          Colors.white,
+                                      color: Colors.white,
 
                                       fontSize: 24.sp,
 
-                                      fontWeight:
-                                          FontWeight
-                                              .bold,
+                                      fontWeight: FontWeight.bold,
                                     ),
                                   ),
 
                                   SizedBox(height: 4.h),
 
                                   Text(
-                                    'Smart Vehicle Insight',
+                                    AppStrings.smartVehicleInsight,
 
                                     style: TextStyle(
-                                      color: Colors
-                                          .white60,
+                                      color: Colors.white60,
 
                                       fontSize: 14.sp,
                                     ),
@@ -308,16 +251,11 @@ class _InfoContentState extends State<InfoContent> {
 
                           /// RIGHT
                           Column(
-                            crossAxisAlignment:
-                                CrossAxisAlignment
-                                    .end,
+                            crossAxisAlignment: CrossAxisAlignment.end,
 
-                            mainAxisAlignment:
-                                MainAxisAlignment
-                                    .center,
+                            mainAxisAlignment: MainAxisAlignment.center,
 
                             children: [
-
                               Text(
                                 '${now.hour.toString().padLeft(2, '0')}:${now.minute.toString().padLeft(2, '0')}',
 
@@ -326,8 +264,7 @@ class _InfoContentState extends State<InfoContent> {
 
                                   fontSize: 28.sp,
 
-                                  fontWeight:
-                                      FontWeight.bold,
+                                  fontWeight: FontWeight.bold,
                                 ),
                               ),
 
@@ -337,8 +274,7 @@ class _InfoContentState extends State<InfoContent> {
                                 '${now.day}/${now.month}/${now.year}',
 
                                 style: TextStyle(
-                                  color:
-                                      Colors.white60,
+                                  color: Colors.white60,
 
                                   fontSize: 13.sp,
                                 ),
@@ -356,44 +292,30 @@ class _InfoContentState extends State<InfoContent> {
                     /// =====================
                     Expanded(
                       child: SingleChildScrollView(
-                        physics:
-                            const BouncingScrollPhysics(),
+                        physics: const BouncingScrollPhysics(),
 
                         child: Column(
                           children: [
-
                             /// =================
                             /// HERO CARD
                             /// =================
                             Container(
                               width: double.infinity,
 
-                              padding: EdgeInsets.all(
-                                28.w,
-                              ),
+                              padding: EdgeInsets.all(28.w),
 
                               decoration: BoxDecoration(
-                                borderRadius:
-                                    BorderRadius.circular(
-                                      40.r,
-                                    ),
+                                borderRadius: BorderRadius.circular(40.r),
 
-                                color: Colors.white
-                                    .withOpacity(0.05),
+                                color: Colors.white.withValues(alpha: 0.05),
 
                                 border: Border.all(
-                                  color: Colors.white
-                                      .withOpacity(
-                                        0.08,
-                                      ),
+                                  color: Colors.white.withValues(alpha: 0.08),
                                 ),
 
                                 boxShadow: [
                                   BoxShadow(
-                                    color: accent
-                                        .withOpacity(
-                                          0.12,
-                                        ),
+                                    color: accent.withValues(alpha: 0.12),
 
                                     blurRadius: 30,
                                   ),
@@ -402,7 +324,6 @@ class _InfoContentState extends State<InfoContent> {
 
                               child: Row(
                                 children: [
-
                                   /// VEHICLE IMAGE
                                   Container(
                                     width: 260.w,
@@ -411,10 +332,7 @@ class _InfoContentState extends State<InfoContent> {
                                     decoration: BoxDecoration(
                                       boxShadow: [
                                         BoxShadow(
-                                          color: accent
-                                              .withOpacity(
-                                                0.35,
-                                              ),
+                                          color: accent.withValues(alpha: 0.35),
 
                                           blurRadius: 40,
                                         ),
@@ -434,66 +352,55 @@ class _InfoContentState extends State<InfoContent> {
                                   Expanded(
                                     child: Column(
                                       crossAxisAlignment:
-                                          CrossAxisAlignment
-                                              .start,
+                                          CrossAxisAlignment.start,
 
                                       children: [
-
                                         Text(
                                           'Toyota Veloz 2026',
 
                                           style: TextStyle(
-                                            color:
-                                                Colors.white,
+                                            color: Colors.white,
 
                                             fontSize: 34.sp,
 
-                                            fontWeight:
-                                                FontWeight
-                                                    .bold,
+                                            fontWeight: FontWeight.bold,
                                           ),
                                         ),
 
-                                        SizedBox(
-                                          height: 10.h,
-                                        ),
+                                        SizedBox(height: 10.h),
 
                                         Text(
-                                          'Connected Smart Vehicle',
+                                          AppStrings.connectedSmartVehicle,
 
                                           style: TextStyle(
-                                            color:
-                                                Colors.white70,
+                                            color: Colors.white70,
 
                                             fontSize: 18.sp,
                                           ),
                                         ),
 
-                                        SizedBox(
-                                          height: 20.h,
-                                        ),
+                                        SizedBox(height: 20.h),
 
                                         Wrap(
                                           spacing: 12.w,
                                           runSpacing: 12.h,
 
                                           children: [
-
                                             _statusChip(
                                               Icons.bluetooth,
-                                              'Bluetooth Connected',
+                                              AppStrings.bluetoothConnected,
                                               accent,
                                             ),
 
                                             _statusChip(
                                               Icons.gps_fixed,
-                                              'GPS Synced',
+                                              AppStrings.gpsSynced,
                                               accent,
                                             ),
 
                                             _statusChip(
                                               Icons.wifi,
-                                              'ADB Wireless',
+                                              AppStrings.adbWireless,
                                               accent,
                                             ),
                                           ],
@@ -513,59 +420,48 @@ class _InfoContentState extends State<InfoContent> {
                             GridView(
                               shrinkWrap: true,
 
-                              physics:
-                                  const NeverScrollableScrollPhysics(),
+                              physics: const NeverScrollableScrollPhysics(),
 
                               gridDelegate:
                                   SliverGridDelegateWithFixedCrossAxisCount(
                                     crossAxisCount: 2,
 
-                                    crossAxisSpacing:
-                                        24.w,
+                                    crossAxisSpacing: 24.w,
 
-                                    mainAxisSpacing:
-                                        24.h,
+                                    mainAxisSpacing: 24.h,
 
-                                    childAspectRatio:
-                                        1.6,
+                                    childAspectRatio: 1.6,
                                   ),
 
                               children: [
-
                                 /// DRIVING ANALYTICS
                                 _glassCard(
-                                  title:
-                                      'Driving Analytics',
+                                  title: AppStrings.drivingAnalytics,
 
                                   accent: accent,
 
                                   child: Column(
                                     children: [
-
                                       _analyticsTile(
-                                        'Driving Score',
+                                        AppStrings.drivingScore,
                                         '92',
                                         Icons.speed,
                                         accent,
                                       ),
 
-                                      SizedBox(
-                                        height: 18.h,
-                                      ),
+                                      SizedBox(height: 18.h),
 
                                       _analyticsTile(
-                                        'Fuel Efficiency',
+                                        AppStrings.fuelEfficiency,
                                         '18.4 km/l',
                                         Icons.local_gas_station,
                                         accent,
                                       ),
 
-                                      SizedBox(
-                                        height: 18.h,
-                                      ),
+                                      SizedBox(height: 18.h),
 
                                       _analyticsTile(
-                                        'Distance Today',
+                                        AppStrings.distanceToday,
                                         '42 km',
                                         Icons.route,
                                         accent,
@@ -576,39 +472,33 @@ class _InfoContentState extends State<InfoContent> {
 
                                 /// SMART DETECTION
                                 _glassCard(
-                                  title:
-                                      'Smart Detection',
+                                  title: AppStrings.smartDetection,
 
                                   accent: accent,
 
                                   child: Column(
                                     children: [
-
                                       _detectionTile(
-                                        'Pothole Detection',
-                                        'Active',
+                                        AppStrings.potholeDetection,
+                                        AppStrings.active,
                                         true,
                                         accent,
                                       ),
 
-                                      SizedBox(
-                                        height: 18.h,
-                                      ),
+                                      SizedBox(height: 18.h),
 
                                       _detectionTile(
-                                        'Driver Monitoring',
-                                        'Active',
+                                        AppStrings.driverMonitoring,
+                                        AppStrings.active,
                                         true,
                                         accent,
                                       ),
 
-                                      SizedBox(
-                                        height: 18.h,
-                                      ),
+                                      SizedBox(height: 18.h),
 
                                       _detectionTile(
-                                        'Fatigue Risk',
-                                        'Low',
+                                        AppStrings.fatigueRisk,
+                                        AppStrings.low,
                                         true,
                                         accent,
                                       ),
@@ -618,37 +508,31 @@ class _InfoContentState extends State<InfoContent> {
 
                                 /// CONNECTIVITY
                                 _glassCard(
-                                  title:
-                                      'Connectivity',
+                                  title: AppStrings.connectivity,
 
                                   accent: accent,
 
                                   child: Column(
                                     children: [
-
                                       _connectivityTile(
                                         Icons.bluetooth,
-                                        'Bluetooth Connected',
+                                        AppStrings.bluetoothConnected,
                                         accent,
                                       ),
 
-                                      SizedBox(
-                                        height: 16.h,
-                                      ),
+                                      SizedBox(height: 16.h),
 
                                       _connectivityTile(
                                         Icons.phone_android,
-                                        'Android Cast Ready',
+                                        AppStrings.androidCastReady,
                                         accent,
                                       ),
 
-                                      SizedBox(
-                                        height: 16.h,
-                                      ),
+                                      SizedBox(height: 16.h),
 
                                       _connectivityTile(
                                         Icons.usb,
-                                        'ADB Wireless Connected',
+                                        AppStrings.adbWirelessConnected,
                                         accent,
                                       ),
                                     ],
@@ -657,45 +541,25 @@ class _InfoContentState extends State<InfoContent> {
 
                                 /// SYSTEM INFO
                                 _glassCard(
-                                  title:
-                                      'System Information',
+                                  title: AppStrings.systemInformation,
 
                                   accent: accent,
 
                                   child: Column(
                                     children: [
+                                      _systemTile(AppStrings.platform, 'Flutter Linux'),
 
-                                      _systemTile(
-                                        'Platform',
-                                        'Flutter Linux',
-                                      ),
+                                      SizedBox(height: 14.h),
 
-                                      SizedBox(
-                                        height: 14.h,
-                                      ),
+                                      _systemTile(AppStrings.device, 'Jetson Orin Nano'),
 
-                                      _systemTile(
-                                        'Device',
-                                        'Jetson Orin Nano',
-                                      ),
+                                      SizedBox(height: 14.h),
 
-                                      SizedBox(
-                                        height: 14.h,
-                                      ),
+                                      _systemTile(AppStrings.mediaEngine, 'Ready'),
 
-                                      _systemTile(
-                                        'Media Engine',
-                                        'Ready',
-                                      ),
+                                      SizedBox(height: 14.h),
 
-                                      SizedBox(
-                                        height: 14.h,
-                                      ),
-
-                                      _systemTile(
-                                        'GPU Rendering',
-                                        'Active',
-                                      ),
+                                      _systemTile(AppStrings.gpuRendering, AppStrings.active),
                                     ],
                                   ),
                                 ),
@@ -709,105 +573,80 @@ class _InfoContentState extends State<InfoContent> {
                             /// =================
                             Row(
                               children: [
-
                                 /// NOW PLAYING
                                 Expanded(
                                   child: _glassCard(
-                                    title:
-                                        'Now Playing',
+                                    title: AppStrings.nowPlaying,
 
                                     accent: accent,
 
                                     child: Row(
                                       children: [
-
                                         Container(
                                           width: 90.w,
                                           height: 90.w,
 
                                           decoration: BoxDecoration(
-                                            borderRadius:
-                                                BorderRadius.circular(
-                                                  24.r,
-                                                ),
+                                            borderRadius: BorderRadius.circular(
+                                              24.r,
+                                            ),
 
-                                            image:
-                                                const DecorationImage(
-                                                  image: AssetImage(
-                                                    "assets/images/weekend.png",
-                                                  ),
+                                            image: const DecorationImage(
+                                              image: AssetImage(
+                                                "assets/images/weekend.png",
+                                              ),
 
-                                                  fit:
-                                                      BoxFit.cover,
-                                                ),
+                                              fit: BoxFit.cover,
+                                            ),
                                           ),
                                         ),
 
-                                        SizedBox(
-                                          width: 18.w,
-                                        ),
+                                        SizedBox(width: 18.w),
 
                                         Expanded(
                                           child: Column(
                                             crossAxisAlignment:
-                                                CrossAxisAlignment
-                                                    .start,
+                                                CrossAxisAlignment.start,
 
                                             mainAxisAlignment:
-                                                MainAxisAlignment
-                                                    .center,
+                                                MainAxisAlignment.center,
 
                                             children: [
-
                                               Text(
                                                 'Blinding Lights',
 
                                                 style: TextStyle(
-                                                  color:
-                                                      Colors.white,
+                                                  color: Colors.white,
 
-                                                  fontSize:
-                                                      22.sp,
+                                                  fontSize: 22.sp,
 
-                                                  fontWeight:
-                                                      FontWeight.bold,
+                                                  fontWeight: FontWeight.bold,
                                                 ),
                                               ),
 
-                                              SizedBox(
-                                                height:
-                                                    8.h,
-                                              ),
+                                              SizedBox(height: 8.h),
 
                                               Text(
                                                 'The Weeknd',
 
                                                 style: TextStyle(
-                                                  color:
-                                                      Colors.white70,
+                                                  color: Colors.white70,
 
-                                                  fontSize:
-                                                      16.sp,
+                                                  fontSize: 16.sp,
                                                 ),
                                               ),
 
-                                              SizedBox(
-                                                height:
-                                                    12.h,
-                                              ),
+                                              SizedBox(height: 12.h),
 
                                               Text(
                                                 'Spotify Connect',
 
                                                 style: TextStyle(
-                                                  color:
-                                                      accent,
+                                                  color: accent,
 
-                                                  fontSize:
-                                                      14.sp,
+                                                  fontSize: 14.sp,
 
-                                                  fontWeight:
-                                                      FontWeight.w600,
+                                                  fontWeight: FontWeight.w600,
                                                 ),
                                               ),
                                             ],
@@ -823,36 +662,30 @@ class _InfoContentState extends State<InfoContent> {
                                 /// NAVIGATION
                                 Expanded(
                                   child: _glassCard(
-                                    title:
-                                        'Navigation Insight',
+                                    title: AppStrings.navigationInsight,
 
                                     accent: accent,
 
                                     child: Column(
                                       children: [
-
                                         _navigationTile(
-                                          'Road Condition',
-                                          'Moderate',
+                                          AppStrings.roadCondition,
+                                          AppStrings.moderate,
                                           accent,
                                         ),
 
-                                        SizedBox(
-                                          height: 16.h,
-                                        ),
+                                        SizedBox(height: 16.h),
 
                                         _navigationTile(
-                                          'Pothole Nearby',
-                                          'Detected',
+                                          AppStrings.potholeNearby,
+                                          AppStrings.detected,
                                           accent,
                                         ),
 
-                                        SizedBox(
-                                          height: 16.h,
-                                        ),
+                                        SizedBox(height: 16.h),
 
                                         _navigationTile(
-                                          'ETA',
+                                          AppStrings.eta,
                                           '18 Minutes',
                                           accent,
                                         ),
@@ -882,107 +715,81 @@ class _InfoContentState extends State<InfoContent> {
   /// GLASS CARD
   /// ===============================
   Widget _glassCard({
-  required String title,
-  required Widget child,
-  required Color accent,
-}) {
+    required String title,
+    required Widget child,
+    required Color accent,
+  }) {
+    return Container(
+      padding: EdgeInsets.all(24.w),
 
-  return Container(
-    padding: EdgeInsets.all(24.w),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(34.r),
 
-    decoration: BoxDecoration(
-      borderRadius:
-          BorderRadius.circular(34.r),
+        color: Colors.white.withValues(alpha: 0.05),
 
-      color: Colors.white.withOpacity(
-        0.05,
+        border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
       ),
 
-      border: Border.all(
-        color: Colors.white.withOpacity(
-          0.08,
-        ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+
+        mainAxisSize: MainAxisSize.min,
+
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 10.w,
+                height: 10.w,
+
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: accent,
+                ),
+              ),
+
+              SizedBox(width: 10.w),
+
+              Text(
+                title,
+
+                style: TextStyle(
+                  color: Colors.white,
+
+                  fontSize: 22.sp,
+
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ],
+          ),
+
+          SizedBox(height: 24.h),
+
+          child,
+        ],
       ),
-    ),
+    );
+  }
 
-    child: Column(
-      crossAxisAlignment:
-          CrossAxisAlignment.start,
-
-      mainAxisSize: MainAxisSize.min,
-
-      children: [
-
-        Row(
-          children: [
-
-            Container(
-              width: 10.w,
-              height: 10.w,
-
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: accent,
-              ),
-            ),
-
-            SizedBox(width: 10.w),
-
-            Text(
-              title,
-
-              style: TextStyle(
-                color: Colors.white,
-
-                fontSize: 22.sp,
-
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-          ],
-        ),
-
-        SizedBox(height: 24.h),
-
-        child,
-      ],
-    ),
-  );
-}
   /// ===============================
   /// STATUS CHIP
   /// ===============================
-  Widget _statusChip(
-    IconData icon,
-    String title,
-    Color accent,
-  ) {
-
+  Widget _statusChip(IconData icon, String title, Color accent) {
     return Container(
-      padding: EdgeInsets.symmetric(
-        horizontal: 16.w,
-        vertical: 12.h,
-      ),
+      padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 12.h),
 
       decoration: BoxDecoration(
-        borderRadius:
-            BorderRadius.circular(20.r),
+        borderRadius: BorderRadius.circular(20.r),
 
-        color: Colors.white.withOpacity(
-          0.06,
-        ),
+        color: Colors.white.withValues(alpha: 0.06),
       ),
 
       child: Row(
         mainAxisSize: MainAxisSize.min,
 
         children: [
-
-          Icon(
-            icon,
-            color: accent,
-            size: 18.sp,
-          ),
+          Icon(icon, color: accent, size: 18.sp),
 
           SizedBox(width: 8.w),
 
@@ -1011,10 +818,8 @@ class _InfoContentState extends State<InfoContent> {
     IconData icon,
     Color accent,
   ) {
-
     return Row(
       children: [
-
         Container(
           width: 54.w,
           height: 54.w,
@@ -1022,35 +827,23 @@ class _InfoContentState extends State<InfoContent> {
           decoration: BoxDecoration(
             shape: BoxShape.circle,
 
-            color: accent.withOpacity(
-              0.18,
-            ),
+            color: accent.withValues(alpha: 0.18),
           ),
 
-          child: Icon(
-            icon,
-            color: accent,
-            size: 26.sp,
-          ),
+          child: Icon(icon, color: accent, size: 26.sp),
         ),
 
         SizedBox(width: 16.w),
 
         Expanded(
           child: Column(
-            crossAxisAlignment:
-                CrossAxisAlignment.start,
+            crossAxisAlignment: CrossAxisAlignment.start,
 
             children: [
-
               Text(
                 title,
 
-                style: TextStyle(
-                  color: Colors.white70,
-
-                  fontSize: 15.sp,
-                ),
+                style: TextStyle(color: Colors.white70, fontSize: 15.sp),
               ),
 
               SizedBox(height: 4.h),
@@ -1076,16 +869,9 @@ class _InfoContentState extends State<InfoContent> {
   /// ===============================
   /// DETECTION TILE
   /// ===============================
-  Widget _detectionTile(
-    String title,
-    String value,
-    bool active,
-    Color accent,
-  ) {
-
+  Widget _detectionTile(String title, String value, bool active, Color accent) {
     return Row(
       children: [
-
         Container(
           width: 14.w,
           height: 14.w,
@@ -1093,15 +879,11 @@ class _InfoContentState extends State<InfoContent> {
           decoration: BoxDecoration(
             shape: BoxShape.circle,
 
-            color: active
-                ? Colors.greenAccent
-                : Colors.redAccent,
+            color: active ? Colors.greenAccent : Colors.redAccent,
 
             boxShadow: [
               BoxShadow(
-                color: active
-                    ? Colors.greenAccent
-                    : Colors.redAccent,
+                color: active ? Colors.greenAccent : Colors.redAccent,
 
                 blurRadius: 12,
               ),
@@ -1143,20 +925,10 @@ class _InfoContentState extends State<InfoContent> {
   /// ===============================
   /// CONNECTIVITY TILE
   /// ===============================
-  Widget _connectivityTile(
-    IconData icon,
-    String title,
-    Color accent,
-  ) {
-
+  Widget _connectivityTile(IconData icon, String title, Color accent) {
     return Row(
       children: [
-
-        Icon(
-          icon,
-          color: accent,
-          size: 24.sp,
-        ),
+        Icon(icon, color: accent, size: 24.sp),
 
         SizedBox(width: 14.w),
 
@@ -1180,25 +952,15 @@ class _InfoContentState extends State<InfoContent> {
   /// ===============================
   /// SYSTEM TILE
   /// ===============================
-  Widget _systemTile(
-    String title,
-    String value,
-  ) {
-
+  Widget _systemTile(String title, String value) {
     return Row(
-      mainAxisAlignment:
-          MainAxisAlignment.spaceBetween,
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
 
       children: [
-
         Text(
           title,
 
-          style: TextStyle(
-            color: Colors.white70,
-
-            fontSize: 15.sp,
-          ),
+          style: TextStyle(color: Colors.white70, fontSize: 15.sp),
         ),
 
         Text(
@@ -1219,26 +981,15 @@ class _InfoContentState extends State<InfoContent> {
   /// ===============================
   /// NAVIGATION TILE
   /// ===============================
-  Widget _navigationTile(
-    String title,
-    String value,
-    Color accent,
-  ) {
-
+  Widget _navigationTile(String title, String value, Color accent) {
     return Row(
-      mainAxisAlignment:
-          MainAxisAlignment.spaceBetween,
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
 
       children: [
-
         Text(
           title,
 
-          style: TextStyle(
-            color: Colors.white70,
-
-            fontSize: 15.sp,
-          ),
+          style: TextStyle(color: Colors.white70, fontSize: 15.sp),
         ),
 
         Text(

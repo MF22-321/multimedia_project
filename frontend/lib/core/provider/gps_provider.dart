@@ -26,9 +26,9 @@ class GPSProvider extends ChangeNotifier {
       (gps) {
         current = gps;
 
-        isConnected = true;
-        hasFix = true;
-        status = "GPS Connected";
+        isConnected = serialService.isConnected;
+        hasFix = gps.isValid;
+        status = hasFix ? "GPS Connected" : "Waiting GPS Fix";
 
         notifyListeners();
       },
@@ -49,10 +49,10 @@ class GPSProvider extends ChangeNotifier {
     );
   }
 
-  // optional manual reset
   void clearGPS() {
     current = null;
     hasFix = false;
+    status = "GPS Cleared";
     notifyListeners();
   }
 

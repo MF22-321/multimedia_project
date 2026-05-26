@@ -2,6 +2,10 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:frontend/core/localization/app_strings.dart';
+import 'package:frontend/core/navigation/app_language_control.dart';
+import 'package:frontend/core/navigation/driver_session.dart';
+import 'package:frontend/core/services/drive_pref_service.dart';
 import 'package:frontend/core/themes/car_theme.dart';
 
 class TutorialPage extends StatefulWidget {
@@ -16,28 +20,21 @@ class _TutorialPageState extends State<TutorialPage> {
 
   DateTime now = DateTime.now();
 
-  final List<Map<String, dynamic>> tutorials = [
+  List<Map<String, dynamic>> get tutorials => [
     {
-      'title': 'Buka Kap Mobil',
-
+      'title': AppStrings.openHood,
       'image': 'https://images.unsplash.com/photo-1503376780353-7e6692767b70',
     },
-
     {
-      'title': 'Buka Tutup Tangki',
-
+      'title': AppStrings.openFuelCap,
       'image': 'https://images.unsplash.com/photo-1492144534655-ae79c964c9d7',
     },
-
     {
-      'title': 'Pair Bluetooth',
-
+      'title': AppStrings.pairBluetooth,
       'image': 'https://images.unsplash.com/photo-1511919884226-fd3cad34687c',
     },
-
     {
-      'title': 'Voice Assistant',
-
+      'title': AppStrings.voiceAssistant,
       'image': 'https://images.unsplash.com/photo-1489824904134-891ab64532f1',
     },
   ];
@@ -45,6 +42,7 @@ class _TutorialPageState extends State<TutorialPage> {
   @override
   void initState() {
     super.initState();
+    AppLanguageControl.languageCode.addListener(_refreshLanguageText);
 
     timer = Timer.periodic(const Duration(seconds: 1), (_) {
       setState(() {
@@ -56,8 +54,13 @@ class _TutorialPageState extends State<TutorialPage> {
   @override
   void dispose() {
     timer.cancel();
+    AppLanguageControl.languageCode.removeListener(_refreshLanguageText);
 
     super.dispose();
+  }
+
+  void _refreshLanguageText() {
+    if (mounted) setState(() {});
   }
 
   @override
@@ -103,9 +106,11 @@ class _TutorialPageState extends State<TutorialPage> {
                     decoration: BoxDecoration(
                       borderRadius: BorderRadius.circular(40.r),
 
-                      color: Colors.white.withOpacity(0.05),
+                      color: Colors.white.withValues(alpha: 0.05),
 
-                      border: Border.all(color: Colors.white.withOpacity(0.08)),
+                      border: Border.all(
+                        color: Colors.white.withValues(alpha: 0.08),
+                      ),
                     ),
 
                     child: Column(
@@ -130,37 +135,57 @@ class _TutorialPageState extends State<TutorialPage> {
                               decoration: BoxDecoration(
                                 borderRadius: BorderRadius.circular(22.r),
 
-                                color: Colors.white.withOpacity(0.06),
+                                color: Colors.white.withValues(alpha: 0.06),
                               ),
 
                               child: Row(
                                 children: [
-                                  CircleAvatar(
-                                    radius: 20.r,
+                                  ValueListenableBuilder<String?>(
+                                    valueListenable:
+                                        DriverSession.currentDriver,
+                                    builder: (context, driver, _) {
+                                      final displayName = _displayDriverName(
+                                        driver,
+                                      );
 
-                                    backgroundColor: accentColor,
+                                      return Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          CircleAvatar(
+                                            radius: 20.r,
+                                            backgroundColor: accentColor,
+                                            child: Text(
+                                              displayName
+                                                  .substring(0, 1)
+                                                  .toUpperCase(),
+                                              style: TextStyle(
+                                                color: Colors.white,
+                                                fontSize: 16.sp,
+                                                fontWeight: FontWeight.w800,
+                                              ),
+                                            ),
+                                          ),
 
-                                    child: Icon(
-                                      Icons.person,
+                                          SizedBox(width: 12.w),
 
-                                      color: Colors.white,
-
-                                      size: 22.sp,
-                                    ),
-                                  ),
-
-                                  SizedBox(width: 12.w),
-
-                                  Text(
-                                    'Hello, User',
-
-                                    style: TextStyle(
-                                      color: Colors.white,
-
-                                      fontSize: 18.sp,
-
-                                      fontWeight: FontWeight.w600,
-                                    ),
+                                          ConstrainedBox(
+                                            constraints: BoxConstraints(
+                                              maxWidth: 240.w,
+                                            ),
+                                            child: Text(
+                                              '${AppStrings.hello}, $displayName',
+                                              maxLines: 1,
+                                              overflow: TextOverflow.ellipsis,
+                                              style: TextStyle(
+                                                color: Colors.white,
+                                                fontSize: 18.sp,
+                                                fontWeight: FontWeight.w600,
+                                              ),
+                                            ),
+                                          ),
+                                        ],
+                                      );
+                                    },
                                   ),
                                 ],
                               ),
@@ -189,7 +214,7 @@ class _TutorialPageState extends State<TutorialPage> {
                                   '${now.day}/${now.month}/${now.year}',
 
                                   style: TextStyle(
-                                    color: Colors.white.withOpacity(0.6),
+                                    color: Colors.white.withValues(alpha: 0.6),
 
                                     fontSize: 14.sp,
                                   ),
@@ -218,7 +243,7 @@ class _TutorialPageState extends State<TutorialPage> {
                                 decoration: BoxDecoration(
                                   shape: BoxShape.circle,
 
-                                  color: Colors.white.withOpacity(0.08),
+                                  color: Colors.white.withValues(alpha: 0.08),
                                 ),
 
                                 child: Icon(
@@ -233,14 +258,13 @@ class _TutorialPageState extends State<TutorialPage> {
 
                             SizedBox(width: 20.w),
 
-                            Text('Video Tutorial', 
+                            Text(
+                              AppStrings.videoTutorial,
 
                               style: TextStyle(
                                 color: Colors.white,
 
                                 fontSize: 15.sp,
-
-                                
                               ),
                             ),
                           ],
@@ -282,15 +306,19 @@ class _TutorialPageState extends State<TutorialPage> {
                                   decoration: BoxDecoration(
                                     borderRadius: BorderRadius.circular(30.r),
 
-                                    color: Colors.white.withOpacity(0.05),
+                                    color: Colors.white.withValues(alpha: 0.05),
 
                                     border: Border.all(
-                                      color: Colors.white.withOpacity(0.08),
+                                      color: Colors.white.withValues(
+                                        alpha: 0.08,
+                                      ),
                                     ),
 
                                     boxShadow: [
                                       BoxShadow(
-                                        color: accentColor.withOpacity(0.08),
+                                        color: accentColor.withValues(
+                                          alpha: 0.08,
+                                        ),
 
                                         blurRadius: 24,
                                       ),
@@ -328,12 +356,12 @@ class _TutorialPageState extends State<TutorialPage> {
                                                     end: Alignment.bottomCenter,
 
                                                     colors: [
-                                                      Colors.black.withOpacity(
-                                                        0.05,
+                                                      Colors.black.withValues(
+                                                        alpha: 0.05,
                                                       ),
 
-                                                      Colors.black.withOpacity(
-                                                        0.55,
+                                                      Colors.black.withValues(
+                                                        alpha: 0.55,
                                                       ),
                                                     ],
                                                   ),
@@ -354,7 +382,9 @@ class _TutorialPageState extends State<TutorialPage> {
                                                     boxShadow: [
                                                       BoxShadow(
                                                         color: accentColor
-                                                            .withOpacity(0.35),
+                                                            .withValues(
+                                                              alpha: 0.35,
+                                                            ),
 
                                                         blurRadius: 25,
                                                       ),
@@ -407,11 +437,11 @@ class _TutorialPageState extends State<TutorialPage> {
                                               SizedBox(height: 14.h),
 
                                               Text(
-                                                'Pelajari langkah penggunaan fitur kendaraan dengan mudah.',
+                                                AppStrings.tutorialDescription,
 
                                                 style: TextStyle(
                                                   color: Colors.white
-                                                      .withOpacity(0.55),
+                                                      .withValues(alpha: 0.55),
 
                                                   fontSize: 15.sp,
 
@@ -439,5 +469,22 @@ class _TutorialPageState extends State<TutorialPage> {
         ),
       ),
     );
+  }
+
+  String _displayDriverName(String? driver) {
+    if (driver == null ||
+        driver.trim().isEmpty ||
+        driver.trim().toLowerCase() == 'guest') {
+      return AppStrings.guest;
+    }
+
+    final pref = DriverHiveService.load(driver);
+    final displayName = pref?.displayName.trim();
+
+    if (displayName != null && displayName.isNotEmpty) {
+      return displayName;
+    }
+
+    return driver;
   }
 }

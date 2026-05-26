@@ -4,10 +4,7 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 class WarningButton extends StatefulWidget {
   final VoidCallback onPressed;
 
-  const WarningButton({
-    super.key,
-    required this.onPressed,
-  });
+  const WarningButton({super.key, required this.onPressed});
 
   @override
   State<WarningButton> createState() => _WarningButtonState();
@@ -15,7 +12,6 @@ class WarningButton extends StatefulWidget {
 
 class _WarningButtonState extends State<WarningButton>
     with SingleTickerProviderStateMixin {
-
   late AnimationController _controller;
   late Animation<double> _glowAnimation;
 
@@ -28,9 +24,10 @@ class _WarningButtonState extends State<WarningButton>
       duration: const Duration(seconds: 2),
     )..repeat(reverse: true);
 
-    _glowAnimation = Tween<double>(begin: 4, end: 12).animate(
-      CurvedAnimation(parent: _controller, curve: Curves.easeInOut),
-    );
+    _glowAnimation = Tween<double>(
+      begin: 4,
+      end: 12,
+    ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeInOut));
   }
 
   @override
@@ -64,7 +61,7 @@ class _WarningButtonState extends State<WarningButton>
                 shadows: [
                   Shadow(
                     blurRadius: _glowAnimation.value,
-                    color: Colors.white.withOpacity(0.6),
+                    color: Colors.white.withValues(alpha: 0.6),
                   ),
                 ],
               ),

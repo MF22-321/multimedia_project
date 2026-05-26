@@ -142,14 +142,15 @@ class _AddDriverPageState extends State<AddDriverPage2>
       _countdownTimer?.cancel();
       _progressController.stop();
 
-      if (!mounted) return;
-      setState(() {
-        isPreparing = false;
-        isCapturing = false;
-        phaseText = "Press scan to start";
-        prepSecondsLeft = 3;
-        captureSecondsLeft = 0;
-      });
+      if (mounted) {
+        setState(() {
+          isPreparing = false;
+          isCapturing = false;
+          phaseText = "Press scan to start";
+          prepSecondsLeft = 3;
+          captureSecondsLeft = 0;
+        });
+      }
     }
   }
 
@@ -190,7 +191,7 @@ class _AddDriverPageState extends State<AddDriverPage2>
                   secondsLeft: shownNumber,
                   width: 300,
                   height: 300,
-                  child: LiveCameraWS(url: "ws://127.0.0.1:8000/ws/camera"),
+                  child: LiveCameraWS(url: FaceIdApi.cameraWs),
                 );
               },
             ),

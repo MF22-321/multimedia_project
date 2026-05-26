@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:frontend/core/localization/app_strings.dart';
+import 'package:frontend/core/navigation/app_language_control.dart';
 import 'package:frontend/core/navigation/app_navigation.dart';
 import 'package:frontend/core/themes/car_theme.dart';
 import 'package:frontend/features/home/presentation/widget/bluetooth_content.dart';
@@ -15,25 +17,28 @@ class QuickActionGrid extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final actions = [
-      _ActionItem("M-Toyota", Icons.car_rental),
-      _ActionItem("Music", Icons.play_circle_fill),
-      _ActionItem("Radio", Icons.radio),
-      _ActionItem("Bluetooth", Icons.bluetooth),
-      _ActionItem("Car Status", Icons.directions_car),
-      _ActionItem("Screen Cast", Icons.cast),
-      _ActionItem("USB", Icons.usb),
-      _ActionItem("Info", Icons.info),
-    ];
-
     return ValueListenableBuilder(
-      valueListenable: CarThemes.currentTheme,
-      builder: (context, themeType, _) {
-        final theme = CarThemes.getTheme(themeType);
+      valueListenable: AppLanguageControl.languageCode,
+      builder: (context, _, _) {
+        final actions = [
+          _ActionItem("tutorial", AppStrings.mToyota, Icons.car_rental),
+          _ActionItem("music", AppStrings.music, Icons.play_circle_fill),
+          _ActionItem("radio", AppStrings.radio, Icons.radio),
+          _ActionItem("bluetooth", AppStrings.bluetooth, Icons.bluetooth),
+          _ActionItem("car_status", AppStrings.carStatus, Icons.directions_car),
+          _ActionItem("screen_cast", AppStrings.screenCast, Icons.cast),
+          _ActionItem("usb", AppStrings.usb, Icons.usb),
+          _ActionItem("info", AppStrings.info, Icons.info),
+        ];
 
-        return Expanded(
-          child: GridView.builder(
-            itemCount: actions.length,
+        return ValueListenableBuilder(
+          valueListenable: CarThemes.currentTheme,
+          builder: (context, themeType, _) {
+            final theme = CarThemes.getTheme(themeType);
+
+            return Expanded(
+              child: GridView.builder(
+                itemCount: actions.length,
 
             gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
               crossAxisCount: 4,
@@ -48,7 +53,7 @@ class QuickActionGrid extends StatelessWidget {
               return GestureDetector(
                 onTap: () {
                   /// OPEN TUTORIAL PAGE
-                  if (item.label == "M-Toyota") {
+                  if (item.key == "tutorial") {
                     Navigator.push(
                       context,
 
@@ -87,9 +92,9 @@ class QuickActionGrid extends StatelessWidget {
                             },
                       ),
                     );
-                  } else if (item.label == "Music") {
+                  } else if (item.key == "music") {
                     AppNavigation.currentIndex.value = 0;
-                  } else if (item.label == "Radio") {
+                  } else if (item.key == "radio") {
                     Navigator.push(
                       context,
 
@@ -128,7 +133,7 @@ class QuickActionGrid extends StatelessWidget {
                             },
                       ),
                     );
-                  } else if (item.label == "Bluetooth") {
+                  } else if (item.key == "bluetooth") {
                     Navigator.push(
                       context,
 
@@ -167,7 +172,7 @@ class QuickActionGrid extends StatelessWidget {
                             },
                       ),
                     );
-                  }else if (item.label == "Screen Cast") {
+                  } else if (item.key == "screen_cast") {
                     Navigator.push(
                       context,
 
@@ -206,7 +211,7 @@ class QuickActionGrid extends StatelessWidget {
                             },
                       ),
                     );
-                  }else if (item.label == "Car Status") {
+                  } else if (item.key == "car_status") {
                     Navigator.push(
                       context,
 
@@ -245,7 +250,7 @@ class QuickActionGrid extends StatelessWidget {
                             },
                       ),
                     );
-                  }else if (item.label == "Info") {
+                  } else if (item.key == "info") {
                     Navigator.push(
                       context,
 
@@ -284,7 +289,7 @@ class QuickActionGrid extends StatelessWidget {
                             },
                       ),
                     );
-                  }else if (item.label == "USB") {
+                  } else if (item.key == "usb") {
                     Navigator.push(
                       context,
 
@@ -334,21 +339,21 @@ class QuickActionGrid extends StatelessWidget {
 
                     gradient: LinearGradient(
                       colors: [
-                        theme.backgroundGradient.last.withOpacity(0.85),
-                        Colors.black.withOpacity(0.35),
+                        theme.backgroundGradient.last.withValues(alpha: 0.85),
+                        Colors.black.withValues(alpha: 0.35),
                       ],
                       begin: Alignment.topLeft,
                       end: Alignment.bottomRight,
                     ),
 
                     border: Border.all(
-                      color: theme.accentColor.withOpacity(0.4),
+                      color: theme.accentColor.withValues(alpha: 0.4),
                       width: 1.5,
                     ),
 
                     boxShadow: [
                       BoxShadow(
-                        color: theme.accentColor.withOpacity(0.25),
+                        color: theme.accentColor.withValues(alpha: 0.25),
                         blurRadius: 12,
                         offset: const Offset(0, 5),
                       ),
@@ -375,7 +380,9 @@ class QuickActionGrid extends StatelessWidget {
                 ),
               );
             },
-          ),
+              ),
+            );
+          },
         );
       },
     );
@@ -383,8 +390,9 @@ class QuickActionGrid extends StatelessWidget {
 }
 
 class _ActionItem {
+  final String key;
   final String label;
   final IconData icon;
 
-  _ActionItem(this.label, this.icon);
+  _ActionItem(this.key, this.label, this.icon);
 }

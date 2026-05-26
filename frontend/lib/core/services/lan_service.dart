@@ -2,6 +2,8 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:frontend/core/utils/app_logger.dart';
+
 class LanService {
   static final LanService _instance = LanService._internal();
   factory LanService() => _instance;
@@ -22,10 +24,14 @@ class LanService {
 
     while (_shouldReconnect) {
       try {
-        print("🔌 Trying to connect...");
-        _socket = await Socket.connect('10.0.0.1', 9000, timeout: const Duration(seconds: 3));
+        AppLogger.info("LAN trying to connect...");
+        _socket = await Socket.connect(
+          '10.0.0.1',
+          9000,
+          timeout: const Duration(seconds: 3),
+        );
 
-        print('✅ LAN Connected');
+        AppLogger.info('LAN connected');
         _isConnecting = false;
 
         _socket!.listen(
@@ -34,11 +40,11 @@ class LanService {
             _controller.add(message);
           },
           onError: (e) {
-            print('❌ LAN error: $e');
+            AppLogger.error('LAN error: $e');
             _reconnect();
           },
           onDone: () {
-            print('⚠️ LAN disconnected');
+            AppLogger.info('LAN disconnected');
             _reconnect();
           },
           cancelOnError: true,
@@ -46,7 +52,7 @@ class LanService {
 
         break; // keluar dari loop kalau berhasil connect
       } catch (e) {
-        print('❌ Connection failed: $e');
+        AppLogger.error('LAN connection failed: $e');
         await Future.delayed(const Duration(seconds: 2));
       }
     }
@@ -58,7 +64,7 @@ class LanService {
     _socket?.destroy();
     _socket = null;
 
-    print("🔄 Reconnecting in 2s...");
+    AppLogger.info("LAN reconnecting in 2s...");
     Future.delayed(const Duration(seconds: 2), () {
       connect();
     });

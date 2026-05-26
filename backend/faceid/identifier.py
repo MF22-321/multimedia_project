@@ -1,8 +1,9 @@
-import json
 from typing import Optional, Tuple
-from .config import LABELS_PATH, CONF_THRESHOLD, MIN_FACE_PX
+
+from .config import CONF_THRESHOLD, MIN_FACE_PX
 from .landmarker_bbox import LandmarkerFaceCropper
 from .lbph_model import load_lbph, lbph_conf_from_dist
+from .labels_store import load_labels
 from .stabilizer import VoteStabilizer
 
 class FaceID:
@@ -12,11 +13,14 @@ class FaceID:
                  vote_window_sec: float = 1.5,
                  vote_min_ratio: float = 0.6,
                  vote_min_samples: int = 6):
-        labels_map = json.loads(LABELS_PATH.read_text(encoding="utf-8"))
+        labels_map = load_labels()
         self.id_to_name = {int(v): k for k, v in labels_map.items()}
 
         self.cropper = LandmarkerFaceCropper()
-        self.rec = load_lbph()
+        try:
+            self.rec = load_lbph()
+        except FileNotFoundError:
+            self.rec = None
 
         self.conf_threshold = conf_threshold
         self.min_face_px = min_face_px
@@ -35,6 +39,13 @@ class FaceID:
         self.last_bbox = bbox
 
         if roi is None:
+            self.last_raw_name = None
+            self.last_raw_conf = 0.0
+            self.voter.push(None)
+            stable, ratio, _ = self.voter.stable()
+            return stable, ratio, bbox
+
+        if self.rec is None or not self.id_to_name:
             self.last_raw_name = None
             self.last_raw_conf = 0.0
             self.voter.push(None)

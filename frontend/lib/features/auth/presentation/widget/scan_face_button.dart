@@ -38,9 +38,9 @@ class _ScanFaceButtonState extends State<ScanFaceButton> {
   /// ================= START =================
   void _startScan() {
     if (widget.driverName == null || widget.driverName!.trim().isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Isi nama dulu!")),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text("Isi nama dulu!")));
       return;
     }
 
@@ -165,7 +165,7 @@ class _ScanFaceButtonState extends State<ScanFaceButton> {
         color: Colors.white,
         borderRadius: BorderRadius.circular(30.r),
         boxShadow: [
-          BoxShadow(color: Colors.black.withOpacity(0.1), blurRadius: 12),
+          BoxShadow(color: Colors.black.withValues(alpha: 0.1), blurRadius: 12),
         ],
       ),
       child: ClipRRect(
@@ -174,11 +174,7 @@ class _ScanFaceButtonState extends State<ScanFaceButton> {
             ? Stack(
                 children: [
                   /// CAMERA
-                  Positioned.fill(
-                    child: LiveCameraWS(
-                      url: FaceIdApi.cameraWs,
-                    ),
-                  ),
+                  Positioned.fill(child: LiveCameraWS(url: FaceIdApi.cameraWs)),
 
                   /// 🔥 COUNTDOWN BESAR
                   if (_countdown > 0)
@@ -202,9 +198,11 @@ class _ScanFaceButtonState extends State<ScanFaceButton> {
                       child: Center(
                         child: Container(
                           padding: const EdgeInsets.symmetric(
-                              horizontal: 16, vertical: 8),
+                            horizontal: 16,
+                            vertical: 8,
+                          ),
                           decoration: BoxDecoration(
-                            color: Colors.green.withOpacity(0.9),
+                            color: Colors.green.withValues(alpha: 0.9),
                             borderRadius: BorderRadius.circular(12),
                           ),
                           child: Text(
@@ -243,15 +241,15 @@ class _ScanFaceButtonState extends State<ScanFaceButton> {
                     child: Container(
                       padding: const EdgeInsets.all(8),
                       decoration: BoxDecoration(
-                        color: Colors.black.withOpacity(0.6),
+                        color: Colors.black.withValues(alpha: 0.6),
                         borderRadius: BorderRadius.circular(12),
                       ),
                       child: Text(
                         _countdown > 0
                             ? "Get ready..."
                             : _isTriggered
-                                ? "Preparing..."
-                                : "Scanning...",
+                            ? "Preparing..."
+                            : "Scanning...",
                         style: const TextStyle(color: Colors.white),
                         textAlign: TextAlign.center,
                       ),
@@ -267,7 +265,7 @@ class _ScanFaceButtonState extends State<ScanFaceButton> {
                       child: Container(
                         padding: const EdgeInsets.all(6),
                         decoration: BoxDecoration(
-                          color: Colors.black.withOpacity(0.6),
+                          color: Colors.black.withValues(alpha: 0.6),
                           shape: BoxShape.circle,
                         ),
                         child: const Icon(
@@ -311,10 +309,7 @@ class _ScanFaceButtonState extends State<ScanFaceButton> {
                     SizedBox(height: 8.h),
                     Text(
                       "Auto detect & enroll",
-                      style: TextStyle(
-                        fontSize: 12.sp,
-                        color: Colors.grey,
-                      ),
+                      style: TextStyle(fontSize: 12.sp, color: Colors.grey),
                     ),
                   ],
                 ),

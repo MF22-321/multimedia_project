@@ -48,7 +48,7 @@ class CameraScanFrame extends StatelessWidget {
           if (isScanning)
             Container(
               decoration: BoxDecoration(
-                color: Colors.black.withOpacity(0.18),
+                color: Colors.black.withValues(alpha: 0.18),
                 borderRadius: BorderRadius.circular(radius),
               ),
             ),
@@ -99,7 +99,10 @@ class _RoundedRectProgressPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     final rect = Offset.zero & size;
-    final rrect = RRect.fromRectAndRadius(rect.deflate(strokeWidth / 2), Radius.circular(radius));
+    final rrect = RRect.fromRectAndRadius(
+      rect.deflate(strokeWidth / 2),
+      Radius.circular(radius),
+    );
 
     final basePaint = Paint()
       ..color = baseColor
@@ -117,7 +120,10 @@ class _RoundedRectProgressPainter extends CustomPainter {
     final path = Path()..addRRect(rrect);
 
     for (final metric in path.computeMetrics()) {
-      final extracted = metric.extractPath(0, metric.length * progress.clamp(0.0, 1.0));
+      final extracted = metric.extractPath(
+        0,
+        metric.length * progress.clamp(0.0, 1.0),
+      );
       canvas.drawPath(extracted, progressPaint);
     }
   }

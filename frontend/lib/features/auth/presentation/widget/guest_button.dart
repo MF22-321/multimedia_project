@@ -22,10 +22,7 @@ class GuestButton extends StatelessWidget {
         icon: const Icon(Icons.person_outline, color: Colors.white),
         label: Text(
           "Masuk sebagai tamu",
-          style: TextStyle(
-            fontSize: 22.sp,
-            color: Colors.white,
-          ),
+          style: TextStyle(fontSize: 22.sp, color: Colors.white),
         ),
       ),
     );

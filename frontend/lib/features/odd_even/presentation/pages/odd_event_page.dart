@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:frontend/core/navigation/app_routes.dart';
 import 'package:frontend/features/odd_even/presentation/widget/odd_event_button.dart';
 import 'package:frontend/features/odd_even/presentation/widget/odd_event_status.dart';
 import '../../../boot/presentation/widget/dotted_background.dart';
-
 
 class OddEvenPage extends StatelessWidget {
   const OddEvenPage({super.key});
@@ -20,30 +20,23 @@ class OddEvenPage extends StatelessWidget {
     return Scaffold(
       body: Stack(
         children: [
-
           /// Background
           Container(
             decoration: const BoxDecoration(
               gradient: RadialGradient(
-                colors: [
-                  Color(0xFF111111),
-                  Colors.black,
-                ],
+                colors: [Color(0xFF111111), Colors.black],
                 radius: 0.9,
               ),
             ),
           ),
 
-          const Positioned.fill(
-            child: DottedBackground(),
-          ),
+          const Positioned.fill(child: DottedBackground()),
 
           /// Content
           Center(
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-
                 Text(
                   "PENGINGAT GANJIL–GENAP",
                   style: TextStyle(
@@ -57,10 +50,7 @@ class OddEvenPage extends StatelessWidget {
 
                 Text(
                   "Hari ini merupakan tanggal",
-                  style: TextStyle(
-                    fontSize: 28.sp,
-                    color: Colors.white70,
-                  ),
+                  style: TextStyle(fontSize: 28.sp, color: Colors.white70),
                 ),
 
                 SizedBox(height: 20.h),
@@ -84,7 +74,10 @@ class OddEvenPage extends StatelessWidget {
 
                 OddEvenButton(
                   onPressed: () {
-                    Navigator.pushReplacementNamed(context, "/driver-select");
+                    Navigator.pushReplacementNamed(
+                      context,
+                      AppRoutes.driverSelect,
+                    );
                   },
                 ),
               ],

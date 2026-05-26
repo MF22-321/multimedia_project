@@ -2,6 +2,8 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:frontend/core/localization/app_strings.dart';
+import 'package:frontend/core/utils/app_logger.dart';
 
 import '../../../../core/themes/car_theme.dart';
 
@@ -23,7 +25,7 @@ class _ScreenCastPageState extends State<ScreenCastContent>
 
   bool isLaunching = false;
 
-  String status = 'No Device Connected';
+  String status = AppStrings.noDeviceConnected;
 
   List<String> devices = [];
 
@@ -51,9 +53,9 @@ class _ScreenCastPageState extends State<ScreenCastContent>
 
       final output = result.stdout.toString();
 
-      print('\n========== ADB DEVICES ==========');
+      AppLogger.info('\n========== ADB DEVICES ==========');
 
-      print(output);
+      AppLogger.info(output);
 
       final lines = output.split('\n');
 
@@ -65,7 +67,7 @@ class _ScreenCastPageState extends State<ScreenCastContent>
 
           found.add(serial);
 
-          print('DEVICE FOUND => $serial');
+          AppLogger.info('DEVICE FOUND => $serial');
         }
       }
 
@@ -73,7 +75,7 @@ class _ScreenCastPageState extends State<ScreenCastContent>
         devices = found;
       });
     } catch (e) {
-      print('ADB ERROR => $e');
+      AppLogger.error('ADB ERROR => $e');
     }
   }
 
@@ -85,51 +87,51 @@ class _ScreenCastPageState extends State<ScreenCastContent>
       setState(() {
         isLaunching = true;
 
-        status = 'Launching Screen Cast...';
+        status = AppStrings.launchingScreenCast;
       });
 
-      print('\n========== SCRCPY START ==========');
+      AppLogger.info('\n========== SCRCPY START ==========');
 
-      print('DEVICE => $serial');
+      AppLogger.info('DEVICE => $serial');
 
       scrcpyProcess = await Process.start(
         '/usr/local/bin/scrcpy',
-[
-  '-s',
-  serial,
+        [
+          '-s',
+          serial,
 
-  '--max-size',
-  '1400',
+          '--max-size',
+          '1400',
 
-  '--max-fps',
-  '60',
+          '--max-fps',
+          '60',
 
-  '--video-bit-rate',
-  '8M',
+          '--video-bit-rate',
+          '8M',
 
-  '--stay-awake',
+          '--stay-awake',
 
-  /// RIGHT PANEL POSITION
-  '--window-x',
-  '2550',
+          /// RIGHT PANEL POSITION
+          '--window-x',
+          '2550',
 
-  '--window-y',
-  '180',
+          '--window-y',
+          '180',
 
-  '--window-title',
-  'M-Toyota Screen Cast',
-],
+          '--window-title',
+          'M-Toyota ${AppStrings.screenCast}',
+        ],
 
         environment: {'PATH': '/usr/local/bin:/usr/bin:/bin'},
       );
-      print('SCRCPY STARTED');
+      AppLogger.info('SCRCPY STARTED');
 
       scrcpyProcess?.stdout.transform(SystemEncoding().decoder).listen((event) {
-        print('SCRCPY => $event');
+        AppLogger.info('SCRCPY => $event');
       });
 
       scrcpyProcess?.stderr.transform(SystemEncoding().decoder).listen((event) {
-        print('SCRCPY ERROR => $event');
+        AppLogger.error('SCRCPY ERROR => $event');
       });
 
       setState(() {
@@ -137,15 +139,15 @@ class _ScreenCastPageState extends State<ScreenCastContent>
 
         isLaunching = false;
 
-        status = 'Connected to $serial';
+        status = AppStrings.connectedTo(serial);
       });
     } catch (e) {
-      print('SCRCPY ERROR => $e');
+      AppLogger.error('SCRCPY ERROR => $e');
 
       setState(() {
         isLaunching = false;
 
-        status = 'Connection Failed';
+        status = AppStrings.connectionFailed;
       });
     }
   }
@@ -160,12 +162,12 @@ class _ScreenCastPageState extends State<ScreenCastContent>
       setState(() {
         isConnected = false;
 
-        status = 'Disconnected';
+        status = AppStrings.disconnected;
       });
 
-      print('SCRCPY STOPPED');
+      AppLogger.info('SCRCPY STOPPED');
     } catch (e) {
-      print('STOP ERROR => $e');
+      AppLogger.error('STOP ERROR => $e');
     }
   }
 
@@ -223,9 +225,11 @@ class _ScreenCastPageState extends State<ScreenCastContent>
                     decoration: BoxDecoration(
                       borderRadius: BorderRadius.circular(40.r),
 
-                      color: Colors.white.withOpacity(0.05),
+                      color: Colors.white.withValues(alpha: 0.05),
 
-                      border: Border.all(color: Colors.white.withOpacity(0.08)),
+                      border: Border.all(
+                        color: Colors.white.withValues(alpha: 0.08),
+                      ),
                     ),
 
                     child: Column(
@@ -251,7 +255,7 @@ class _ScreenCastPageState extends State<ScreenCastContent>
                                 decoration: BoxDecoration(
                                   shape: BoxShape.circle,
 
-                                  color: Colors.white.withOpacity(0.06),
+                                  color: Colors.white.withValues(alpha: 0.06),
                                 ),
 
                                 child: Icon(
@@ -278,7 +282,7 @@ class _ScreenCastPageState extends State<ScreenCastContent>
 
                                 boxShadow: [
                                   BoxShadow(
-                                    color: accentColor.withOpacity(0.45),
+                                    color: accentColor.withValues(alpha: 0.45),
 
                                     blurRadius: 20,
                                   ),
@@ -297,7 +301,7 @@ class _ScreenCastPageState extends State<ScreenCastContent>
                             SizedBox(width: 18.w),
 
                             Text(
-                              'Screen Cast',
+                              AppStrings.screenCast,
 
                               style: TextStyle(
                                 color: Colors.white,
@@ -362,10 +366,12 @@ class _ScreenCastPageState extends State<ScreenCastContent>
                           child: devices.isEmpty
                               ? Center(
                                   child: Text(
-                                    'No Android Device Found',
+                                    AppStrings.noAndroidDeviceFound,
 
                                     style: TextStyle(
-                                      color: Colors.white.withOpacity(0.5),
+                                      color: Colors.white.withValues(
+                                        alpha: 0.5,
+                                      ),
 
                                       fontSize: 18.sp,
                                     ),
@@ -387,10 +393,14 @@ class _ScreenCastPageState extends State<ScreenCastContent>
                                           28.r,
                                         ),
 
-                                        color: Colors.white.withOpacity(0.04),
+                                        color: Colors.white.withValues(
+                                          alpha: 0.04,
+                                        ),
 
                                         border: Border.all(
-                                          color: Colors.white.withOpacity(0.06),
+                                          color: Colors.white.withValues(
+                                            alpha: 0.06,
+                                          ),
                                         ),
                                       ),
 
@@ -405,8 +415,8 @@ class _ScreenCastPageState extends State<ScreenCastContent>
                                             decoration: BoxDecoration(
                                               shape: BoxShape.circle,
 
-                                              color: accentColor.withOpacity(
-                                                0.15,
+                                              color: accentColor.withValues(
+                                                alpha: 0.15,
                                               ),
                                             ),
 
@@ -443,11 +453,11 @@ class _ScreenCastPageState extends State<ScreenCastContent>
                                                 SizedBox(height: 6.h),
 
                                                 Text(
-                                                  'Android Device Ready',
+                                                  AppStrings.androidDeviceReady,
 
                                                   style: TextStyle(
                                                     color: Colors.white
-                                                        .withOpacity(0.5),
+                                                        .withValues(alpha: 0.5),
 
                                                     fontSize: 15.sp,
                                                   ),
@@ -481,17 +491,21 @@ class _ScreenCastPageState extends State<ScreenCastContent>
 
                                                 color: isConnected
                                                     ? Colors.redAccent
-                                                          .withOpacity(0.18)
+                                                          .withValues(
+                                                            alpha: 0.18,
+                                                          )
                                                     : accentColor,
 
                                                 boxShadow: [
                                                   BoxShadow(
                                                     color: isConnected
                                                         ? Colors.redAccent
-                                                              .withOpacity(0.3)
+                                                              .withValues(
+                                                                alpha: 0.3,
+                                                              )
                                                         : accentColor
-                                                              .withOpacity(
-                                                                0.35,
+                                                              .withValues(
+                                                                alpha: 0.35,
                                                               ),
 
                                                     blurRadius: 18,
@@ -501,14 +515,11 @@ class _ScreenCastPageState extends State<ScreenCastContent>
 
                                               child: Text(
                                                 isConnected
-                                                    ? 'Disconnect'
-                                                    : 'Cast',
-
+                                                    ? AppStrings.disconnect
+                                                    : AppStrings.cast,
                                                 style: TextStyle(
                                                   color: Colors.white,
-
                                                   fontSize: 15.sp,
-
                                                   fontWeight: FontWeight.bold,
                                                 ),
                                               ),
@@ -537,9 +548,11 @@ class _ScreenCastPageState extends State<ScreenCastContent>
                     decoration: BoxDecoration(
                       borderRadius: BorderRadius.circular(40.r),
 
-                      color: Colors.white.withOpacity(0.05),
+                      color: Colors.white.withValues(alpha: 0.05),
 
-                      border: Border.all(color: Colors.white.withOpacity(0.08)),
+                      border: Border.all(
+                        color: Colors.white.withValues(alpha: 0.08),
+                      ),
                     ),
 
                     child: Center(
@@ -563,11 +576,13 @@ class _ScreenCastPageState extends State<ScreenCastContent>
                                   decoration: BoxDecoration(
                                     shape: BoxShape.circle,
 
-                                    color: accentColor.withOpacity(0.12),
+                                    color: accentColor.withValues(alpha: 0.12),
 
                                     boxShadow: [
                                       BoxShadow(
-                                        color: accentColor.withOpacity(0.25),
+                                        color: accentColor.withValues(
+                                          alpha: 0.25,
+                                        ),
 
                                         blurRadius: 45,
                                       ),
@@ -590,8 +605,8 @@ class _ScreenCastPageState extends State<ScreenCastContent>
 
                           Text(
                             isConnected
-                                ? 'Screen Casting Active'
-                                : 'Android Screen Cast',
+                                ? AppStrings.screenCastingActive
+                                : AppStrings.androidScreenCast,
 
                             style: TextStyle(
                               color: Colors.white,
@@ -606,13 +621,13 @@ class _ScreenCastPageState extends State<ScreenCastContent>
 
                           Text(
                             isConnected
-                                ? 'Your smartphone screen is mirrored live.'
-                                : 'Connect your Android device using ADB + scrcpy.',
+                                ? AppStrings.smartphoneScreenMirroredLive
+                                : AppStrings.connectAndroidDeviceWithAdb,
 
                             textAlign: TextAlign.center,
 
                             style: TextStyle(
-                              color: Colors.white.withOpacity(0.55),
+                              color: Colors.white.withValues(alpha: 0.55),
 
                               fontSize: 18.sp,
 

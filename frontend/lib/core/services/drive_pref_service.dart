@@ -1,4 +1,6 @@
 import 'package:hive/hive.dart';
+import 'package:frontend/core/utils/app_logger.dart';
+
 import '../model/driver_preference.dart';
 
 class DriverHiveService {
@@ -13,7 +15,7 @@ class DriverHiveService {
     final key = _key(pref.name);
     await _box.put(key, pref.toJson());
 
-    print("💾 HIVE SAVE: $key");
+    AppLogger.info("HIVE SAVE: $key");
   }
 
   /// LOAD
@@ -31,14 +33,14 @@ class DriverHiveService {
     final key = _key(name);
     await _box.delete(key);
 
-    print("🗑 HIVE DELETE: $key");
+    AppLogger.info("HIVE DELETE: $key");
   }
 
   /// DEBUG
   static void printAll() {
-    print("=== HIVE DATA ===");
+    AppLogger.info("=== HIVE DATA ===");
     for (var key in _box.keys) {
-      print("$key = ${_box.get(key)}");
+      AppLogger.info("$key = ${_box.get(key)}");
     }
   }
 }

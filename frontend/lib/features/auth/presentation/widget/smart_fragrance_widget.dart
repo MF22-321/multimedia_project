@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:frontend/core/localization/app_strings.dart';
+import 'package:frontend/core/navigation/app_routes.dart';
 import 'package:frontend/core/themes/car_theme.dart';
 
 class SmartFragranceSection extends StatelessWidget {
@@ -18,6 +20,12 @@ class SmartFragranceSection extends StatelessWidget {
       valueListenable: CarThemes.currentTheme,
       builder: (context, themeType, _) {
         final theme = CarThemes.getTheme(themeType);
+        final accentColor = themeType == CarThemeType.comfort
+            ? const Color(0xFF6CB4FF)
+            : theme.accentColor;
+        final buttonColor = themeType == CarThemeType.comfort
+            ? accentColor
+            : theme.buttonColor;
 
         return AnimatedContainer(
           duration: const Duration(milliseconds: 400),
@@ -37,7 +45,7 @@ class SmartFragranceSection extends StatelessWidget {
               Row(
                 children: [
                   Text(
-                    "Smart Fragrance Control",
+                    AppStrings.smartFragranceControl,
                     style: TextStyle(
                       fontSize: 20.sp,
                       color: theme.textColor,
@@ -48,19 +56,19 @@ class SmartFragranceSection extends StatelessWidget {
                   const Spacer(),
 
                   Text(
-                    "Select\nCartridge",
+                    AppStrings.selectCartridge,
                     textAlign: TextAlign.center,
                     style: TextStyle(
                       fontSize: 12.sp,
-                      color: theme.textColor.withOpacity(0.9),
+                      color: theme.textColor.withValues(alpha: 0.9),
                     ),
                   ),
 
                   SizedBox(width: 20.w),
 
-                  _cartridgeButton("1", 1, theme),
+                  _cartridgeButton("1", 1, theme, accentColor),
                   SizedBox(width: 10.w),
-                  _cartridgeButton("2", 2, theme),
+                  _cartridgeButton("2", 2, theme, accentColor),
                 ],
               ),
 
@@ -71,7 +79,7 @@ class SmartFragranceSection extends StatelessWidget {
                 alignment: Alignment.centerRight,
                 child: GestureDetector(
                   onTap: () {
-                    Navigator.pushNamed(context, '/fragrance_settings');
+                    Navigator.pushNamed(context, AppRoutes.fragranceSettings);
                   },
                   child: Container(
                     padding: EdgeInsets.symmetric(
@@ -79,11 +87,11 @@ class SmartFragranceSection extends StatelessWidget {
                       vertical: 8.h,
                     ),
                     decoration: BoxDecoration(
-                      color: theme.buttonColor,
+                      color: buttonColor,
                       borderRadius: BorderRadius.circular(20.r),
                     ),
                     child: Text(
-                      "Custom Settings",
+                      AppStrings.customSettings,
                       style: TextStyle(
                         fontSize: 14.sp,
                         color:
@@ -104,7 +112,12 @@ class SmartFragranceSection extends StatelessWidget {
     );
   }
 
-  Widget _cartridgeButton(String text, int value, CarThemeData theme) {
+  Widget _cartridgeButton(
+    String text,
+    int value,
+    CarThemeData theme,
+    Color accentColor,
+  ) {
     final bool selected = selectedCartridge == value;
 
     return GestureDetector(
@@ -116,15 +129,15 @@ class SmartFragranceSection extends StatelessWidget {
         height: 60.w,
 
         decoration: BoxDecoration(
-          color: selected ? theme.accentColor : Colors.transparent,
+          color: selected ? accentColor : Colors.transparent,
           borderRadius: BorderRadius.circular(15.r),
 
-          border: Border.all(color: theme.accentColor, width: 3),
+          border: Border.all(color: accentColor, width: 3),
 
           boxShadow: selected
               ? [
                   BoxShadow(
-                    color: theme.accentColor.withOpacity(0.5),
+                    color: accentColor.withValues(alpha: 0.5),
                     blurRadius: 10,
                   ),
                 ]

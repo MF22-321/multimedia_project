@@ -4,35 +4,27 @@ import 'package:flutter/material.dart';
 import 'package:frontend/core/model/lyric_line.dart';
 import 'package:frontend/core/services/lyric_service.dart';
 import 'package:frontend/core/services/spotify_linux_service.dart';
-
+import 'package:frontend/core/utils/app_logger.dart';
 
 class MusicProvider extends ChangeNotifier {
+  final SpotifyDBusService _service = SpotifyDBusService();
 
-  final SpotifyDBusService _service =
-      SpotifyDBusService();
-
-  final LyricsService
-      _lyricsService =
-      LyricsService();
+  final LyricsService _lyricsService = LyricsService();
 
   /// =========================
   /// MUSIC DATA
   /// =========================
-  String title =
-      'No Song Playing';
+  String title = 'No Song Playing';
 
-  String artist =
-      'Unknown Artist';
+  String artist = 'Unknown Artist';
 
   String albumArt = '';
 
   bool isPlaying = false;
 
-  Duration currentPosition =
-      Duration.zero;
+  Duration currentPosition = Duration.zero;
 
-  Duration totalDuration =
-      Duration.zero;
+  Duration totalDuration = Duration.zero;
 
   String _trackId = '';
 
@@ -41,8 +33,7 @@ class MusicProvider extends ChangeNotifier {
   /// =========================
   List<LyricLine> lyrics = [];
 
-  List<LyricLine> get syncedLyrics =>
-      lyrics;
+  List<LyricLine> get syncedLyrics => lyrics;
 
   int get currentLyricIndex {
     if (lyrics.isEmpty) {
@@ -75,11 +66,9 @@ class MusicProvider extends ChangeNotifier {
 
   DateTime? _lastLyricsFetchAt;
 
-  bool _lyricsUnavailable =
-      false;
+  bool _lyricsUnavailable = false;
 
-  bool _isFetchingLyrics =
-      false;
+  bool _isFetchingLyrics = false;
 
   /// =========================
   /// START LISTENING
@@ -93,66 +82,35 @@ class MusicProvider extends ChangeNotifier {
     _fetchMusic();
 
     /// REALTIME UPDATE
-    _timer = Timer.periodic(
-
-      const Duration(
-        seconds: 1,
-      ),
-
-      (_) {
-
-        _fetchMusic();
-      },
-    );
+    _timer = Timer.periodic(const Duration(seconds: 1), (_) {
+      _fetchMusic();
+    });
   }
 
   /// =========================
   /// FETCH MUSIC
   /// =========================
-  Future<void> _fetchMusic()
-      async {
-
+  Future<void> _fetchMusic() async {
     try {
+      final data = await _service.getMetadata();
 
-      final data =
-          await _service
-              .getMetadata();
+      final rawTitle = data['title']?.toString() ?? '';
 
-      final rawTitle =
-          data['title']?.toString() ?? '';
+      final rawArtist = data['artist']?.toString() ?? '';
 
-      final rawArtist =
-          data['artist']?.toString() ?? '';
+      final newTitle = rawTitle.trim().isEmpty ? 'No Song Playing' : rawTitle;
 
-      final newTitle =
-          rawTitle.trim().isEmpty
-              ? 'No Song Playing'
-              : rawTitle;
+      final newArtist = rawArtist.trim().isEmpty ? 'Unknown Artist' : rawArtist;
 
-      final newArtist =
-          rawArtist.trim().isEmpty
-              ? 'Unknown Artist'
-              : rawArtist;
+      final newAlbumArt = data['albumArt'] ?? '';
 
-      final newAlbumArt =
-          data['albumArt'] ??
-          '';
+      final newPlaying = data['isPlaying'] ?? false;
 
-      final newPlaying =
-          data['isPlaying'] ??
-          false;
+      final newPosition = data['position'] ?? Duration.zero;
 
-      final newPosition =
-          data['position'] ??
-          Duration.zero;
+      final newDuration = data['duration'] ?? Duration.zero;
 
-      final newDuration =
-          data['duration'] ??
-          Duration.zero;
-
-      final newTrackId =
-          data['trackId'] ??
-          '';
+      final newTrackId = data['trackId'] ?? '';
 
       /// =========================
       /// UPDATE MUSIC
@@ -174,8 +132,7 @@ class MusicProvider extends ChangeNotifier {
       /// =========================
       /// SONG KEY
       /// =========================
-      final currentSongKey =
-          '$title-$artist';
+      final currentSongKey = '$title-$artist';
 
       /// =========================
       /// FETCH LYRICS ONLY
@@ -184,127 +141,64 @@ class MusicProvider extends ChangeNotifier {
       final shouldRetryLyrics =
           _lyricsUnavailable &&
           (_lastLyricsFetchAt == null ||
-              DateTime.now()
-                      .difference(
-                        _lastLyricsFetchAt!,
-                      )
-                      .inSeconds >=
-                  20);
+              DateTime.now().difference(_lastLyricsFetchAt!).inSeconds >= 20);
 
-      if ((_lastSongKey !=
-                  currentSongKey ||
-              shouldRetryLyrics) &&
+      if ((_lastSongKey != currentSongKey || shouldRetryLyrics) &&
           !_isFetchingLyrics) {
+        _lastSongKey = currentSongKey;
 
-        _lastSongKey =
-            currentSongKey;
+        _lastLyricsFetchAt = DateTime.now();
 
-        _lastLyricsFetchAt =
-            DateTime.now();
+        _isFetchingLyrics = true;
 
-        _isFetchingLyrics =
-            true;
-
-        print(
-          'FETCHING LYRICS => $title',
-        );
+        AppLogger.info('FETCHING LYRICS => $title');
 
         try {
-
-          lyrics =
-              await _lyricsService
-                  .getLyrics(
-
-            title: title,
-            artist: artist,
-          );
+          lyrics = await _lyricsService.getLyrics(title: title, artist: artist);
 
           /// FALLBACK
           if (lyrics.isEmpty) {
-
             lyrics = [
-
-              LyricLine(
-
-                time:
-                    Duration.zero,
-
-                text:
-                    '♪ Lyrics unavailable ♪',
-              ),
+              LyricLine(time: Duration.zero, text: '♪ Lyrics unavailable ♪'),
             ];
           }
 
           _lyricsUnavailable =
               lyrics.length == 1 &&
-              lyrics.first.text.contains(
-                'Lyrics unavailable',
-              );
-
+              lyrics.first.text.contains('Lyrics unavailable');
         } finally {
-
-          _isFetchingLyrics =
-              false;
+          _isFetchingLyrics = false;
         }
 
-        print(
-          'SYNCED LYRICS => ${lyrics.length}',
-        );
+        AppLogger.info('SYNCED LYRICS => ${lyrics.length}');
       }
 
       /// =========================
       /// DEBUG
       /// =========================
-      print(
-          '\n========== MUSIC ==========');
-
-      print(
-        'TITLE      : $title',
-      );
-
-      print(
-        'ARTIST     : $artist',
-      );
-
-      print(
-        'ALBUM ART  : $albumArt',
-      );
-
-      print(
-        'PLAYING    : $isPlaying',
-      );
-
-      print(
-          '===========================\n');
+      AppLogger.info('\n========== MUSIC ==========');
+      AppLogger.info('TITLE      : $title');
+      AppLogger.info('ARTIST     : $artist');
+      AppLogger.info('ALBUM ART  : $albumArt');
+      AppLogger.info('PLAYING    : $isPlaying');
+      AppLogger.info('===========================\n');
 
       notifyListeners();
-
     } catch (e) {
-
-      debugPrint(
-        'MUSIC PROVIDER ERROR => $e',
-      );
+      debugPrint('MUSIC PROVIDER ERROR => $e');
     }
   }
 
   /// =========================
   /// PLAY / PAUSE
   /// =========================
-  Future<void> togglePlay()
-      async {
-
+  Future<void> togglePlay() async {
     try {
-
-      await _service
-          .playPause();
+      await _service.playPause();
 
       await _fetchMusic();
-
     } catch (e) {
-
-      debugPrint(
-        'TOGGLE ERROR => $e',
-      );
+      debugPrint('TOGGLE ERROR => $e');
     }
   }
 
@@ -312,18 +206,12 @@ class MusicProvider extends ChangeNotifier {
   /// PLAY
   /// =========================
   Future<void> play() async {
-
     try {
-
       await _service.play();
 
       await _fetchMusic();
-
     } catch (e) {
-
-      debugPrint(
-        'PLAY ERROR => $e',
-      );
+      debugPrint('PLAY ERROR => $e');
     }
   }
 
@@ -335,35 +223,25 @@ class MusicProvider extends ChangeNotifier {
     }
   }
 
-  Future<void> seekTo(
-    double value,
-  ) async {
+  Future<void> seekTo(double value) async {
     try {
-      if (totalDuration.inMilliseconds <=
-          0) {
+      if (totalDuration.inMilliseconds <= 0) {
         return;
       }
 
       final target = Duration(
-        milliseconds:
-            (totalDuration.inMilliseconds *
-                    value.clamp(0.0, 1.0))
-                .round(),
+        milliseconds: (totalDuration.inMilliseconds * value.clamp(0.0, 1.0))
+            .round(),
       );
 
-      await _service.seekTo(
-        trackId: _trackId,
-        position: target,
-      );
+      await _service.seekTo(trackId: _trackId, position: target);
 
       currentPosition = target;
       notifyListeners();
 
       await _fetchMusic();
     } catch (e) {
-      debugPrint(
-        'SEEK ERROR => $e',
-      );
+      debugPrint('SEEK ERROR => $e');
     }
   }
 
@@ -371,38 +249,25 @@ class MusicProvider extends ChangeNotifier {
   /// NEXT
   /// =========================
   Future<void> next() async {
-
     try {
-
       await _service.next();
 
       await _fetchMusic();
-
     } catch (e) {
-
-      debugPrint(
-        'NEXT ERROR => $e',
-      );
+      debugPrint('NEXT ERROR => $e');
     }
   }
 
   /// =========================
   /// PREVIOUS
   /// =========================
-  Future<void> previous()
-      async {
-
+  Future<void> previous() async {
     try {
-
       await _service.previous();
 
       await _fetchMusic();
-
     } catch (e) {
-
-      debugPrint(
-        'PREVIOUS ERROR => $e',
-      );
+      debugPrint('PREVIOUS ERROR => $e');
     }
   }
 
@@ -411,11 +276,8 @@ class MusicProvider extends ChangeNotifier {
   /// =========================
   @override
   void dispose() {
-
     _timer?.cancel();
-    unawaited(
-      _service.dispose(),
-    );
+    unawaited(_service.dispose());
 
     super.dispose();
   }

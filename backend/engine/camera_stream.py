@@ -1,4 +1,6 @@
 import cv2
+import logging
+import os
 import time
 import threading
 import numpy as np
@@ -8,9 +10,20 @@ from backend.faceid import FaceID
 from backend.src.drowsy.engine import DrowsinessEngine
 from backend.src.drowsy.metrics import eye_aspect_ratio, mouth_aspect_ratio
 from backend.src.config import CameraConfig
+from backend.engine.mood import MoodConfig, MoodTracker
 
-print("mediapipe module:", mp)
-print("mediapipe file:", getattr(mp, "__file__", "no file"))
+logger = logging.getLogger(__name__)
+DEBUG_CAMERA_STREAM = os.getenv("BACKEND_DEBUG_CAMERA", "").lower() in {
+    "1",
+    "true",
+    "yes",
+    "on",
+}
+
+
+def log_debug(message, *args):
+    if DEBUG_CAMERA_STREAM:
+        logger.info(message, *args)
 
 
 # =========================================================
@@ -23,10 +36,7 @@ frame_lock = threading.Lock()
 recognizer = None
 drowsy_engine = None
 face_mesh = None
-mood_state = {
-    "candidate": "unknown",
-    "candidate_since": None,
-}
+mood_tracker = MoodTracker()
 
 
 # =========================================================
@@ -97,11 +107,6 @@ class DrowsyConfig:
     alert_hold_sec = 3.0
 
 
-class MoodConfig:
-    confirm_seconds = 7.0
-    neutral_confirm_seconds = 2.0
-
-
 # =========================================================
 # INIT FUNCTIONS
 # =========================================================
@@ -113,73 +118,10 @@ def is_frontal_face(face_landmarks, yaw_threshold=0.06):
     eye_center_x = (left_eye.x + right_eye.x) / 2.0
     yaw_offset = abs(nose_tip.x - eye_center_x)
 
-    print(f"[POSE] yaw_offset={yaw_offset:.4f}, threshold={yaw_threshold:.4f}")
+    log_debug("[POSE] yaw_offset=%.4f, threshold=%.4f", yaw_offset, yaw_threshold)
 
     return yaw_offset < yaw_threshold
 
-
-def extract_mood_from_landmarks(pts):
-    """
-    Lightweight mood heuristic from MediaPipe face landmarks.
-    Detects happy/sad from mouth-corner curvature without an extra ML model.
-    """
-    if pts is None or len(pts) < 455:
-        return {
-            "mood": "unknown",
-            "mood_confidence": 0.0,
-            "smile_score": 0.0,
-            "sadness_score": 0.0,
-        }
-
-    try:
-        left_corner = pts[61]
-        right_corner = pts[291]
-        upper_lip = pts[13]
-        lower_lip = pts[14]
-        left_face = pts[234]
-        right_face = pts[454]
-
-        face_width = float(np.linalg.norm(right_face - left_face))
-        if face_width <= 0:
-            raise ValueError("face width is zero")
-
-        mouth_center_y = float((upper_lip[1] + lower_lip[1]) / 2.0)
-        corner_y = float((left_corner[1] + right_corner[1]) / 2.0)
-
-        # y grows downward. Positive curve means mouth corners are lifted.
-        mouth_curve = (mouth_center_y - corner_y) / face_width
-
-        smile_score = clamp01((mouth_curve - 0.010) / 0.040)
-        sadness_score = clamp01((-mouth_curve - 0.004) / 0.026)
-
-        if smile_score >= 0.45 and smile_score >= sadness_score:
-            mood = "happy"
-            confidence = smile_score
-        elif sadness_score >= 0.35:
-            mood = "sad"
-            confidence = sadness_score
-        else:
-            mood = "neutral"
-            confidence = 1.0 - max(smile_score, sadness_score)
-
-        return {
-            "mood": mood,
-            "mood_confidence": float(confidence),
-            "smile_score": float(smile_score),
-            "sadness_score": float(sadness_score),
-        }
-    except Exception as e:
-        print(f"[MOOD] extraction error: {e}")
-        return {
-            "mood": "unknown",
-            "mood_confidence": 0.0,
-            "smile_score": 0.0,
-            "sadness_score": 0.0,
-        }
-
-
-def clamp01(value):
-    return max(0.0, min(1.0, float(value)))
 
 # def init_camera():
 #     global camera
@@ -212,7 +154,7 @@ def init_camera():
         ]
 
         for source, backend in backends:
-            print(f"[INIT] Trying camera: {source} backend={backend}")
+            logger.info("[INIT] Trying camera: %s backend=%s", source, backend)
 
             if backend is None:
                 cam = cv2.VideoCapture(source)
@@ -230,7 +172,7 @@ def init_camera():
         camera.set(cv2.CAP_PROP_FRAME_HEIGHT, cfg.height)
         camera.set(cv2.CAP_PROP_FPS, 30)
 
-        print("[INIT] Webcam opened successfully")
+        logger.info("[INIT] Webcam opened successfully")
 
         
 def init_recognizer():
@@ -243,7 +185,7 @@ def init_recognizer():
             vote_min_ratio=0.60,
             vote_min_samples=6,
         )
-        print("[INIT] Recognizer initialized")
+        logger.info("[INIT] Recognizer initialized")
 
 
 def init_drowsiness_engine():
@@ -251,7 +193,7 @@ def init_drowsiness_engine():
 
     if drowsy_engine is None:
         drowsy_engine = DrowsinessEngine(DrowsyConfig())
-        print("[INIT] Drowsiness engine initialized")
+        logger.info("[INIT] Drowsiness engine initialized")
 
 
 def init_face_mesh():
@@ -267,7 +209,7 @@ def init_face_mesh():
             min_detection_confidence=0.5,
             min_tracking_confidence=0.5,
         )
-        print("[INIT] Face mesh initialized")
+        logger.info("[INIT] Face mesh initialized")
 
 
 def reload_recognizer():
@@ -285,20 +227,17 @@ def reload_recognizer():
         vote_min_ratio=0.60,
         vote_min_samples=6,
     )
-    print("[INIT] Recognizer reloaded")
+    logger.info("[INIT] Recognizer reloaded")
 
 
 # =========================================================
 # RESET / START / STOP
 # =========================================================
 def reset_drowsiness_status(driver_name=None):
-    global drowsiness_status, mood_state
+    global drowsiness_status
 
     is_active = driver_name is not None
-    mood_state = {
-        "candidate": "unknown",
-        "candidate_since": None,
-    }
+    mood_tracker.reset()
 
     drowsiness_status = {
         "active": is_active,
@@ -329,11 +268,11 @@ def reset_drowsiness_status(driver_name=None):
         "face_position": "not_frontal",
     }
 
-    print(
-        f"[RESET] active={drowsiness_status['active']} "
-        f"driver={drowsiness_status['driver_name']} "
-        f"status={drowsiness_status['status']} "
-        f"dict_id={id(drowsiness_status)}"
+    logger.info(
+        "[RESET] active=%s driver=%s status=%s",
+        drowsiness_status["active"],
+        drowsiness_status["driver_name"],
+        drowsiness_status["status"],
     )
 
 
@@ -349,10 +288,7 @@ def start_drowsiness_monitoring(driver_name: str):
     drowsy_engine.reset_all()
     reset_drowsiness_status(driver_name=driver_name)
 
-    print(
-        f"[START_DROWSINESS] started for {driver_name} "
-        f"dict_id={id(drowsiness_status)} engine_id={id(drowsy_engine)}"
-    )
+    logger.info("[START_DROWSINESS] started for %s", driver_name)
 
 
 def stop_drowsiness_monitoring():
@@ -365,7 +301,7 @@ def stop_drowsiness_monitoring():
             pass
 
     reset_drowsiness_status(driver_name=None)
-    print("[STOP_DROWSINESS] stopped")
+    logger.info("[STOP_DROWSINESS] stopped")
 
 
 def get_drowsiness_status():
@@ -380,12 +316,7 @@ def get_driver_status():
 # DROWSINESS UPDATE
 # =========================================================
 def reset_mood_values():
-    global mood_state
-
-    mood_state = {
-        "candidate": "unknown",
-        "candidate_since": None,
-    }
+    mood_tracker.reset()
 
     drowsiness_status["mood"] = "unknown"
     drowsiness_status["mood_confidence"] = 0.0
@@ -430,29 +361,31 @@ def update_drowsiness_from_metrics(ear, mar, now):
     global drowsiness_status
 
     if not drowsiness_status["active"]:
-        print("[DROWSY UPDATE] skipped because inactive")
+        log_debug("[DROWSY UPDATE] skipped because inactive")
         return
 
     if drowsy_engine is None:
         init_drowsiness_engine()
 
-    print(
-        f"[DROWSY INPUT] active={drowsiness_status['active']} "
-        f"driver={drowsiness_status['driver_name']} "
-        f"ear={ear} mar={mar} "
-        f"dict_id={id(drowsiness_status)} engine_id={id(drowsy_engine)}"
+    log_debug(
+        "[DROWSY INPUT] active=%s driver=%s ear=%s mar=%s",
+        drowsiness_status["active"],
+        drowsiness_status["driver_name"],
+        ear,
+        mar,
     )
 
     out = drowsy_engine.step(ear=ear, mar=mar, now=now)
 
-    print(
-        f"[DROWSY OUT] "
-        f"calibrating={out.calibrating} "
-        f"calib_remaining={out.calib_remaining:.2f} "
-        f"eye_score={out.eye_score:.3f} "
-        f"yawn_score={out.yawn_score:.3f} "
-        f"score={out.score:.3f} "
-        f"alert={out.alert_active}"
+    log_debug(
+        "[DROWSY OUT] calibrating=%s calib_remaining=%.2f "
+        "eye_score=%.3f yawn_score=%.3f score=%.3f alert=%s",
+        out.calibrating,
+        out.calib_remaining,
+        out.eye_score,
+        out.yawn_score,
+        out.score,
+        out.alert_active,
     )
 
     drowsiness_status["ear"] = None if out.ear is None else float(out.ear)
@@ -475,48 +408,32 @@ def update_drowsiness_from_metrics(ear, mar, now):
     else:
         drowsiness_status["status"] = "normal"
 
-    print(f"[DROWSY STATUS] {drowsiness_status}")
+    log_debug("[DROWSY STATUS] %s", drowsiness_status)
 
 
 def update_mood_from_landmarks(pts, now=None):
-    global mood_state
-
     if now is None:
         now = time.time()
 
-    mood_out = extract_mood_from_landmarks(pts)
-    raw_mood = mood_out["mood"]
-    required_sec = (
-        MoodConfig.neutral_confirm_seconds
-        if raw_mood in ("neutral", "unknown")
-        else MoodConfig.confirm_seconds
-    )
-
-    if raw_mood != mood_state["candidate"]:
-        mood_state["candidate"] = raw_mood
-        mood_state["candidate_since"] = now
-
-    candidate_since = mood_state["candidate_since"] or now
-    elapsed = max(0.0, now - candidate_since)
-
-    drowsiness_status["raw_mood"] = raw_mood
-    drowsiness_status["mood_candidate"] = mood_state["candidate"]
-    drowsiness_status["mood_candidate_elapsed"] = float(elapsed)
-    drowsiness_status["mood_required_sec"] = float(required_sec)
-
-    if elapsed >= required_sec:
-        drowsiness_status["mood"] = raw_mood
-        drowsiness_status["mood_confidence"] = mood_out["mood_confidence"]
+    mood_out = mood_tracker.step(pts, now)
+    drowsiness_status["mood"] = mood_out["mood"]
+    drowsiness_status["mood_confidence"] = mood_out["mood_confidence"]
+    drowsiness_status["raw_mood"] = mood_out["raw_mood"]
+    drowsiness_status["mood_candidate"] = mood_out["mood_candidate"]
+    drowsiness_status["mood_candidate_elapsed"] = mood_out["mood_candidate_elapsed"]
+    drowsiness_status["mood_required_sec"] = mood_out["mood_required_sec"]
     drowsiness_status["smile_score"] = mood_out["smile_score"]
     drowsiness_status["sadness_score"] = mood_out["sadness_score"]
 
-    print(
-        f"[MOOD] raw={raw_mood} "
-        f"confirmed={drowsiness_status['mood']} "
-        f"elapsed={elapsed:.2f}/{required_sec:.2f}s "
-        f"confidence={mood_out['mood_confidence']:.3f} "
-        f"smile={mood_out['smile_score']:.3f} "
-        f"sad={mood_out['sadness_score']:.3f}"
+    log_debug(
+        "[MOOD] raw=%s confirmed=%s elapsed=%.2f/%.2fs confidence=%.3f smile=%.3f sad=%.3f",
+        mood_out["raw_mood"],
+        drowsiness_status["mood"],
+        mood_out["mood_candidate_elapsed"],
+        mood_out["mood_required_sec"],
+        mood_out["mood_confidence"],
+        mood_out["smile_score"],
+        mood_out["sadness_score"],
     )
 
 
@@ -534,7 +451,7 @@ def extract_ear_mar(frame):
     result = face_mesh.process(rgb)
 
     if not result.multi_face_landmarks:
-        print("[EAR/MAR] no face landmarks")
+        log_debug("[EAR/MAR] no face landmarks")
         return None, None, None, False
 
     face_landmarks = result.multi_face_landmarks[0]
@@ -542,7 +459,7 @@ def extract_ear_mar(frame):
     # NEW: frontal face check
     frontal = is_frontal_face(face_landmarks, yaw_threshold=0.035)
     if not frontal:
-        print("[POSE] face not frontal -> skip EAR/MAR update")
+        log_debug("[POSE] face not frontal -> skip EAR/MAR update")
         return None, None, None, False
 
     pts = []
@@ -567,14 +484,14 @@ def extract_ear_mar(frame):
         mar = mouth_aspect_ratio(mouth)
 
         if np.isnan(ear) or np.isnan(mar):
-            print("[EAR/MAR] nan detected")
+            logger.warning("[EAR/MAR] nan detected")
             return None, None, pts, False
 
-        print(f"[EAR/MAR] ear={ear:.4f}, mar={mar:.4f}, frontal={frontal}")
+        log_debug("[EAR/MAR] ear=%.4f, mar=%.4f, frontal=%s", ear, mar, frontal)
         return float(ear), float(mar), pts, True
 
     except Exception as e:
-        print(f"[EAR/MAR] extraction error: {e}")
+        logger.exception("[EAR/MAR] extraction error: %s", e)
         return None, None, None, False
 
 
@@ -688,7 +605,7 @@ def make_placeholder_frame(text="Waiting for camera..."):
 def camera_loop():
     global last_frame
 
-    print("[SYSTEM] Camera thread started")
+    logger.info("[SYSTEM] Camera thread started")
 
     init_camera()
     init_recognizer()
@@ -697,12 +614,12 @@ def camera_loop():
     try:
         init_face_mesh()
     except Exception as e:
-        print(f"[SYSTEM] Face mesh init failed: {e}")
+        logger.exception("[SYSTEM] Face mesh init failed: %s", e)
 
-    print(
-        f"[SYSTEM] loop module={__name__} "
-        f"dict_id={id(drowsiness_status)} "
-        f"engine_id={id(drowsy_engine)}"
+    logger.info(
+        "[SYSTEM] loop module=%s engine_id=%s",
+        __name__,
+        id(drowsy_engine),
     )
 
     while True:
@@ -710,7 +627,7 @@ def camera_loop():
             ret, frame = camera.read()
 
             if not ret or frame is None:
-                print("[SYSTEM] Camera read failed")
+                logger.warning("[SYSTEM] Camera read failed")
                 with frame_lock:
                     last_frame = make_placeholder_frame("Camera read failed")
                 time.sleep(0.1)
@@ -765,11 +682,11 @@ def camera_loop():
             # =================================================
             # DROWSINESS
             # =================================================
-            print(
-                f"[LOOP] active={drowsiness_status['active']} "
-                f"driver={drowsiness_status['driver_name']} "
-                f"status={drowsiness_status['status']} "
-                f"dict_id={id(drowsiness_status)}"
+            log_debug(
+                "[LOOP] active=%s driver=%s status=%s",
+                drowsiness_status["active"],
+                drowsiness_status["driver_name"],
+                drowsiness_status["status"],
             )
 
             frontal = False
@@ -783,10 +700,11 @@ def camera_loop():
                 if not driver_match:
                     drowsiness_status["face_position"] = "not_target_driver"
                     reset_detection_values(status="waiting_driver")
-                    print(
-                        "[DROWSINESS] skipped because recognized driver "
-                        f"{drowsiness_status['recognized_driver']} does not match "
-                        f"target {drowsiness_status['driver_name']}"
+                    log_debug(
+                        "[DROWSINESS] skipped because recognized driver %s "
+                        "does not match target %s",
+                        drowsiness_status["recognized_driver"],
+                        drowsiness_status["driver_name"],
                     )
                     draw_drowsiness_overlay(preview)
 
@@ -800,7 +718,7 @@ def camera_loop():
 
                 drowsiness_status["face_position"] = "frontal" if frontal else "not_frontal"
 
-                print(f"[LOOP DEBUG] frontal={frontal} ear={ear} mar={mar}")
+                log_debug("[LOOP DEBUG] frontal=%s ear=%s mar=%s", frontal, ear, mar)
 
                 if frontal and ear is not None and mar is not None:
                     now = time.time()
@@ -808,7 +726,10 @@ def camera_loop():
                     update_mood_from_landmarks(pts, now)
                 else:
                     reset_mood_values()
-                    print("[DROWSINESS] skipped update because face is not frontal or metrics invalid")
+                    log_debug(
+                        "[DROWSINESS] skipped update because face is not frontal "
+                        "or metrics invalid"
+                    )
             else:
                 drowsiness_status["face_position"] = "not_frontal"
                 drowsiness_status["recognized_driver"] = driver_status.get("driver")
@@ -822,7 +743,7 @@ def camera_loop():
             time.sleep(0.03)
 
         except Exception as e:
-            print(f"[SYSTEM] camera_loop error: {e}")
+            logger.exception("[SYSTEM] camera_loop error: %s", e)
             with frame_lock:
                 last_frame = make_placeholder_frame(f"Error: {str(e)[:30]}")
             time.sleep(0.1)
@@ -836,10 +757,3 @@ def get_latest_frame():
         if last_frame is None:
             return make_placeholder_frame()
         return last_frame.copy()
-    
-def get_drowsiness_status():
-    return dict(drowsiness_status)
-
-
-def get_driver_status():
-    return dict(driver_status)

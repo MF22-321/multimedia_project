@@ -3,9 +3,7 @@ import 'package:http/http.dart' as http;
 import 'package:latlong2/latlong.dart';
 
 class RouteService {
-
   Future<List<LatLng>> getRoute(LatLng start, LatLng end) async {
-
     final url =
         "https://router.project-osrm.org/route/v1/driving/"
         "${start.longitude},${start.latitude};"

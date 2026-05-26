@@ -1,7 +1,7 @@
-import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 
+import 'package:frontend/core/localization/app_strings.dart';
 import 'package:frontend/core/themes/car_theme.dart';
 
 class DrowsinessAlertPage extends StatelessWidget {
@@ -19,7 +19,7 @@ class DrowsinessAlertPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.black.withOpacity(0.7),
+      backgroundColor: Colors.black.withValues(alpha: 0.7),
 
       body: ValueListenableBuilder(
         valueListenable: CarThemes.currentTheme,
@@ -30,9 +30,7 @@ class DrowsinessAlertPage extends StatelessWidget {
             children: [
               /// 🔥 BACKGROUND BLUR / DIM
               Positioned.fill(
-                child: Container(
-                  color: Colors.black.withOpacity(0.6),
-                ),
+                child: Container(color: Colors.black.withValues(alpha: 0.6)),
               ),
 
               /// 🔥 CARD CENTER
@@ -49,9 +47,9 @@ class DrowsinessAlertPage extends StatelessWidget {
                     ),
                     boxShadow: [
                       BoxShadow(
-                        color: theme.accentColor.withOpacity(0.4),
+                        color: theme.accentColor.withValues(alpha: 0.4),
                         blurRadius: 30,
-                      )
+                      ),
                     ],
                   ),
 
@@ -60,7 +58,7 @@ class DrowsinessAlertPage extends StatelessWidget {
                     children: [
                       /// 🔥 TITLE
                       Text(
-                        "Hati-hati Anda sedang mengantuk!",
+                        AppStrings.drowsyWarning,
                         textAlign: TextAlign.center,
                         style: TextStyle(
                           fontSize: 28.sp,
@@ -83,7 +81,7 @@ class DrowsinessAlertPage extends StatelessWidget {
 
                       /// 🔥 QUESTION
                       Text(
-                        "Mau mengaktifkan Smart Fragrance\nuntuk mengurangi kantuk Anda?",
+                        AppStrings.smartFragranceQuestion,
                         textAlign: TextAlign.center,
                         style: TextStyle(
                           fontSize: 18.sp,
@@ -102,13 +100,15 @@ class DrowsinessAlertPage extends StatelessWidget {
                             onTap: onYes,
                             child: Container(
                               padding: EdgeInsets.symmetric(
-                                  horizontal: 40.w, vertical: 16.h),
+                                horizontal: 40.w,
+                                vertical: 16.h,
+                              ),
                               decoration: BoxDecoration(
                                 color: theme.accentColor,
                                 borderRadius: BorderRadius.circular(30.r),
                               ),
                               child: Text(
-                                "YA",
+                                AppStrings.yes,
                                 style: TextStyle(
                                   color: Colors.white,
                                   fontSize: 18.sp,
@@ -125,13 +125,15 @@ class DrowsinessAlertPage extends StatelessWidget {
                             onTap: onNo,
                             child: Container(
                               padding: EdgeInsets.symmetric(
-                                  horizontal: 40.w, vertical: 16.h),
+                                horizontal: 40.w,
+                                vertical: 16.h,
+                              ),
                               decoration: BoxDecoration(
                                 color: Colors.grey,
                                 borderRadius: BorderRadius.circular(30.r),
                               ),
                               child: Text(
-                                "TIDAK",
+                                AppStrings.no,
                                 style: TextStyle(
                                   color: Colors.black,
                                   fontSize: 18.sp,
@@ -148,13 +150,15 @@ class DrowsinessAlertPage extends StatelessWidget {
                             onTap: onDisable,
                             child: Container(
                               padding: EdgeInsets.symmetric(
-                                  horizontal: 20.w, vertical: 16.h),
+                                horizontal: 20.w,
+                                vertical: 16.h,
+                              ),
                               decoration: BoxDecoration(
                                 border: Border.all(color: Colors.white54),
                                 borderRadius: BorderRadius.circular(30.r),
                               ),
                               child: Text(
-                                "Nonaktifkan\nDrowsiness Detection",
+                                AppStrings.disableDrowsiness,
                                 textAlign: TextAlign.center,
                                 style: TextStyle(
                                   color: Colors.white70,

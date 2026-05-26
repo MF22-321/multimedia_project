@@ -3,6 +3,8 @@ import 'dart:ui';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:frontend/core/localization/app_strings.dart';
+import 'package:frontend/core/navigation/app_language_control.dart';
 import 'package:frontend/core/navigation/drowsiness_control.dart';
 import 'package:frontend/core/navigation/driver_session.dart';
 import 'package:frontend/core/navigation/smart_music_navigation.dart';
@@ -58,7 +60,8 @@ class _HomePageState extends State<HomePage> {
 
     _init();
 
-    Future.microtask(() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
       context.read<VideoProvider>().init(context);
     });
   }
@@ -105,6 +108,7 @@ class _HomePageState extends State<HomePage> {
     final driver = DriverSession.currentDriver.value;
 
     debugPrint("🧠 DRIVER SESSION: $driver");
+    AppLanguageControl.loadForCurrentDriver();
 
     if (driver == null) {
       CarThemes.currentTheme.value = CarThemeType.comfort;
@@ -113,7 +117,7 @@ class _HomePageState extends State<HomePage> {
 
     final key = driver.toLowerCase();
 
-    final pref = await DriverHiveService.load(key);
+    final pref = DriverHiveService.load(key);
 
     /// 🔥 CEK LAGI DRIVER (ANTI RACE CONDITION)
     if (DriverSession.currentDriver.value != driver) {
@@ -261,13 +265,17 @@ class _HomePageState extends State<HomePage> {
       SmartMusicSuggestion.suggestedKeyword.value = keyword;
     });
 
-    final title = isHappy ? "Mood Terdeteksi Positif" : "Mood Terdeteksi Lelah";
+    final title = isHappy
+        ? AppStrings.positiveMoodDetected
+        : AppStrings.tiredMoodDetected;
 
     final subtitle = isHappy
-        ? "Sepertinya perjalanan kamu sedang menyenangkan."
-        : "Kami merekomendasikan musik santai agar perjalanan lebih nyaman.";
+        ? AppStrings.happyMoodSubtitle
+        : AppStrings.calmMoodSubtitle;
 
-    final buttonText = isHappy ? "Putar Musik Bahagia" : "Putar Musik Santai";
+    final buttonText = isHappy
+        ? AppStrings.playHappyMusic
+        : AppStrings.playCalmMusic;
 
     final currentTheme = CarThemes.currentTheme.value;
 
@@ -286,7 +294,7 @@ class _HomePageState extends State<HomePage> {
 
       barrierLabel: "Mood Dialog",
 
-      barrierColor: Colors.black.withOpacity(0.45),
+      barrierColor: Colors.black.withValues(alpha: 0.45),
 
       transitionDuration: const Duration(milliseconds: 450),
 
@@ -311,17 +319,17 @@ class _HomePageState extends State<HomePage> {
                       end: Alignment.bottomRight,
 
                       colors: [
-                        Colors.white.withOpacity(0.08),
+                        Colors.white.withValues(alpha: 0.08),
 
-                        Colors.white.withOpacity(0.03),
+                        Colors.white.withValues(alpha: 0.03),
                       ],
                     ),
 
-                    border: Border.all(color: accent.withOpacity(0.18)),
+                    border: Border.all(color: accent.withValues(alpha: 0.18)),
 
                     boxShadow: [
                       BoxShadow(
-                        color: accent.withOpacity(0.20),
+                        color: accent.withValues(alpha: 0.20),
 
                         blurRadius: 40,
 
@@ -344,11 +352,11 @@ class _HomePageState extends State<HomePage> {
                         decoration: BoxDecoration(
                           shape: BoxShape.circle,
 
-                          color: accent.withOpacity(0.12),
+                          color: accent.withValues(alpha: 0.12),
 
                           boxShadow: [
                             BoxShadow(
-                              color: accent.withOpacity(0.35),
+                              color: accent.withValues(alpha: 0.35),
 
                               blurRadius: 30,
                             ),
@@ -412,7 +420,7 @@ class _HomePageState extends State<HomePage> {
                         decoration: BoxDecoration(
                           borderRadius: BorderRadius.circular(22.r),
 
-                          color: Colors.white.withOpacity(0.06),
+                          color: Colors.white.withValues(alpha: 0.06),
                         ),
 
                         child: Row(
@@ -455,12 +463,12 @@ class _HomePageState extends State<HomePage> {
                                 decoration: BoxDecoration(
                                   borderRadius: BorderRadius.circular(24.r),
 
-                                  color: Colors.white.withOpacity(0.05),
+                                  color: Colors.white.withValues(alpha: 0.05),
                                 ),
 
                                 child: Center(
                                   child: Text(
-                                    'Nanti',
+                                    AppStrings.later,
 
                                     style: TextStyle(
                                       color: Colors.white70,
@@ -496,7 +504,7 @@ class _HomePageState extends State<HomePage> {
 
                                   boxShadow: [
                                     BoxShadow(
-                                      color: accent.withOpacity(0.35),
+                                      color: accent.withValues(alpha: 0.35),
 
                                       blurRadius: 24,
                                     ),

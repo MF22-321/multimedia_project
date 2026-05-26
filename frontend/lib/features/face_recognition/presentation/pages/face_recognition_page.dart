@@ -1,18 +1,15 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:frontend/core/localization/app_strings.dart';
+import 'package:frontend/core/navigation/app_routes.dart';
 import 'package:frontend/core/services/drowsiness_api.dart';
 
-
-
 class FaceRecognition extends StatefulWidget {
-  static const routeName = "/home";
+  static const routeName = AppRoutes.home;
 
   final String driverName;
 
-  const FaceRecognition({
-    super.key,
-    required this.driverName,
-  });
+  const FaceRecognition({super.key, required this.driverName});
 
   @override
   State<FaceRecognition> createState() => _HomePageState();
@@ -59,7 +56,7 @@ class _HomePageState extends State<FaceRecognition> {
       });
 
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Gagal memulai drowsiness detection: $e")),
+        SnackBar(content: Text(AppStrings.startDrowsinessFailed(e))),
       );
     } finally {
       if (mounted) {
@@ -143,7 +140,7 @@ class _HomePageState extends State<FaceRecognition> {
       if (!mounted) return;
 
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Gagal menghentikan drowsiness detection: $e")),
+        SnackBar(content: Text(AppStrings.stopDrowsinessFailed(e))),
       );
     } finally {
       if (mounted) {
@@ -162,22 +159,20 @@ class _HomePageState extends State<FaceRecognition> {
       barrierDismissible: false,
       builder: (context) {
         return AlertDialog(
-          title: const Text("Hati-hati Anda sedang mengantuk!"),
-          content: const Text(
-            "Mau mengaktifkan Smart Fragrance untuk mengurangi kantuk Anda?",
-          ),
+          title: Text(AppStrings.drowsyWarning),
+          content: Text(AppStrings.smartFragranceQuestion),
           actions: [
             TextButton(
               onPressed: () {
                 Navigator.pop(context);
               },
-              child: const Text("YA"),
+              child: Text(AppStrings.yes),
             ),
             TextButton(
               onPressed: () {
                 Navigator.pop(context);
               },
-              child: const Text("TIDAK"),
+              child: Text(AppStrings.no),
             ),
             TextButton(
               onPressed: () async {
@@ -187,7 +182,7 @@ class _HomePageState extends State<FaceRecognition> {
                   Navigator.pop(context);
                 }
               },
-              child: const Text("Nonaktifkan Drowsiness Detection"),
+              child: Text(AppStrings.disableDrowsiness),
             ),
           ],
         );
@@ -207,25 +202,21 @@ class _HomePageState extends State<FaceRecognition> {
     return v == null ? "-" : v.toString();
   }
 
-  String get _monitoringLabel => _isMonitoring ? "Aktif" : "Nonaktif";
+  String get _monitoringLabel =>
+      _isMonitoring ? AppStrings.active : AppStrings.inactive;
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text("Home Page"),
-      ),
+      appBar: AppBar(title: Text(AppStrings.home)),
       body: Padding(
         padding: const EdgeInsets.all(24),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              "Selamat berkendara, ${widget.driverName}",
-              style: const TextStyle(
-                fontSize: 26,
-                fontWeight: FontWeight.bold,
-              ),
+              AppStrings.safeDriveGreeting(widget.driverName),
+              style: const TextStyle(fontSize: 26, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 16),
             Row(

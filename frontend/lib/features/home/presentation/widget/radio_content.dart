@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:frontend/core/localization/app_strings.dart';
 
 import 'package:media_kit/media_kit.dart';
 
 import '../../../../core/themes/car_theme.dart';
+import '../../../../core/utils/app_logger.dart';
 
 class RadioContent extends StatefulWidget {
   const RadioContent({super.key});
@@ -27,7 +29,7 @@ class _RadioContentState extends State<RadioContent> {
   /// =========================
   /// RADIO STATIONS
   /// =========================
-  final List<Map<String, dynamic>> stations = [
+  List<Map<String, dynamic>> get stations => [
     {
       'name': 'Groove Salad',
 
@@ -93,7 +95,10 @@ class _RadioContentState extends State<RadioContent> {
 
     {
       'name': 'Gen FM',
-      'subtitle': 'Suara Musik Terkini',
+      'subtitle': AppStrings.choose(
+        id: 'Suara Musik Terkini',
+        en: 'Latest Music Hits',
+      ),
       'image': 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4',
       'url': 'https://stream.radiojar.com/4ywdgup3bnzuv',
     },
@@ -147,9 +152,9 @@ class _RadioContentState extends State<RadioContent> {
 
       final station = stations[index];
 
-      print('PLAYING => ${station['name']}');
+      AppLogger.info('PLAYING => ${station['name']}');
 
-      print('URL => ${station['url']}');
+      AppLogger.info('URL => ${station['url']}');
 
       await player.open(Media(station['url']), play: false);
 
@@ -265,9 +270,11 @@ class _RadioContentState extends State<RadioContent> {
                     decoration: BoxDecoration(
                       borderRadius: BorderRadius.circular(40.r),
 
-                      color: Colors.white.withOpacity(0.05),
+                      color: Colors.white.withValues(alpha: 0.05),
 
-                      border: Border.all(color: Colors.white.withOpacity(0.08)),
+                      border: Border.all(
+                        color: Colors.white.withValues(alpha: 0.08),
+                      ),
                     ),
 
                     child: Column(
@@ -297,15 +304,17 @@ class _RadioContentState extends State<RadioContent> {
                                 decoration: BoxDecoration(
                                   shape: BoxShape.circle,
 
-                                  color: Colors.white.withOpacity(0.06),
+                                  color: Colors.white.withValues(alpha: 0.06),
 
                                   border: Border.all(
-                                    color: accentColor.withOpacity(0.25),
+                                    color: accentColor.withValues(alpha: 0.25),
                                   ),
 
                                   boxShadow: [
                                     BoxShadow(
-                                      color: accentColor.withOpacity(0.12),
+                                      color: accentColor.withValues(
+                                        alpha: 0.12,
+                                      ),
 
                                       blurRadius: 18,
                                     ),
@@ -336,7 +345,7 @@ class _RadioContentState extends State<RadioContent> {
 
                                 boxShadow: [
                                   BoxShadow(
-                                    color: accentColor.withOpacity(0.45),
+                                    color: accentColor.withValues(alpha: 0.45),
 
                                     blurRadius: 20,
                                   ),
@@ -356,7 +365,7 @@ class _RadioContentState extends State<RadioContent> {
 
                             /// TITLE
                             Text(
-                              'Radio',
+                              AppStrings.radio,
 
                               style: TextStyle(
                                 color: Colors.white,
@@ -415,19 +424,23 @@ class _RadioContentState extends State<RadioContent> {
                                     borderRadius: BorderRadius.circular(28.r),
 
                                     color: active
-                                        ? accentColor.withOpacity(0.12)
-                                        : Colors.white.withOpacity(0.04),
+                                        ? accentColor.withValues(alpha: 0.12)
+                                        : Colors.white.withValues(alpha: 0.04),
 
                                     border: Border.all(
                                       color: active
-                                          ? accentColor.withOpacity(0.35)
-                                          : Colors.white.withOpacity(0.06),
+                                          ? accentColor.withValues(alpha: 0.35)
+                                          : Colors.white.withValues(
+                                              alpha: 0.06,
+                                            ),
                                     ),
 
                                     boxShadow: [
                                       if (active)
                                         BoxShadow(
-                                          color: accentColor.withOpacity(0.18),
+                                          color: accentColor.withValues(
+                                            alpha: 0.18,
+                                          ),
 
                                           blurRadius: 24,
                                         ),
@@ -480,8 +493,8 @@ class _RadioContentState extends State<RadioContent> {
                                               station['subtitle'],
 
                                               style: TextStyle(
-                                                color: Colors.white.withOpacity(
-                                                  0.6,
+                                                color: Colors.white.withValues(
+                                                  alpha: 0.6,
                                                 ),
 
                                                 fontSize: 15.sp,
@@ -545,9 +558,11 @@ class _RadioContentState extends State<RadioContent> {
                     decoration: BoxDecoration(
                       borderRadius: BorderRadius.circular(40.r),
 
-                      color: Colors.white.withOpacity(0.05),
+                      color: Colors.white.withValues(alpha: 0.05),
 
-                      border: Border.all(color: Colors.white.withOpacity(0.08)),
+                      border: Border.all(
+                        color: Colors.white.withValues(alpha: 0.08),
+                      ),
                     ),
 
                     child: Column(
@@ -566,7 +581,7 @@ class _RadioContentState extends State<RadioContent> {
 
                             boxShadow: [
                               BoxShadow(
-                                color: accentColor.withOpacity(0.35),
+                                color: accentColor.withValues(alpha: 0.35),
 
                                 blurRadius: 35,
                               ),
@@ -607,7 +622,7 @@ class _RadioContentState extends State<RadioContent> {
                           currentStation['subtitle'],
 
                           style: TextStyle(
-                            color: Colors.white.withOpacity(0.6),
+                            color: Colors.white.withValues(alpha: 0.6),
 
                             fontSize: 20.sp,
                           ),
@@ -633,7 +648,9 @@ class _RadioContentState extends State<RadioContent> {
 
                                 boxShadow: [
                                   BoxShadow(
-                                    color: Colors.redAccent.withOpacity(0.45),
+                                    color: Colors.redAccent.withValues(
+                                      alpha: 0.45,
+                                    ),
 
                                     blurRadius: 12,
                                   ),
@@ -694,7 +711,9 @@ class _RadioContentState extends State<RadioContent> {
 
                                   boxShadow: [
                                     BoxShadow(
-                                      color: accentColor.withOpacity(0.45),
+                                      color: accentColor.withValues(
+                                        alpha: 0.45,
+                                      ),
 
                                       blurRadius: 28,
                                     ),
@@ -753,9 +772,9 @@ class _RadioContentState extends State<RadioContent> {
         decoration: BoxDecoration(
           shape: BoxShape.circle,
 
-          color: Colors.white.withOpacity(0.06),
+          color: Colors.white.withValues(alpha: 0.06),
 
-          border: Border.all(color: accentColor.withOpacity(0.25)),
+          border: Border.all(color: accentColor.withValues(alpha: 0.25)),
         ),
 
         child: Icon(icon, color: accentColor, size: 38.sp),

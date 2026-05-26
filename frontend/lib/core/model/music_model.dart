@@ -1,5 +1,4 @@
 class MusicModel {
-
   final String title;
   final String artist;
   final String albumArt;

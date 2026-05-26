@@ -38,22 +38,22 @@ class MediaCard extends StatelessWidget {
 
               gradient: LinearGradient(
                 colors: [
-                  theme.backgroundGradient.last.withOpacity(0.9),
+                  theme.backgroundGradient.last.withValues(alpha: 0.9),
 
-                  Colors.black.withOpacity(0.6),
+                  Colors.black.withValues(alpha: 0.6),
                 ],
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
               ),
 
               border: Border.all(
-                color: theme.accentColor.withOpacity(0.4),
+                color: theme.accentColor.withValues(alpha: 0.4),
                 width: 2,
               ),
 
               boxShadow: [
                 BoxShadow(
-                  color: theme.accentColor.withOpacity(0.25),
+                  color: theme.accentColor.withValues(alpha: 0.25),
                   blurRadius: 20,
                   offset: const Offset(0, 10),
                 ),
@@ -119,7 +119,7 @@ class MediaCard extends StatelessWidget {
                         overflow: TextOverflow.ellipsis,
 
                         style: TextStyle(
-                          color: theme.textColor.withOpacity(0.7),
+                          color: theme.textColor.withValues(alpha: 0.7),
 
                           fontSize: 14.sp,
                         ),
@@ -173,8 +173,8 @@ class MediaCard extends StatelessWidget {
 
                               overlayShape: SliderComponentShape.noOverlay,
 
-                              inactiveTrackColor: Colors.white.withOpacity(
-                                0.15,
+                              inactiveTrackColor: Colors.white.withValues(
+                                alpha: 0.15,
                               ),
 
                               activeTrackColor:
@@ -249,7 +249,7 @@ class MediaCard extends StatelessWidget {
 
                           boxShadow: [
                             BoxShadow(
-                              color: playButtonColor.withOpacity(0.4),
+                              color: playButtonColor.withValues(alpha: 0.4),
 
                               blurRadius: 12,
                             ),

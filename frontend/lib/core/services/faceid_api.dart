@@ -1,14 +1,11 @@
 import 'dart:convert';
 import 'dart:typed_data';
+import 'package:frontend/core/services/backend_config.dart';
 import 'package:http/http.dart' as http;
 
 class FaceIdApi {
-  /// 🔥 BASE URL DIPISAH
-  static const String _httpBase = "http://127.0.0.1:8000";
-  static const String _wsBase = "ws://127.0.0.1:8000";
-
   /// 🔥 WebSocket camera stream
-  static String get cameraWs => "$_wsBase/ws/camera";
+  static String get cameraWs => "${BackendConfig.wsBase}/ws/camera";
 
   /// ==============================
   /// 📊 DRIVER STATUS
@@ -16,7 +13,7 @@ class FaceIdApi {
   ///
   ///   /// 🔥 GET LIST DRIVER
   static Future<List<String>> getDrivers() async {
-    final res = await http.get(Uri.parse("$_httpBase/drivers"));
+    final res = await http.get(Uri.parse("${BackendConfig.httpBase}/drivers"));
 
     if (res.statusCode != 200) {
       throw Exception("Failed to get drivers");
@@ -28,7 +25,9 @@ class FaceIdApi {
 
   static Future<Map<String, dynamic>> getDriverStatus() async {
     try {
-      final res = await http.get(Uri.parse("$_httpBase/driver_status"));
+      final res = await http.get(
+        Uri.parse("${BackendConfig.httpBase}/driver_status"),
+      );
 
       if (res.statusCode != 200) {
         throw Exception("Failed: ${res.body}");
@@ -45,7 +44,9 @@ class FaceIdApi {
   /// ==============================
   static Future<Uint8List> captureFace() async {
     try {
-      final res = await http.get(Uri.parse("$_httpBase/capture_face"));
+      final res = await http.get(
+        Uri.parse("${BackendConfig.httpBase}/capture_face"),
+      );
 
       if (res.statusCode != 200) {
         throw Exception("Failed: ${res.body}");
@@ -67,7 +68,7 @@ class FaceIdApi {
     try {
       final request = http.MultipartRequest(
         "POST",
-        Uri.parse("$_httpBase/enroll"),
+        Uri.parse("${BackendConfig.httpBase}/enroll"),
       );
 
       request.fields["driver_name"] = driverName;
@@ -104,7 +105,7 @@ class FaceIdApi {
     try {
       final request = http.MultipartRequest(
         "POST",
-        Uri.parse("$_httpBase/enroll_live_burst"),
+        Uri.parse("${BackendConfig.httpBase}/enroll_live_burst"),
       );
 
       request.fields["driver_name"] = driverName;
@@ -132,7 +133,7 @@ class FaceIdApi {
       final driverName = Uri.encodeComponent(name.trim());
 
       final res = await http.delete(
-        Uri.parse("$_httpBase/driver/$driverName"),
+        Uri.parse("${BackendConfig.httpBase}/driver/$driverName"),
       );
 
       if (res.statusCode != 200) {
