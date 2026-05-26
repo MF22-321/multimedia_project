@@ -32,6 +32,7 @@ class _PersonalizePageState extends State<PersonalizePage> {
   int fanLevel = 3;
   int temperature = 19;
   int selectedTheme = 0;
+  CarThemeData? _draftCustomTheme;
 
   String? driverName;
 
@@ -87,11 +88,16 @@ class _PersonalizePageState extends State<PersonalizePage> {
         fanLevel = pref.fanLevel;
         temperature = pref.temperature;
         selectedTheme = pref.themeIndex;
+        _draftCustomTheme = pref.customThemeData;
       });
 
       AppLanguageControl.loadForCurrentDriver();
 
       WidgetsBinding.instance.addPostFrameCallback((_) {
+        final customTheme = pref.customThemeData;
+        if (customTheme != null) {
+          CarThemes.customTheme.value = customTheme;
+        }
         CarThemes.currentTheme.value = CarThemeType.values[pref.themeIndex];
       });
     }
@@ -111,6 +117,7 @@ class _PersonalizePageState extends State<PersonalizePage> {
     final rawName = current;
     final key = rawName.trim().toLowerCase();
     final existingPreference = DriverHiveService.load(rawName);
+    final customTheme = _draftCustomTheme ?? CarThemes.customTheme.value;
 
     await DriverHiveService.save(
       DriverPreference(
@@ -123,6 +130,11 @@ class _PersonalizePageState extends State<PersonalizePage> {
         languageCode:
             existingPreference?.languageCode ??
             AppLanguageControl.languageCode.value,
+        customGradient1: customTheme.backgroundGradient.first.toARGB32(),
+        customGradient2: customTheme.backgroundGradient.last.toARGB32(),
+        customAccentColor: customTheme.accentColor.toARGB32(),
+        customTextColor: customTheme.textColor.toARGB32(),
+        customBackgroundImage: customTheme.backgroundImage,
       ),
     );
 
@@ -131,6 +143,9 @@ class _PersonalizePageState extends State<PersonalizePage> {
 
     /// 🔥 APPLY THEME
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (selectedTheme == CarThemeType.custom.index) {
+        CarThemes.customTheme.value = customTheme;
+      }
       CarThemes.currentTheme.value = CarThemeType.values[selectedTheme];
     });
 
@@ -178,47 +193,53 @@ class _PersonalizePageState extends State<PersonalizePage> {
 
   @override
   Widget build(BuildContext context) {
+    final previewThemeType = CarThemeType.values[selectedTheme];
+    final previewTheme =
+        previewThemeType == CarThemeType.custom && _draftCustomTheme != null
+        ? _draftCustomTheme!
+        : CarThemes.getTheme(previewThemeType);
+    final previewAccent = getMusicAccentColor(previewThemeType, previewTheme);
+    final saveButtonColor = previewThemeType == CarThemeType.comfort
+        ? previewAccent
+        : previewTheme.buttonColor;
+    final saveButtonTextColor =
+        ThemeData.estimateBrightnessForColor(saveButtonColor) ==
+            Brightness.dark
+        ? Colors.white
+        : Colors.black;
+
     return Scaffold(
       body: Stack(
         children: [
           /// ================= BACKGROUND =================
-          ValueListenableBuilder(
-            valueListenable: CarThemes.currentTheme,
-            builder: (context, themeType, _) {
-              final theme = CarThemes.getTheme(themeType);
-
-              return Stack(
-                children: [
-                  AnimatedContainer(
-                    duration: const Duration(milliseconds: 400),
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        colors: theme.backgroundGradient,
-                        begin: Alignment.centerLeft,
-                        end: Alignment.centerRight,
-                      ),
-                      image: theme.backgroundImage != null
-                          ? DecorationImage(
-                              image: FileImage(File(theme.backgroundImage!)),
-                              fit: BoxFit.cover,
-                            )
-                          : null,
-                    ),
+          Stack(
+            children: [
+              AnimatedContainer(
+                duration: const Duration(milliseconds: 400),
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: previewTheme.backgroundGradient,
+                    begin: Alignment.centerLeft,
+                    end: Alignment.centerRight,
                   ),
+                  image: previewTheme.backgroundImage != null
+                      ? DecorationImage(
+                          image: FileImage(File(previewTheme.backgroundImage!)),
+                          fit: BoxFit.cover,
+                        )
+                      : null,
+                ),
+              ),
 
-                  if (themeType == CarThemeType.futuristic)
-                    const Positioned.fill(
-                      child: FuturisticParticlesBackground(),
-                    ),
+              if (previewThemeType == CarThemeType.futuristic)
+                const Positioned.fill(child: FuturisticParticlesBackground()),
 
-                  if (themeType == CarThemeType.retro)
-                    const Positioned.fill(child: RetroParticlesBackground()),
+              if (previewThemeType == CarThemeType.retro)
+                const Positioned.fill(child: RetroParticlesBackground()),
 
-                  if (themeType == CarThemeType.playful)
-                    const Positioned.fill(child: PlayfulParticlesBackground()),
-                ],
-              );
-            },
+              if (previewThemeType == CarThemeType.playful)
+                const Positioned.fill(child: PlayfulParticlesBackground()),
+            ],
           ),
 
           /// ================= CONTENT =================
@@ -233,23 +254,33 @@ class _PersonalizePageState extends State<PersonalizePage> {
                     children: [
                       /// BACK
                       GestureDetector(
+                        behavior: HitTestBehavior.opaque,
                         onTap: () => Navigator.pop(context),
-                        child: Row(
-                          children: [
-                            Icon(
-                              Icons.arrow_back_ios,
-                              color: Colors.white,
-                              size: 20.sp,
-                            ),
-                            SizedBox(width: 8.w),
-                            Text(
-                              AppStrings.back,
-                              style: TextStyle(
-                                color: Colors.white70,
-                                fontSize: 16.sp,
+                        child: Padding(
+                          padding: EdgeInsets.symmetric(
+                            horizontal: 4.w,
+                            vertical: 8.h,
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(
+                                Icons.arrow_back_ios,
+                                color: previewTheme.textColor,
+                                size: 20.sp,
                               ),
-                            ),
-                          ],
+                              SizedBox(width: 8.w),
+                              Text(
+                                AppStrings.back,
+                                style: TextStyle(
+                                  color: previewTheme.textColor.withValues(
+                                    alpha: 0.74,
+                                  ),
+                                  fontSize: 16.sp,
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
                       ),
 
@@ -261,21 +292,14 @@ class _PersonalizePageState extends State<PersonalizePage> {
                         style: TextStyle(
                           fontSize: 26.sp,
                           fontWeight: FontWeight.bold,
-                          color: Colors.white,
+                          color: previewTheme.textColor,
                         ),
                       ),
 
-                      ValueListenableBuilder(
-                        valueListenable: CarThemes.currentTheme,
-                        builder: (context, themeType, _) {
-                          final theme = CarThemes.getTheme(themeType);
-
-                          return Divider(
-                            color: theme.accentColor,
-                            thickness: 2.h,
-                            height: 30.h,
-                          );
-                        },
+                      Divider(
+                        color: previewAccent,
+                        thickness: 2.h,
+                        height: 30.h,
                       ),
 
                       /// CONTENT
@@ -291,7 +315,7 @@ class _PersonalizePageState extends State<PersonalizePage> {
                                   '${AppStrings.hello},',
                                   style: TextStyle(
                                     fontSize: 32.sp,
-                                    color: Colors.white,
+                                    color: previewTheme.textColor,
                                   ),
                                 ),
 
@@ -305,7 +329,7 @@ class _PersonalizePageState extends State<PersonalizePage> {
                                         style: TextStyle(
                                           fontSize: 70.sp,
                                           fontWeight: FontWeight.bold,
-                                          color: Colors.white,
+                                          color: previewTheme.textColor,
                                         ),
                                       );
                                     }
@@ -319,7 +343,7 @@ class _PersonalizePageState extends State<PersonalizePage> {
                                       style: TextStyle(
                                         fontSize: 70.sp,
                                         fontWeight: FontWeight.bold,
-                                        color: Colors.white,
+                                        color: previewTheme.textColor,
                                       ),
                                     );
                                   },
@@ -335,14 +359,16 @@ class _PersonalizePageState extends State<PersonalizePage> {
                                         Text(
                                           AppStrings.personalizeSettings,
                                           style: TextStyle(
-                                            color: Colors.white70,
+                                            color: previewTheme.textColor
+                                                .withValues(alpha: 0.74),
                                             fontSize: 18.sp,
                                           ),
                                         ),
                                         SizedBox(width: 10.w),
                                         Icon(
                                           Icons.arrow_forward,
-                                          color: Colors.white70,
+                                          color: previewTheme.textColor
+                                              .withValues(alpha: 0.74),
                                           size: 20.sp,
                                         ),
                                       ],
@@ -373,7 +399,8 @@ class _PersonalizePageState extends State<PersonalizePage> {
                                                     Text(
                                                       AppStrings.language,
                                                       style: TextStyle(
-                                                        color: Colors.white,
+                                                        color: previewTheme
+                                                            .textColor,
                                                         fontSize: 18.sp,
                                                         fontWeight:
                                                             FontWeight.bold,
@@ -383,7 +410,11 @@ class _PersonalizePageState extends State<PersonalizePage> {
                                                     Text(
                                                       AppStrings.chooseLanguage,
                                                       style: TextStyle(
-                                                        color: Colors.white70,
+                                                        color: previewTheme
+                                                            .textColor
+                                                            .withValues(
+                                                              alpha: 0.74,
+                                                            ),
                                                         fontSize: 14.sp,
                                                       ),
                                                     ),
@@ -434,7 +465,8 @@ class _PersonalizePageState extends State<PersonalizePage> {
                                                         child: Text(
                                                           'Bahasa',
                                                           style: TextStyle(
-                                                            color: Colors.white,
+                                                            color: previewTheme
+                                                                .textColor,
                                                             fontWeight:
                                                                 languageCode ==
                                                                         AppLanguageControl
@@ -477,7 +509,8 @@ class _PersonalizePageState extends State<PersonalizePage> {
                                                         child: Text(
                                                           'English',
                                                           style: TextStyle(
-                                                            color: Colors.white,
+                                                            color: previewTheme
+                                                                .textColor,
                                                             fontWeight:
                                                                 languageCode ==
                                                                         AppLanguageControl
@@ -504,112 +537,86 @@ class _PersonalizePageState extends State<PersonalizePage> {
                                 ValueListenableBuilder<String?>(
                                   valueListenable: DriverSession.currentDriver,
                                   builder: (context, activeDriver, _) {
-                                    return ValueListenableBuilder(
-                                      valueListenable: CarThemes.currentTheme,
-                                      builder: (context, themeType, _) {
-                                        final theme = CarThemes.getTheme(
-                                          themeType,
-                                        );
-                                        final darkButtonText =
-                                            themeType == CarThemeType.comfort ||
-                                            themeType ==
-                                                CarThemeType.futuristic;
-
-                                        return Wrap(
-                                          spacing: 14.w,
-                                          runSpacing: 12.h,
-                                          children: [
-                                            GestureDetector(
-                                              onTap: _savePreference,
-                                              child: AnimatedContainer(
-                                                duration: const Duration(
-                                                  milliseconds: 250,
+                                    return Wrap(
+                                      spacing: 14.w,
+                                      runSpacing: 12.h,
+                                      children: [
+                                        GestureDetector(
+                                          onTap: _savePreference,
+                                          child: AnimatedContainer(
+                                            duration: const Duration(
+                                              milliseconds: 250,
+                                            ),
+                                            padding: EdgeInsets.symmetric(
+                                              horizontal: 40.w,
+                                              vertical: 16.h,
+                                            ),
+                                            decoration: BoxDecoration(
+                                              color: saveButtonColor,
+                                              borderRadius:
+                                                  BorderRadius.circular(30.r),
+                                              boxShadow: [
+                                                BoxShadow(
+                                                  color: saveButtonColor
+                                                      .withValues(alpha: 0.4),
+                                                  blurRadius: 20,
                                                 ),
-                                                padding: EdgeInsets.symmetric(
-                                                  horizontal: 40.w,
-                                                  vertical: 16.h,
-                                                ),
-                                                decoration: BoxDecoration(
-                                                  color: theme.buttonColor,
-                                                  borderRadius:
-                                                      BorderRadius.circular(
-                                                    30.r,
-                                                  ),
-                                                  boxShadow: [
-                                                    BoxShadow(
-                                                      color: theme.buttonColor
-                                                          .withValues(
-                                                            alpha: 0.4,
-                                                          ),
-                                                      blurRadius: 20,
-                                                    ),
-                                                  ],
-                                                ),
-                                                child: Text(
-                                                  AppStrings.saveSettings,
-                                                  style: TextStyle(
-                                                    color: darkButtonText
-                                                        ? Colors.black
-                                                        : Colors.white,
-                                                    fontSize: 18.sp,
-                                                    fontWeight: FontWeight.bold,
-                                                  ),
-                                                ),
+                                              ],
+                                            ),
+                                            child: Text(
+                                              AppStrings.saveSettings,
+                                              style: TextStyle(
+                                                color: saveButtonTextColor,
+                                                fontSize: 18.sp,
+                                                fontWeight: FontWeight.bold,
                                               ),
                                             ),
-                                            if (activeDriver != null)
-                                              GestureDetector(
-                                                onTap: _openDeleteAccountFlow,
-                                                child: AnimatedContainer(
-                                                  duration: const Duration(
-                                                    milliseconds: 250,
-                                                  ),
-                                                  padding: EdgeInsets.symmetric(
-                                                    horizontal: 28.w,
-                                                    vertical: 16.h,
-                                                  ),
-                                                  decoration: BoxDecoration(
-                                                    color: Colors.redAccent
-                                                        .withValues(alpha: 0.18),
-                                                    borderRadius:
-                                                        BorderRadius.circular(
-                                                      30.r,
-                                                    ),
-                                                    border: Border.all(
-                                                      color: Colors.redAccent
-                                                          .withValues(
-                                                            alpha: 0.72,
-                                                          ),
-                                                    ),
-                                                  ),
-                                                  child: Row(
-                                                    mainAxisSize:
-                                                        MainAxisSize.min,
-                                                    children: [
-                                                      Icon(
-                                                        Icons.delete_outline,
-                                                        color: Colors.redAccent,
-                                                        size: 20.sp,
-                                                      ),
-                                                      SizedBox(width: 8.w),
-                                                      Text(
-                                                        AppStrings
-                                                            .deleteAccount,
-                                                        style: TextStyle(
-                                                          color:
-                                                              Colors.redAccent,
-                                                          fontSize: 18.sp,
-                                                          fontWeight:
-                                                              FontWeight.bold,
-                                                        ),
-                                                      ),
-                                                    ],
-                                                  ),
+                                          ),
+                                        ),
+                                        if (activeDriver != null)
+                                          GestureDetector(
+                                            onTap: _openDeleteAccountFlow,
+                                            child: AnimatedContainer(
+                                              duration: const Duration(
+                                                milliseconds: 250,
+                                              ),
+                                              padding: EdgeInsets.symmetric(
+                                                horizontal: 28.w,
+                                                vertical: 16.h,
+                                              ),
+                                              decoration: BoxDecoration(
+                                                color: Colors.redAccent
+                                                    .withValues(alpha: 0.18),
+                                                borderRadius:
+                                                    BorderRadius.circular(30.r),
+                                                border: Border.all(
+                                                  color: Colors.redAccent
+                                                      .withValues(alpha: 0.72),
                                                 ),
                                               ),
-                                          ],
-                                        );
-                                      },
+                                              child: Row(
+                                                mainAxisSize: MainAxisSize.min,
+                                                children: [
+                                                  Icon(
+                                                    Icons.delete_outline,
+                                                    color: Colors.redAccent,
+                                                    size: 20.sp,
+                                                  ),
+                                                  SizedBox(width: 8.w),
+                                                  Text(
+                                                    AppStrings.deleteAccount,
+                                                    style: TextStyle(
+                                                      color: Colors.redAccent,
+                                                      fontSize: 18.sp,
+                                                      fontWeight:
+                                                          FontWeight.bold,
+                                                    ),
+                                                  ),
+                                                ],
+                                              ),
+                                            ),
+                                          ),
+                                      ],
                                     );
                                   },
                                 ),
@@ -630,6 +637,15 @@ class _PersonalizePageState extends State<PersonalizePage> {
                   fanLevel: fanLevel,
                   temperature: temperature,
                   selectedTheme: selectedTheme,
+                  previewThemeType: previewThemeType,
+                  previewTheme: previewTheme,
+                  customThemeData: _draftCustomTheme,
+                  onCustomThemeSaved: (theme) {
+                    setState(() {
+                      _draftCustomTheme = theme;
+                      selectedTheme = CarThemeType.custom.index;
+                    });
+                  },
 
                   onCartridgeChanged: (v) {
                     setState(() => selectedCartridge = v);
@@ -641,14 +657,9 @@ class _PersonalizePageState extends State<PersonalizePage> {
                   onTempPlus: () => setState(() => temperature++),
                   onTempMinus: () => setState(() => temperature--),
 
-                  /// 🔥 THEME CHANGE (REALTIME)
                   onThemeChanged: (index) {
                     setState(() {
                       selectedTheme = index;
-                    });
-
-                    WidgetsBinding.instance.addPostFrameCallback((_) {
-                      CarThemes.currentTheme.value = CarThemeType.values[index];
                     });
                   },
                 ),

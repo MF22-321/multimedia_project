@@ -42,6 +42,7 @@ class _AddDriverPageState extends State<AddDriverPage> {
   int temperature = 19;
   int selectedCartridge = 1;
   int selectedTheme = 0;
+  CarThemeData? _draftCustomTheme;
   bool _prefLoaded = false;
 
   @override
@@ -131,11 +132,16 @@ class _AddDriverPageState extends State<AddDriverPage> {
         final conf = result["confidence"];
 
         if (recognized && name != null) {
+          final previousDriverName = detectedDriverName;
+
           /// 🔥 1. TAMPILKAN NAMA REALTIME
           setState(() {
             detectedDriverName = name.toString();
             if (conf is num) {
               confidence = conf.toDouble();
+            }
+            if (previousDriverName != detectedDriverName) {
+              _prefLoaded = false;
             }
           });
 
@@ -148,19 +154,10 @@ class _AddDriverPageState extends State<AddDriverPage> {
               temperature = pref.temperature;
               selectedCartridge = pref.cartridge;
               selectedTheme = pref.themeIndex;
-              if (recognized && name != null) {
-                /// 🔥 RESET kalau driver beda
-                if (detectedDriverName != name) {
-                  _prefLoaded = false;
-                }
-              }
+              _draftCustomTheme = pref.customThemeData;
             });
 
-            /// 🔥 APPLY THEME
-            WidgetsBinding.instance.addPostFrameCallback((_) {
-              CarThemes.currentTheme.value =
-                  CarThemeType.values[pref.themeIndex];
-            });
+            _prefLoaded = true;
           }
         } else {
           /// 🔥 RESET kalau tidak ada face
@@ -182,6 +179,7 @@ class _AddDriverPageState extends State<AddDriverPage> {
     final rawName = current; // 🔥 langsung pakai hasil face
     final key = rawName.trim().toLowerCase();
     final existingPreference = DriverHiveService.load(rawName);
+    final customTheme = _draftCustomTheme ?? CarThemes.customTheme.value;
 
     await DriverHiveService.save(
       DriverPreference(
@@ -194,6 +192,11 @@ class _AddDriverPageState extends State<AddDriverPage> {
         languageCode:
             existingPreference?.languageCode ??
             AppLanguageControl.defaultLanguageCode,
+        customGradient1: customTheme.backgroundGradient.first.toARGB32(),
+        customGradient2: customTheme.backgroundGradient.last.toARGB32(),
+        customAccentColor: customTheme.accentColor.toARGB32(),
+        customTextColor: customTheme.textColor.toARGB32(),
+        customBackgroundImage: customTheme.backgroundImage,
       ),
     );
 
@@ -202,6 +205,9 @@ class _AddDriverPageState extends State<AddDriverPage> {
     DriverSession.setDriver(rawName);
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (selectedTheme == CarThemeType.custom.index) {
+        CarThemes.customTheme.value = customTheme;
+      }
       CarThemes.currentTheme.value = CarThemeType.values[selectedTheme];
     });
 
@@ -214,45 +220,46 @@ class _AddDriverPageState extends State<AddDriverPage> {
 
   @override
   Widget build(BuildContext context) {
+    final previewThemeType = CarThemeType.values[selectedTheme];
+    final previewTheme =
+        previewThemeType == CarThemeType.custom && _draftCustomTheme != null
+        ? _draftCustomTheme!
+        : CarThemes.getTheme(previewThemeType);
+    final previewAccent = getMusicAccentColor(previewThemeType, previewTheme);
+    final saveButtonColor = previewThemeType == CarThemeType.comfort
+        ? previewAccent
+        : previewTheme.buttonColor;
+
     return Scaffold(
       body: Stack(
         children: [
           /// ================= BACKGROUND =================
-          ValueListenableBuilder(
-            valueListenable: CarThemes.currentTheme,
-            builder: (context, themeType, _) {
-              final theme = CarThemes.getTheme(themeType);
-
-              return Stack(
-                children: [
-                  AnimatedContainer(
-                    duration: const Duration(milliseconds: 400),
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        colors: theme.backgroundGradient,
-                        begin: Alignment.centerLeft,
-                        end: Alignment.centerRight,
-                      ),
-                      image: theme.backgroundImage != null
-                          ? DecorationImage(
-                              image: FileImage(File(theme.backgroundImage!)),
-                              fit: BoxFit.cover,
-                            )
-                          : null,
-                    ),
+          Stack(
+            children: [
+              AnimatedContainer(
+                duration: const Duration(milliseconds: 400),
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: previewTheme.backgroundGradient,
+                    begin: Alignment.centerLeft,
+                    end: Alignment.centerRight,
                   ),
+                  image: previewTheme.backgroundImage != null
+                      ? DecorationImage(
+                          image: FileImage(File(previewTheme.backgroundImage!)),
+                          fit: BoxFit.cover,
+                        )
+                      : null,
+                ),
+              ),
 
-                  if (themeType == CarThemeType.futuristic)
-                    const Positioned.fill(
-                      child: FuturisticParticlesBackground(),
-                    ),
-                  if (themeType == CarThemeType.retro)
-                    const Positioned.fill(child: RetroParticlesBackground()),
-                  if (themeType == CarThemeType.playful)
-                    const Positioned.fill(child: PlayfulParticlesBackground()),
-                ],
-              );
-            },
+              if (previewThemeType == CarThemeType.futuristic)
+                const Positioned.fill(child: FuturisticParticlesBackground()),
+              if (previewThemeType == CarThemeType.retro)
+                const Positioned.fill(child: RetroParticlesBackground()),
+              if (previewThemeType == CarThemeType.playful)
+                const Positioned.fill(child: PlayfulParticlesBackground()),
+            ],
           ),
 
           /// ================= CONTENT =================
@@ -262,33 +269,38 @@ class _AddDriverPageState extends State<AddDriverPage> {
               Expanded(
                 child: Padding(
                   padding: EdgeInsets.all(40.w),
-                  child: ValueListenableBuilder(
-                    valueListenable: CarThemes.currentTheme,
-                    builder: (context, themeType, _) {
-                      final theme = CarThemes.getTheme(themeType);
-
-                      return Column(
+                  child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           /// BACK
                           GestureDetector(
+                            behavior: HitTestBehavior.opaque,
                             onTap: () => Navigator.pop(context),
-                            child: Row(
-                              children: [
-                                Icon(
-                                  Icons.arrow_back_ios,
-                                  color: Colors.white,
-                                  size: 20.sp,
-                                ),
-                                SizedBox(width: 8.w),
-                                Text(
-                                  "Back",
-                                  style: TextStyle(
-                                    color: Colors.white70,
-                                    fontSize: 16.sp,
+                            child: Padding(
+                              padding: EdgeInsets.symmetric(
+                                horizontal: 4.w,
+                                vertical: 8.h,
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(
+                                    Icons.arrow_back_ios,
+                                    color: previewTheme.textColor,
+                                    size: 20.sp,
                                   ),
-                                ),
-                              ],
+                                  SizedBox(width: 8.w),
+                                  Text(
+                                    "Back",
+                                    style: TextStyle(
+                                      color: previewTheme.textColor.withValues(
+                                        alpha: 0.74,
+                                      ),
+                                      fontSize: 16.sp,
+                                    ),
+                                  ),
+                                ],
+                              ),
                             ),
                           ),
 
@@ -300,11 +312,11 @@ class _AddDriverPageState extends State<AddDriverPage> {
                             style: TextStyle(
                               fontSize: 28.sp,
                               fontWeight: FontWeight.bold,
-                              color: theme.textColor,
+                              color: previewTheme.textColor,
                             ),
                           ),
 
-                          Divider(color: theme.accentColor, thickness: 2.h),
+                          Divider(color: previewAccent, thickness: 2.h),
 
                           SizedBox(height: 30.h),
 
@@ -313,7 +325,7 @@ class _AddDriverPageState extends State<AddDriverPage> {
                             "Name",
                             style: TextStyle(
                               fontSize: 20.sp,
-                              color: theme.textColor,
+                              color: previewTheme.textColor,
                             ),
                           ),
 
@@ -480,18 +492,25 @@ class _AddDriverPageState extends State<AddDriverPage> {
                                 vertical: 16.h,
                               ),
                               decoration: BoxDecoration(
-                                color: theme.buttonColor,
+                                color: saveButtonColor,
                                 borderRadius: BorderRadius.circular(30.r),
                               ),
-                              child: const Text(
+                              child: Text(
                                 "Save Driver",
-                                style: TextStyle(fontWeight: FontWeight.bold),
+                                style: TextStyle(
+                                  color:
+                                      ThemeData.estimateBrightnessForColor(
+                                                saveButtonColor,
+                                              ) ==
+                                              Brightness.dark
+                                          ? Colors.white
+                                          : Colors.black,
+                                  fontWeight: FontWeight.bold,
+                                ),
                               ),
                             ),
                           ),
                         ],
-                      );
-                    },
                   ),
                 ),
               ),
@@ -503,6 +522,15 @@ class _AddDriverPageState extends State<AddDriverPage> {
                   fanLevel: fanLevel,
                   temperature: temperature,
                   selectedTheme: selectedTheme,
+                  previewThemeType: previewThemeType,
+                  previewTheme: previewTheme,
+                  customThemeData: _draftCustomTheme,
+                  onCustomThemeSaved: (theme) {
+                    setState(() {
+                      _draftCustomTheme = theme;
+                      selectedTheme = CarThemeType.custom.index;
+                    });
+                  },
 
                   onCartridgeChanged: (v) {
                     setState(() => selectedCartridge = v);
@@ -517,10 +545,6 @@ class _AddDriverPageState extends State<AddDriverPage> {
                   onThemeChanged: (index) {
                     setState(() {
                       selectedTheme = index;
-                    });
-
-                    WidgetsBinding.instance.addPostFrameCallback((_) {
-                      CarThemes.currentTheme.value = CarThemeType.values[index];
                     });
                   },
                 ),

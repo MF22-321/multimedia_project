@@ -7,108 +7,109 @@ import 'package:frontend/core/themes/car_theme.dart';
 class SmartFragranceSection extends StatelessWidget {
   final int selectedCartridge;
   final Function(int) onSelect;
+  final CarThemeType? previewThemeType;
+  final CarThemeData? previewTheme;
 
   const SmartFragranceSection({
     super.key,
     required this.selectedCartridge,
     required this.onSelect,
+    this.previewThemeType,
+    this.previewTheme,
   });
 
   @override
   Widget build(BuildContext context) {
+    if (previewThemeType != null && previewTheme != null) {
+      return _buildContent(context, previewThemeType!, previewTheme!);
+    }
+
     return ValueListenableBuilder(
       valueListenable: CarThemes.currentTheme,
       builder: (context, themeType, _) {
         final theme = CarThemes.getTheme(themeType);
-        final accentColor = themeType == CarThemeType.comfort
-            ? const Color(0xFF6CB4FF)
-            : theme.accentColor;
-        final buttonColor = themeType == CarThemeType.comfort
-            ? accentColor
-            : theme.buttonColor;
+        return _buildContent(context, themeType, theme);
+      },
+    );
+  }
 
-        return AnimatedContainer(
-          duration: const Duration(milliseconds: 400),
-          padding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 30.h),
+  Widget _buildContent(
+    BuildContext context,
+    CarThemeType themeType,
+    CarThemeData theme,
+  ) {
+    final accentColor = getMusicAccentColor(themeType, theme);
+    final buttonColor = themeType == CarThemeType.comfort
+        ? accentColor
+        : theme.buttonColor;
 
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              colors: theme.backgroundGradient,
-              begin: Alignment.centerRight,
-              end: Alignment.centerLeft,
-            ),
-          ),
-
-          child: Column(
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 400),
+      padding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 30.h),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: theme.backgroundGradient,
+          begin: Alignment.centerRight,
+          end: Alignment.centerLeft,
+        ),
+      ),
+      child: Column(
+        children: [
+          Row(
             children: [
-              /// HEADER ROW
-              Row(
-                children: [
-                  Text(
-                    AppStrings.smartFragranceControl,
-                    style: TextStyle(
-                      fontSize: 20.sp,
-                      color: theme.textColor,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-
-                  const Spacer(),
-
-                  Text(
-                    AppStrings.selectCartridge,
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
-                      fontSize: 12.sp,
-                      color: theme.textColor.withValues(alpha: 0.9),
-                    ),
-                  ),
-
-                  SizedBox(width: 20.w),
-
-                  _cartridgeButton("1", 1, theme, accentColor),
-                  SizedBox(width: 10.w),
-                  _cartridgeButton("2", 2, theme, accentColor),
-                ],
+              Text(
+                AppStrings.smartFragranceControl,
+                style: TextStyle(
+                  fontSize: 20.sp,
+                  color: theme.textColor,
+                  fontWeight: FontWeight.w600,
+                ),
               ),
-
-              SizedBox(height: 16.h),
-
-              /// CUSTOM SETTINGS BUTTON
-              Align(
-                alignment: Alignment.centerRight,
-                child: GestureDetector(
-                  onTap: () {
-                    Navigator.pushNamed(context, AppRoutes.fragranceSettings);
-                  },
-                  child: Container(
-                    padding: EdgeInsets.symmetric(
-                      horizontal: 30.w,
-                      vertical: 8.h,
-                    ),
-                    decoration: BoxDecoration(
-                      color: buttonColor,
-                      borderRadius: BorderRadius.circular(20.r),
-                    ),
-                    child: Text(
-                      AppStrings.customSettings,
-                      style: TextStyle(
-                        fontSize: 14.sp,
-                        color:
-                            themeType == CarThemeType.comfort ||
-                                themeType == CarThemeType.futuristic
-                            ? Colors.black
-                            : Colors.white,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
+              const Spacer(),
+              Text(
+                AppStrings.selectCartridge,
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 12.sp,
+                  color: theme.textColor.withValues(alpha: 0.9),
+                ),
+              ),
+              SizedBox(width: 20.w),
+              _cartridgeButton("1", 1, theme, accentColor),
+              SizedBox(width: 10.w),
+              _cartridgeButton("2", 2, theme, accentColor),
+            ],
+          ),
+          SizedBox(height: 16.h),
+          Align(
+            alignment: Alignment.centerRight,
+            child: GestureDetector(
+              onTap: () {
+                Navigator.pushNamed(context, AppRoutes.fragranceSettings);
+              },
+              child: Container(
+                padding: EdgeInsets.symmetric(horizontal: 30.w, vertical: 8.h),
+                decoration: BoxDecoration(
+                  color: buttonColor,
+                  borderRadius: BorderRadius.circular(20.r),
+                ),
+                child: Text(
+                  AppStrings.customSettings,
+                  style: TextStyle(
+                    fontSize: 14.sp,
+                    color:
+                        ThemeData.estimateBrightnessForColor(buttonColor) ==
+                            Brightness.dark
+                        ? Colors.white
+                        : Colors.black,
+                    fontWeight: FontWeight.w600,
                   ),
                 ),
               ),
-            ],
+            ),
           ),
-        );
-      },
+        ],
+      ),
     );
   }
 

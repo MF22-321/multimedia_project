@@ -8,6 +8,10 @@ import 'package:frontend/features/personalize/presentation/page/custom_theme_pag
 class MultimediaThemeSection extends StatelessWidget {
   final int selectedTheme;
   final Function(int) onThemeChanged;
+  final CarThemeType? previewThemeType;
+  final CarThemeData? previewTheme;
+  final CarThemeData? customThemeData;
+  final ValueChanged<CarThemeData>? onCustomThemeSaved;
   final List<String> themeImages;
 
   const MultimediaThemeSection({
@@ -15,31 +19,50 @@ class MultimediaThemeSection extends StatelessWidget {
     required this.selectedTheme,
     required this.onThemeChanged,
     required this.themeImages,
+    this.previewThemeType,
+    this.previewTheme,
+    this.customThemeData,
+    this.onCustomThemeSaved,
   });
 
   @override
   Widget build(BuildContext context) {
+    if (previewThemeType != null && previewTheme != null) {
+      return _buildContent(context, previewThemeType!, previewTheme!);
+    }
+
     return ValueListenableBuilder(
       valueListenable: CarThemes.currentTheme,
       builder: (context, themeType, _) {
         final theme = CarThemes.getTheme(themeType);
+        return _buildContent(context, themeType, theme);
+      },
+    );
+  }
 
-        return AnimatedContainer(
-          duration: const Duration(milliseconds: 400),
+  Widget _buildContent(
+    BuildContext context,
+    CarThemeType themeType,
+    CarThemeData theme,
+  ) {
+    final accentColor = getMusicAccentColor(themeType, theme);
+    final buttonColor = themeType == CarThemeType.comfort
+        ? accentColor
+        : theme.buttonColor;
 
-          padding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 20.h),
-
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              colors: theme.backgroundGradient,
-              begin: Alignment.centerRight,
-              end: Alignment.centerLeft,
-            ),
-          ),
-
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 400),
+      padding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 20.h),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: theme.backgroundGradient,
+          begin: Alignment.centerRight,
+          end: Alignment.centerLeft,
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
               /// TITLE
               Text(
                 AppStrings.multimediaThemeSettings,
@@ -84,7 +107,7 @@ class MultimediaThemeSection extends StatelessWidget {
 
                           border: Border.all(
                             color: selected
-                                ? theme.accentColor
+                                ? accentColor
                                 : Colors.transparent,
                             width: 3,
                           ),
@@ -92,9 +115,7 @@ class MultimediaThemeSection extends StatelessWidget {
                           boxShadow: selected
                               ? [
                                   BoxShadow(
-                                    color: theme.accentColor.withValues(
-                                      alpha: 0.5,
-                                    ),
+                                    color: accentColor.withValues(alpha: 0.5),
                                     blurRadius: 20,
                                   ),
                                 ]
@@ -122,7 +143,7 @@ class MultimediaThemeSection extends StatelessWidget {
                                   child: Container(
                                     padding: EdgeInsets.all(6.r),
                                     decoration: BoxDecoration(
-                                      color: theme.accentColor,
+                                      color: accentColor,
                                       shape: BoxShape.circle,
                                     ),
                                     child: Icon(
@@ -146,13 +167,26 @@ class MultimediaThemeSection extends StatelessWidget {
               /// CUSTOM THEME BUTTON
               Center(
                 child: GestureDetector(
-                  onTap: () {
-                    Navigator.push(
+                  onTap: () async {
+                    final customTheme = await Navigator.push<CarThemeData>(
                       context,
-                      MaterialPageRoute(
-                        builder: (_) => const CustomThemePage(),
+                      MaterialPageRoute<CarThemeData>(
+                        builder: (_) => CustomThemePage(
+                          initialTheme:
+                              customThemeData ?? CarThemes.customTheme.value,
+                        ),
                       ),
                     );
+
+                    if (customTheme == null) return;
+
+                    if (onCustomThemeSaved != null) {
+                      onCustomThemeSaved!(customTheme);
+                    } else {
+                      CarThemes.customTheme.value = customTheme;
+                    }
+
+                    onThemeChanged(CarThemeType.custom.index);
                   },
                   child: Container(
                     padding: EdgeInsets.symmetric(
@@ -160,7 +194,7 @@ class MultimediaThemeSection extends StatelessWidget {
                       vertical: 10.h,
                     ),
                     decoration: BoxDecoration(
-                      color: theme.buttonColor,
+                      color: buttonColor,
                       borderRadius: BorderRadius.circular(25.r),
                     ),
                     child: Text(
@@ -169,19 +203,19 @@ class MultimediaThemeSection extends StatelessWidget {
                         fontSize: 16.sp,
                         fontWeight: FontWeight.bold,
                         color:
-                            themeType == CarThemeType.comfort ||
-                                themeType == CarThemeType.futuristic
-                            ? Colors.black
-                            : Colors.white,
+                            ThemeData.estimateBrightnessForColor(
+                                  buttonColor,
+                                ) ==
+                                Brightness.dark
+                            ? Colors.white
+                            : Colors.black,
                       ),
                     ),
                   ),
                 ),
               ),
-            ],
-          ),
-        );
-      },
+        ],
+      ),
     );
   }
 }

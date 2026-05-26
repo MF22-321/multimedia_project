@@ -11,6 +11,9 @@ class ProfileSettingsPanel extends StatelessWidget {
   final int fanLevel;
   final int temperature;
   final int selectedTheme;
+  final CarThemeType? previewThemeType;
+  final CarThemeData? previewTheme;
+  final CarThemeData? customThemeData;
 
   final Function(int) onCartridgeChanged;
   final VoidCallback onFanPlus;
@@ -18,6 +21,7 @@ class ProfileSettingsPanel extends StatelessWidget {
   final VoidCallback onTempPlus;
   final VoidCallback onTempMinus;
   final Function(int) onThemeChanged;
+  final ValueChanged<CarThemeData>? onCustomThemeSaved;
 
   const ProfileSettingsPanel({
     super.key,
@@ -25,12 +29,16 @@ class ProfileSettingsPanel extends StatelessWidget {
     required this.fanLevel,
     required this.temperature,
     required this.selectedTheme,
+    this.previewThemeType,
+    this.previewTheme,
+    this.customThemeData,
     required this.onCartridgeChanged,
     required this.onFanPlus,
     required this.onFanMinus,
     required this.onTempPlus,
     required this.onTempMinus,
     required this.onThemeChanged,
+    this.onCustomThemeSaved,
   });
 
   @override
@@ -43,29 +51,45 @@ class ProfileSettingsPanel extends StatelessWidget {
       "assets/themes/theme_playful.png",
     ];
 
+    if (previewThemeType != null && previewTheme != null) {
+      return _buildPanel(themeImages, previewThemeType!, previewTheme!);
+    }
+
+    return ValueListenableBuilder(
+      valueListenable: CarThemes.currentTheme,
+      builder: (context, themeType, _) {
+        final theme = CarThemes.getTheme(themeType);
+        return _buildPanel(themeImages, themeType, theme);
+      },
+    );
+  }
+
+  Widget _buildPanel(
+    List<String> themeImages,
+    CarThemeType themeType,
+    CarThemeData theme,
+  ) {
+    final accentColor = getMusicAccentColor(themeType, theme);
+
     return Padding(
       padding: const EdgeInsets.only(top: 20).w,
-      child: ValueListenableBuilder(
-        valueListenable: CarThemes.currentTheme,
-        builder: (context, themeType, _) {
-          final theme = CarThemes.getTheme(themeType);
-          return AnimatedContainer(
-            duration: const Duration(milliseconds: 400),
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: theme.backgroundGradient,
-                begin: Alignment.centerLeft,
-                end: Alignment.bottomRight,
-              ),
-              borderRadius: BorderRadius.only(topLeft: Radius.circular(40.r)),
-              border: Border(
-                top: BorderSide(color: theme.accentColor, width: 2.w),
-                left: BorderSide(color: theme.accentColor, width: 2.w),
-              ),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 400),
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            colors: theme.backgroundGradient,
+            begin: Alignment.centerLeft,
+            end: Alignment.bottomRight,
+          ),
+          borderRadius: BorderRadius.only(topLeft: Radius.circular(40.r)),
+          border: Border(
+            top: BorderSide(color: accentColor, width: 2.w),
+            left: BorderSide(color: accentColor, width: 2.w),
+          ),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
                 /// HEADER
                 SizedBox(height: 43.h),
 
@@ -83,7 +107,7 @@ class ProfileSettingsPanel extends StatelessWidget {
 
                 SizedBox(height: 21.h),
 
-                Divider(color: theme.accentColor, thickness: 2.h, height: 2.h),
+                Divider(color: accentColor, thickness: 2.h, height: 2.h),
 
                 /// CONTENT
                 Expanded(
@@ -96,10 +120,12 @@ class ProfileSettingsPanel extends StatelessWidget {
                         SmartFragranceSection(
                           selectedCartridge: selectedCartridge,
                           onSelect: onCartridgeChanged,
+                          previewThemeType: themeType,
+                          previewTheme: theme,
                         ),
 
                         Divider(
-                          color: theme.accentColor,
+                          color: accentColor,
                           thickness: 2.h,
                           height: 0.h,
                         ),
@@ -112,10 +138,12 @@ class ProfileSettingsPanel extends StatelessWidget {
                           onFanMinus: onFanMinus,
                           onTempPlus: onTempPlus,
                           onTempMinus: onTempMinus,
+                          previewThemeType: themeType,
+                          previewTheme: theme,
                         ),
 
                         Divider(
-                          color: theme.accentColor,
+                          color: accentColor,
                           thickness: 2.h,
                           height: 0.h,
                         ),
@@ -125,15 +153,17 @@ class ProfileSettingsPanel extends StatelessWidget {
                           selectedTheme: selectedTheme,
                           themeImages: themeImages,
                           onThemeChanged: onThemeChanged,
+                          previewThemeType: themeType,
+                          previewTheme: theme,
+                          customThemeData: customThemeData,
+                          onCustomThemeSaved: onCustomThemeSaved,
                         ),
                       ],
                     ),
                   ),
                 ),
-              ],
-            ),
-          );
-        },
+          ],
+        ),
       ),
     );
   }
