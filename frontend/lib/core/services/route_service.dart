@@ -12,9 +12,22 @@ class RouteService {
 
     final response = await http.get(Uri.parse(url));
 
-    final data = json.decode(response.body);
+    if (response.statusCode != 200) {
+      throw Exception("Route request failed: ${response.statusCode}");
+    }
 
-    final coords = data["routes"][0]["geometry"]["coordinates"];
+    final data = json.decode(response.body);
+    final routes = data["routes"];
+
+    if (routes is! List || routes.isEmpty) {
+      throw Exception("Route response has no routes");
+    }
+
+    final coords = routes.first["geometry"]?["coordinates"];
+
+    if (coords is! List || coords.length < 2) {
+      throw Exception("Route response has no geometry");
+    }
 
     return coords.map<LatLng>((c) {
       return LatLng(c[1], c[0]);

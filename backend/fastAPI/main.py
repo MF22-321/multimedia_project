@@ -44,7 +44,7 @@ def get_faceid():
     global faceid
     if faceid is None:
         faceid = FaceID(
-            conf_threshold=0.30,
+            conf_threshold=0.38,
             vote_window_sec=1.5,
             vote_min_ratio=0.60,
             vote_min_samples=6,

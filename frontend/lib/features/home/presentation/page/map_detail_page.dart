@@ -13,6 +13,7 @@ import 'package:frontend/core/provider/pothole_provider.dart';
 import 'package:frontend/core/services/route_service.dart';
 import 'package:frontend/core/themes/car_theme.dart';
 import 'package:frontend/core/utils/pothole_detection_engine.dart';
+import 'package:frontend/core/widgets/in_app_keyboard.dart';
 import 'package:http/http.dart' as http;
 import 'package:latlong2/latlong.dart';
 import 'package:provider/provider.dart';
@@ -540,18 +541,20 @@ class _MapDetailPageState extends State<MapDetailPage> {
                                 color: accent,
                               ),
                               // ================= POTHOLE ROUTE =================
-                              Polyline(
-                                points: potholeRouteSegments,
-                                strokeWidth: 8,
-                                color: Colors.redAccent,
-                              ),
+                              if (potholeRouteSegments.length >= 2)
+                                Polyline(
+                                  points: potholeRouteSegments,
+                                  strokeWidth: 8,
+                                  color: Colors.redAccent,
+                                ),
 
                               // ================= BUMPER ROUTE =================
-                              Polyline(
-                                points: bumperRouteSegments,
-                                strokeWidth: 8,
-                                color: Colors.yellowAccent,
-                              ),
+                              if (bumperRouteSegments.length >= 2)
+                                Polyline(
+                                  points: bumperRouteSegments,
+                                  strokeWidth: 8,
+                                  color: Colors.yellowAccent,
+                                ),
                             ],
                           ),
                         MarkerLayer(
@@ -966,6 +969,17 @@ class _DestinationSearchBar extends StatelessWidget {
                   Expanded(
                     child: TextField(
                       controller: controller,
+                      readOnly: true,
+                      showCursor: true,
+                      onTap: () {
+                        showInAppKeyboard(
+                          context: context,
+                          controller: controller,
+                          title: AppStrings.searchDestination,
+                          accentColor: accent,
+                          onChanged: onChanged,
+                        );
+                      },
                       onChanged: onChanged,
                       textInputAction: TextInputAction.search,
                       style: TextStyle(

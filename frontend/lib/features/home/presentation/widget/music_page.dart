@@ -8,6 +8,7 @@ import 'package:frontend/core/navigation/smart_music_navigation.dart';
 import 'package:frontend/core/provider/music_provider.dart';
 import 'package:frontend/core/services/spotify_search_service.dart';
 import 'package:frontend/core/themes/car_theme.dart';
+import 'package:frontend/core/widgets/in_app_keyboard.dart';
 import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 
@@ -151,6 +152,19 @@ class _MusicPageState extends State<MusicPage> {
   /// ===============================
   /// SEARCH MUSIC
   /// ===============================
+  void _onSearchTextChanged(String value) {
+    if (_searchDebounce?.isActive ?? false) {
+      _searchDebounce?.cancel();
+    }
+
+    _searchDebounce = Timer(
+      const Duration(milliseconds: 500),
+      () {
+        searchMusic(value);
+      },
+    );
+  }
+
   Future<void> searchMusic(String query) async {
     try {
       if (query.isEmpty) {
@@ -373,19 +387,19 @@ class _MusicPageState extends State<MusicPage> {
                                 Expanded(
                                   child: TextField(
                                     controller: _searchController,
-
-                                    onChanged: (value) {
-                                      if (_searchDebounce?.isActive ?? false) {
-                                        _searchDebounce?.cancel();
-                                      }
-
-                                      _searchDebounce = Timer(
-                                        const Duration(milliseconds: 500),
-                                        () {
-                                          searchMusic(value);
-                                        },
+                                    readOnly: true,
+                                    showCursor: true,
+                                    onTap: () {
+                                      showInAppKeyboard(
+                                        context: context,
+                                        controller: _searchController,
+                                        title: 'Search music',
+                                        accentColor: musicAccent,
+                                        onChanged: _onSearchTextChanged,
+                                        onSubmitted: searchMusic,
                                       );
                                     },
+                                    onChanged: _onSearchTextChanged,
 
                                     style: TextStyle(
                                       color: Colors.white,

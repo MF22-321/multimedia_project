@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:frontend/core/services/faceid_api.dart';
+import 'package:frontend/core/widgets/in_app_keyboard.dart';
 import 'package:frontend/features/face_recognition/presentation/pages/face_recognition_page.dart';
 import '../widgets/live_camera_webview.dart';
 import '../widgets/camera_scan_frame.dart';
@@ -176,6 +177,17 @@ class _AddDriverPageState extends State<AddDriverPage2>
           children: [
             TextField(
               controller: nameController,
+              readOnly: true,
+              showCursor: true,
+              onTap: () {
+                showInAppKeyboard(
+                  context: context,
+                  controller: nameController,
+                  title: "Enter driver name",
+                  accentColor: Colors.blueAccent,
+                  onChanged: (_) => setState(() {}),
+                );
+              },
               decoration: const InputDecoration(
                 labelText: "Name",
                 border: OutlineInputBorder(),

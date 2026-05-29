@@ -12,6 +12,7 @@ import 'package:frontend/core/themes/car_theme.dart';
 import 'package:frontend/core/themes/futuristic_particle_background.dart';
 import 'package:frontend/core/themes/playful_background.dart';
 import 'package:frontend/core/themes/retro_background.dart';
+import 'package:frontend/core/widgets/in_app_keyboard.dart';
 import 'package:frontend/features/auth/presentation/widget/profile_setting_panel.dart';
 import 'package:frontend/features/auth/presentation/widget/scan_face_button.dart';
 import 'package:frontend/features/face_recognition/presentation/widgets/live_camera_webview.dart';
@@ -333,6 +334,17 @@ class _AddDriverPageState extends State<AddDriverPage> {
 
                           TextField(
                             controller: nameController,
+                            readOnly: true,
+                            showCursor: true,
+                            onTap: () {
+                              showInAppKeyboard(
+                                context: context,
+                                controller: nameController,
+                                title: "Enter driver name",
+                                accentColor: previewAccent,
+                                onChanged: (_) => setState(() {}),
+                              );
+                            },
                             onChanged: (_) => setState(() {}),
                             style: const TextStyle(color: Colors.black),
                             decoration: InputDecoration(
