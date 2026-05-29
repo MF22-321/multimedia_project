@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:io';
 import 'dart:ui';
 
 import 'package:flutter/material.dart';
@@ -10,6 +9,7 @@ import 'package:frontend/core/provider/music_provider.dart';
 import 'package:frontend/core/services/spotify_search_service.dart';
 import 'package:frontend/core/themes/car_theme.dart';
 import 'package:provider/provider.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class MusicPage extends StatefulWidget {
   const MusicPage({super.key});
@@ -175,9 +175,25 @@ class _MusicPageState extends State<MusicPage> {
   /// ===============================
   Future<void> playSpotifySong(String uri, MusicProvider musicProvider) async {
     try {
-      await Process.run('spotify', ['--uri=$uri']);
+      final launched = await launchUrl(
+        Uri.parse(uri),
+        mode: LaunchMode.externalApplication,
+      );
 
-      await Future.delayed(const Duration(milliseconds: 500));
+      if (!launched) {
+        final trackId = uri.startsWith('spotify:track:')
+            ? uri.replaceFirst('spotify:track:', '')
+            : '';
+
+        if (trackId.isEmpty) return;
+
+        await launchUrl(
+          Uri.parse('https://open.spotify.com/track/$trackId'),
+          mode: LaunchMode.externalApplication,
+        );
+      }
+
+      await Future.delayed(const Duration(milliseconds: 1200));
 
       await musicProvider.play();
       musicProvider.startProgressListener();

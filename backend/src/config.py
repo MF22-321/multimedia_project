@@ -10,7 +10,7 @@ class CameraConfig:
 @dataclass
 class FaceIDConfig:
     enable: bool = True
-    conf_threshold: float = 0.35
+    conf_threshold: float = 0.38
     vote_window_sec: float = 1.5
     vote_min_ratio: float = 0.60
     vote_min_samples: int = 6
