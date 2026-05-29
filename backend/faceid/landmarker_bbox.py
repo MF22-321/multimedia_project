@@ -89,5 +89,6 @@ class LandmarkerFaceCropper:
         crop = frame_bgr[y:y + bh, x:x + bw]
         gray = cv2.cvtColor(crop, cv2.COLOR_BGR2GRAY)
         roi = cv2.resize(gray, FACE_SIZE)
+        roi = cv2.equalizeHist(roi)
 
         return roi, bbox

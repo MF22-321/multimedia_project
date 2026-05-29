@@ -178,7 +178,7 @@ class _AddDriverPageState extends State<AddDriverPage> {
     final current = detectedDriverName!;
     final rawName = current; // 🔥 langsung pakai hasil face
     final key = rawName.trim().toLowerCase();
-    final existingPreference = DriverHiveService.load(rawName);
+    final existingPreference = DriverHiveService.load(key);
     final customTheme = _draftCustomTheme ?? CarThemes.customTheme.value;
 
     await DriverHiveService.save(

@@ -98,85 +98,89 @@ class SideMenu extends StatelessWidget {
           builder: (context, activeIndex, _) {
             return ValueListenableBuilder(
               valueListenable: CarThemes.currentTheme,
-
               builder: (context, themeType, _) {
-                final theme = CarThemes.getTheme(themeType);
+                return ValueListenableBuilder(
+                  valueListenable: CarThemes.customTheme,
+                  builder: (context, __, ___) {
+                    final theme = CarThemes.getTheme(themeType);
 
-                final Color sidebarColor = themeType == CarThemeType.comfort
-                    ? Colors.black.withValues(alpha: 0.45)
-                    : Colors.black.withValues(alpha: 0.25);
+                    final Color sidebarColor = themeType == CarThemeType.comfort
+                        ? Colors.black.withValues(alpha: 0.45)
+                        : Colors.black.withValues(alpha: 0.25);
 
-                return AnimatedContainer(
-                  duration: const Duration(milliseconds: 400),
+                    return AnimatedContainer(
+                      duration: const Duration(milliseconds: 400),
 
-                  width: 120.w,
+                      width: 120.w,
 
-                  decoration: BoxDecoration(
-                    color: sidebarColor,
+                      decoration: BoxDecoration(
+                        color: sidebarColor,
 
-                    border: Border(
-                      right: BorderSide(
-                        color: theme.accentColor.withValues(alpha: 0.4),
-                        width: 1.5,
-                      ),
-                    ),
-                  ),
-
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-
-                    children: [
-                      buildButton(
-                        context,
-                        Icons.music_note,
-                        AppStrings.music,
-                        0,
-                        theme,
-                        themeType,
-                        activeIndex,
+                        border: Border(
+                          right: BorderSide(
+                            color: theme.accentColor.withValues(alpha: 0.4),
+                            width: 1.5,
+                          ),
+                        ),
                       ),
 
-                      buildButton(
-                        context,
-                        Icons.phone,
-                        AppStrings.phone,
-                        1,
-                        theme,
-                        themeType,
-                        activeIndex,
-                      ),
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
 
-                      buildButton(
-                        context,
-                        Icons.home,
-                        AppStrings.home,
-                        2,
-                        theme,
-                        themeType,
-                        activeIndex,
-                      ),
+                        children: [
+                          buildButton(
+                            context,
+                            Icons.music_note,
+                            AppStrings.music,
+                            0,
+                            theme,
+                            themeType,
+                            activeIndex,
+                          ),
 
-                      buildButton(
-                        context,
-                        Icons.menu,
-                        AppStrings.menu,
-                        3,
-                        theme,
-                        themeType,
-                        activeIndex,
-                      ),
+                          buildButton(
+                            context,
+                            Icons.phone,
+                            AppStrings.phone,
+                            1,
+                            theme,
+                            themeType,
+                            activeIndex,
+                          ),
 
-                      buildButton(
-                        context,
-                        Icons.settings,
-                        AppStrings.settings,
-                        4,
-                        theme,
-                        themeType,
-                        activeIndex,
+                          buildButton(
+                            context,
+                            Icons.home,
+                            AppStrings.home,
+                            2,
+                            theme,
+                            themeType,
+                            activeIndex,
+                          ),
+
+                          buildButton(
+                            context,
+                            Icons.menu,
+                            AppStrings.menu,
+                            3,
+                            theme,
+                            themeType,
+                            activeIndex,
+                          ),
+
+                          buildButton(
+                            context,
+                            Icons.settings,
+                            AppStrings.settings,
+                            4,
+                            theme,
+                            themeType,
+                            activeIndex,
+                          ),
+                        ],
                       ),
-                    ],
-                  ),
+                    );
+                  },
                 );
               },
             );

@@ -180,7 +180,7 @@ def init_recognizer():
 
     if recognizer is None:
         recognizer = FaceID(
-            conf_threshold=0.4,
+            conf_threshold=0.30,
             vote_window_sec=1.5,
             vote_min_ratio=0.60,
             vote_min_samples=6,
@@ -222,7 +222,7 @@ def reload_recognizer():
         pass
 
     recognizer = FaceID(
-        conf_threshold=0.35,
+        conf_threshold=0.30,
         vote_window_sec=1.5,
         vote_min_ratio=0.60,
         vote_min_samples=6,
@@ -665,12 +665,16 @@ def camera_loop():
             else:
                 driver_status["driver"] = None
                 driver_status["recognized"] = False
-                driver_status["confidence"] = 0.0
+                driver_status["confidence"] = raw_conf
                 driver_status["bbox"] = bbox
+
+                unknown_text = "Unknown"
+                if bbox is not None:
+                    unknown_text = f"Unknown | {raw_conf:.2f}"
 
                 cv2.putText(
                     preview,
-                    "Unknown",
+                    unknown_text,
                     (20, 30),
                     cv2.FONT_HERSHEY_SIMPLEX,
                     0.8,

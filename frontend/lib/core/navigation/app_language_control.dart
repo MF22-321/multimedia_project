@@ -26,6 +26,11 @@ class AppLanguageControl {
   static bool get isEnglish => languageCode.value == englishCode;
 
   static void loadForCurrentDriver() {
+    if (currentDriverKey.trim().toLowerCase() == guestKey) {
+      languageCode.value = defaultLanguageCode;
+      return;
+    }
+
     final pref = DriverHiveService.load(currentDriverKey);
     languageCode.value = _normalize(pref?.languageCode);
   }
@@ -33,6 +38,12 @@ class AppLanguageControl {
   static Future<void> setLanguageForCurrentDriver(String code) async {
     final normalizedCode = _normalize(code);
     final key = currentDriverKey;
+
+    if (key.trim().toLowerCase() == guestKey) {
+      languageCode.value = normalizedCode;
+      return;
+    }
+
     final existing = DriverHiveService.load(key);
 
     await DriverHiveService.save(

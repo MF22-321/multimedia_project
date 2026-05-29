@@ -34,11 +34,14 @@ class QuickActionGrid extends StatelessWidget {
         return ValueListenableBuilder(
           valueListenable: CarThemes.currentTheme,
           builder: (context, themeType, _) {
-            final theme = CarThemes.getTheme(themeType);
+            return ValueListenableBuilder(
+              valueListenable: CarThemes.customTheme,
+              builder: (context, __, ___) {
+                final theme = CarThemes.getTheme(themeType);
 
-            return Expanded(
-              child: GridView.builder(
-                itemCount: actions.length,
+                return Expanded(
+                  child: GridView.builder(
+                    itemCount: actions.length,
 
             gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
               crossAxisCount: 4,
@@ -380,7 +383,9 @@ class QuickActionGrid extends StatelessWidget {
                 ),
               );
             },
-              ),
+                  ),
+                );
+              },
             );
           },
         );

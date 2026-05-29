@@ -71,7 +71,16 @@ class _PersonalizePageState extends State<PersonalizePage> {
       driverName = name;
     });
 
-    if (name == null) return;
+    if (name == null) {
+      setState(() {
+        selectedTheme = CarThemes.currentTheme.value.index;
+        _draftCustomTheme =
+            CarThemes.currentTheme.value == CarThemeType.custom
+            ? CarThemes.customTheme.value
+            : null;
+      });
+      return;
+    }
 
     final currentDriver = name; // 🔥 SIMPAN DULU
 
@@ -105,19 +114,24 @@ class _PersonalizePageState extends State<PersonalizePage> {
 
   /// ================= SAVE =================
   Future<void> _savePreference() async {
-    if (driverName == null) {
-      debugPrint("❌ No driver");
+    final current = DriverSession.currentDriver.value;
+    final customTheme = _draftCustomTheme ?? CarThemes.customTheme.value;
+
+    if (current == null) {
+      if (selectedTheme == CarThemeType.custom.index) {
+        CarThemes.customTheme.value = customTheme;
+      }
+      CarThemes.currentTheme.value = CarThemeType.values[selectedTheme];
+
+      debugPrint("✅ Applied guest preference for current session");
+
+      if (mounted) Navigator.pop(context);
       return;
     }
 
-    final current = DriverSession.currentDriver.value;
-
-    if (current == null) return;
-
     final rawName = current;
     final key = rawName.trim().toLowerCase();
-    final existingPreference = DriverHiveService.load(rawName);
-    final customTheme = _draftCustomTheme ?? CarThemes.customTheme.value;
+    final existingPreference = DriverHiveService.load(key);
 
     await DriverHiveService.save(
       DriverPreference(
@@ -256,30 +270,33 @@ class _PersonalizePageState extends State<PersonalizePage> {
                       GestureDetector(
                         behavior: HitTestBehavior.opaque,
                         onTap: () => Navigator.pop(context),
-                        child: Padding(
-                          padding: EdgeInsets.symmetric(
-                            horizontal: 4.w,
-                            vertical: 8.h,
-                          ),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Icon(
-                                Icons.arrow_back_ios,
-                                color: previewTheme.textColor,
-                                size: 20.sp,
-                              ),
-                              SizedBox(width: 8.w),
-                              Text(
-                                AppStrings.back,
-                                style: TextStyle(
-                                  color: previewTheme.textColor.withValues(
-                                    alpha: 0.74,
-                                  ),
-                                  fontSize: 16.sp,
+                        child: MouseRegion(
+                          cursor: SystemMouseCursors.click,
+                          child: Padding(
+                            padding: EdgeInsets.symmetric(
+                              horizontal: 4.w,
+                              vertical: 8.h,
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(
+                                  Icons.arrow_back_ios,
+                                  color: previewTheme.textColor,
+                                  size: 20.sp,
                                 ),
-                              ),
-                            ],
+                                SizedBox(width: 8.w),
+                                Text(
+                                  AppStrings.back,
+                                  style: TextStyle(
+                                    color: previewTheme.textColor.withValues(
+                                      alpha: 0.74,
+                                    ),
+                                    fontSize: 16.sp,
+                                  ),
+                                ),
+                              ],
+                            ),
                           ),
                         ),
                       ),

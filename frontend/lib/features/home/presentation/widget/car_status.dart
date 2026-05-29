@@ -39,15 +39,17 @@ class _CarStatusCardState extends State<CarStatusCard> {
   Widget build(BuildContext context) {
     return ValueListenableBuilder(
       valueListenable: CarThemes.currentTheme,
-
       builder: (context, themeType, _) {
-        final theme = CarThemes.getTheme(themeType);
+        return ValueListenableBuilder(
+          valueListenable: CarThemes.customTheme,
+          builder: (context, __, ___) {
+            final theme = CarThemes.getTheme(themeType);
 
-        final musicAccent = themeType == CarThemeType.comfort
-            ? getMusicAccentColor(themeType, theme)
-            : theme.accentColor;
+            final musicAccent = themeType == CarThemeType.comfort
+                ? getMusicAccentColor(themeType, theme)
+                : theme.accentColor;
 
-        return AnimatedContainer(
+            return AnimatedContainer(
           duration: const Duration(milliseconds: 400),
 
           height: 295.h,
@@ -176,6 +178,8 @@ class _CarStatusCardState extends State<CarStatusCard> {
               ),
             ],
           ),
+            );
+          },
         );
       },
     );

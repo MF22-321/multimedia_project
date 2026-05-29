@@ -71,17 +71,25 @@ class _CustomThemePageState extends State<CustomThemePage> {
 
     final imagePath = current.backgroundImage;
     if (imagePath != null && imagePath.isNotEmpty) {
-      backgroundImage = File(imagePath);
+      final image = File(imagePath);
+      if (image.existsSync()) {
+        backgroundImage = image;
+      }
     }
   }
 
   CarThemeData _buildThemeData() {
+    final validBackgroundImage =
+        backgroundImage != null && backgroundImage!.existsSync()
+            ? backgroundImage!.path
+            : null;
+
     return CarThemeData(
       backgroundGradient: [gradient1, gradient2],
       accentColor: accentColor,
       buttonColor: accentColor,
       textColor: fontColor,
-      backgroundImage: backgroundImage?.path,
+      backgroundImage: validBackgroundImage,
     );
   }
 
@@ -92,6 +100,7 @@ class _CustomThemePageState extends State<CustomThemePage> {
     );
 
     if (image == null) return;
+    if (!mounted) return;
 
     setState(() {
       backgroundImage = File(image.path);
@@ -370,6 +379,9 @@ class _LivePreview extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final validImage =
+        backgroundImage != null && backgroundImage!.existsSync();
+
     return ClipRRect(
       borderRadius: BorderRadius.circular(26.r),
       child: Stack(
@@ -383,7 +395,7 @@ class _LivePreview extends StatelessWidget {
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
                 ),
-                image: backgroundImage != null
+                image: validImage
                     ? DecorationImage(
                         image: FileImage(backgroundImage!),
                         fit: BoxFit.cover,
@@ -647,6 +659,8 @@ class _ImagePickerTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final validImage = image != null && image!.existsSync();
+
     return Container(
       height: 150.h,
       decoration: BoxDecoration(
@@ -658,7 +672,7 @@ class _ImagePickerTile extends StatelessWidget {
       child: Stack(
         children: [
           Positioned.fill(
-            child: image != null
+            child: validImage
                 ? Image.file(image!, fit: BoxFit.cover)
                 : DecoratedBox(
                     decoration: BoxDecoration(
@@ -676,7 +690,7 @@ class _ImagePickerTile extends StatelessWidget {
           Positioned.fill(
             child: DecoratedBox(
               decoration: BoxDecoration(
-                color: Colors.black.withValues(alpha: image == null ? 0 : 0.25),
+                color: Colors.black.withValues(alpha: validImage ? 0.25 : 0),
               ),
             ),
           ),
@@ -691,10 +705,10 @@ class _ImagePickerTile extends StatelessWidget {
                         : Colors.white,
               ),
               icon: const Icon(Icons.add_photo_alternate_outlined),
-              label: Text(image == null ? 'Upload Image' : 'Change Image'),
+              label: Text(validImage ? 'Change Image' : 'Upload Image'),
             ),
           ),
-          if (image != null)
+          if (validImage)
             Positioned(
               top: 10.h,
               right: 10.w,

@@ -2,9 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:frontend/core/localization/app_strings.dart';
 import 'package:frontend/core/navigation/app_routes.dart';
+import 'package:frontend/core/services/smart_fragrance_mqtt_service.dart';
 import 'package:frontend/core/themes/car_theme.dart';
 
-class SmartFragranceSection extends StatelessWidget {
+class SmartFragranceSection extends StatefulWidget {
   final int selectedCartridge;
   final Function(int) onSelect;
   final CarThemeType? previewThemeType;
@@ -19,9 +20,38 @@ class SmartFragranceSection extends StatelessWidget {
   });
 
   @override
+  State<SmartFragranceSection> createState() => _SmartFragranceSectionState();
+}
+
+class _SmartFragranceSectionState extends State<SmartFragranceSection> {
+  bool _isPublishing = false;
+
+  Future<void> _selectCartridge(int value) async {
+    if (_isPublishing) return;
+
+    final nextValue = widget.selectedCartridge == value ? 0 : value;
+
+    widget.onSelect(nextValue);
+
+    setState(() => _isPublishing = true);
+
+    try {
+      await SmartFragranceMqttService.instance.selectShortcutCartridge(
+        nextValue,
+      );
+    } finally {
+      if (mounted) setState(() => _isPublishing = false);
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
-    if (previewThemeType != null && previewTheme != null) {
-      return _buildContent(context, previewThemeType!, previewTheme!);
+    if (widget.previewThemeType != null && widget.previewTheme != null) {
+      return _buildContent(
+        context,
+        widget.previewThemeType!,
+        widget.previewTheme!,
+      );
     }
 
     return ValueListenableBuilder(
@@ -119,10 +149,10 @@ class SmartFragranceSection extends StatelessWidget {
     CarThemeData theme,
     Color accentColor,
   ) {
-    final bool selected = selectedCartridge == value;
+    final bool selected = widget.selectedCartridge == value;
 
     return GestureDetector(
-      onTap: () => onSelect(value),
+      onTap: _isPublishing ? null : () => _selectCartridge(value),
 
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 250),

@@ -5,12 +5,16 @@ class SpeedControlCard extends StatelessWidget {
   final int speedLevel;
   final VoidCallback onIncrease;
   final VoidCallback onDecrease;
+  final Color accentColor;
+  final Color textColor;
 
   const SpeedControlCard({
     super.key,
     required this.speedLevel,
     required this.onIncrease,
     required this.onDecrease,
+    required this.accentColor,
+    required this.textColor,
   });
 
   @override
@@ -26,9 +30,9 @@ class SpeedControlCard extends StatelessWidget {
             mainAxisAlignment: MainAxisAlignment.center,
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
-              Icon(Icons.air, size: 42.sp, color: Colors.white70),
+              Icon(Icons.air, size: 42.sp, color: textColor.withValues(alpha: 0.78)),
               SizedBox(width: 18.w),
-              _SpeedBars(level: clampedLevel),
+              _SpeedBars(level: clampedLevel, accentColor: accentColor),
               SizedBox(width: 18.w),
               Column(
                 mainAxisSize: MainAxisSize.min,
@@ -37,12 +41,16 @@ class SpeedControlCard extends StatelessWidget {
                     icon: Icons.add,
                     enabled: clampedLevel < 3,
                     onTap: onIncrease,
+                    accentColor: accentColor,
+                    textColor: textColor,
                   ),
                   SizedBox(height: 12.h),
                   _AnimatedActionButton(
                     icon: Icons.remove,
                     enabled: clampedLevel > 1,
                     onTap: onDecrease,
+                    accentColor: accentColor,
+                    textColor: textColor,
                   ),
                 ],
               ),
@@ -55,7 +63,7 @@ class SpeedControlCard extends StatelessWidget {
           style: TextStyle(
             fontSize: 22.sp,
             fontWeight: FontWeight.w700,
-            color: Colors.white,
+            color: textColor,
           ),
         ),
       ],
@@ -65,19 +73,20 @@ class SpeedControlCard extends StatelessWidget {
 
 class _SpeedBars extends StatelessWidget {
   final int level;
+  final Color accentColor;
 
-  const _SpeedBars({required this.level});
+  const _SpeedBars({required this.level, required this.accentColor});
 
   @override
   Widget build(BuildContext context) {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.end,
       children: [
-        _SpeedBar(height: 48.h, isActive: level >= 1),
+        _SpeedBar(height: 48.h, isActive: level >= 1, accentColor: accentColor),
         SizedBox(width: 8.w),
-        _SpeedBar(height: 70.h, isActive: level >= 2),
+        _SpeedBar(height: 70.h, isActive: level >= 2, accentColor: accentColor),
         SizedBox(width: 8.w),
-        _SpeedBar(height: 92.h, isActive: level >= 3),
+        _SpeedBar(height: 92.h, isActive: level >= 3, accentColor: accentColor),
       ],
     );
   }
@@ -86,8 +95,13 @@ class _SpeedBars extends StatelessWidget {
 class _SpeedBar extends StatelessWidget {
   final double height;
   final bool isActive;
+  final Color accentColor;
 
-  const _SpeedBar({required this.height, required this.isActive});
+  const _SpeedBar({
+    required this.height,
+    required this.isActive,
+    required this.accentColor,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -98,13 +112,13 @@ class _SpeedBar extends StatelessWidget {
       height: height,
       decoration: BoxDecoration(
         color: isActive
-            ? const Color(0xFF1E73F1)
+            ? accentColor
             : Colors.white.withValues(alpha: 0.65),
         borderRadius: BorderRadius.circular(8.r),
         boxShadow: isActive
             ? [
                 BoxShadow(
-                  color: const Color(0xFF1E73F1).withValues(alpha: 0.28),
+                  color: accentColor.withValues(alpha: 0.28),
                   blurRadius: 10.r,
                   offset: Offset(0, 4.h),
                 ),
@@ -119,11 +133,15 @@ class _AnimatedActionButton extends StatefulWidget {
   final IconData icon;
   final bool enabled;
   final VoidCallback onTap;
+  final Color accentColor;
+  final Color textColor;
 
   const _AnimatedActionButton({
     required this.icon,
     required this.enabled,
     required this.onTap,
+    required this.accentColor,
+    required this.textColor,
   });
 
   @override
@@ -148,16 +166,18 @@ class _AnimatedActionButtonState extends State<_AnimatedActionButton> {
     final Color backgroundColor = !isEnabled
         ? Colors.white.withValues(alpha: 0.08)
         : _isPressed
-        ? const Color(0xFF1E73F1)
+        ? widget.accentColor
         : Colors.white.withValues(alpha: 0.18);
 
     final Color borderColor = !isEnabled
         ? Colors.white.withValues(alpha: 0.12)
         : _isPressed
-        ? const Color(0xFF1E73F1)
+        ? widget.accentColor
         : Colors.white.withValues(alpha: 0.28);
 
-    final Color iconColor = !isEnabled ? Colors.white38 : Colors.white;
+    final Color iconColor = !isEnabled
+        ? widget.textColor.withValues(alpha: 0.32)
+        : widget.textColor;
 
     return GestureDetector(
       onTapDown: (_) => _setPressed(true),
@@ -180,7 +200,7 @@ class _AnimatedActionButtonState extends State<_AnimatedActionButton> {
             boxShadow: _isPressed
                 ? [
                     BoxShadow(
-                      color: const Color(0xFF1E73F1).withValues(alpha: 0.35),
+                      color: widget.accentColor.withValues(alpha: 0.35),
                       blurRadius: 14.r,
                       offset: Offset(0, 4.h),
                     ),

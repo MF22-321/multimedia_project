@@ -15,13 +15,16 @@ class MediaCard extends StatelessWidget {
     return ValueListenableBuilder(
       valueListenable: CarThemes.currentTheme,
       builder: (context, themeType, _) {
-        final theme = CarThemes.getTheme(themeType);
+        return ValueListenableBuilder(
+          valueListenable: CarThemes.customTheme,
+          builder: (context, __, ___) {
+            final theme = CarThemes.getTheme(themeType);
 
-        final Color playButtonColor = themeType == CarThemeType.comfort
-            ? Colors.grey.shade600
-            : theme.buttonColor;
+            final Color playButtonColor = themeType == CarThemeType.comfort
+                ? Colors.grey.shade600
+                : theme.buttonColor;
 
-        return GestureDetector(
+            return GestureDetector(
           /// OPEN MUSIC PAGE
           onTap: () {
             /// PINDAH SIDEBAR + PAGE
@@ -286,6 +289,8 @@ class MediaCard extends StatelessWidget {
               ],
             ),
           ),
+            );
+          },
         );
       },
     );

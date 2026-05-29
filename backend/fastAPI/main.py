@@ -44,7 +44,7 @@ def get_faceid():
     global faceid
     if faceid is None:
         faceid = FaceID(
-            conf_threshold=0.50,
+            conf_threshold=0.30,
             vote_window_sec=1.5,
             vote_min_ratio=0.60,
             vote_min_samples=6,
@@ -63,7 +63,7 @@ def reload_faceid():
         pass
 
     faceid = FaceID(
-        conf_threshold=0.5,
+        conf_threshold=0.30,
         vote_window_sec=1.5,
         vote_min_ratio=0.60,
         vote_min_samples=6,

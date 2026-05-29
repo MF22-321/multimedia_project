@@ -2,10 +2,12 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:frontend/core/constant/video_assets.dart';
 import 'package:frontend/core/localization/app_strings.dart';
 import 'package:frontend/core/navigation/app_language_control.dart';
 import 'package:frontend/core/navigation/driver_session.dart';
 import 'package:frontend/core/services/drive_pref_service.dart';
+import 'package:frontend/core/services/overlay_service.dart';
 import 'package:frontend/core/themes/car_theme.dart';
 
 class TutorialPage extends StatefulWidget {
@@ -20,24 +22,86 @@ class _TutorialPageState extends State<TutorialPage> {
 
   DateTime now = DateTime.now();
 
-  List<Map<String, dynamic>> get tutorials => [
-    {
-      'title': AppStrings.openHood,
-      'image': 'https://images.unsplash.com/photo-1503376780353-7e6692767b70',
-    },
-    {
-      'title': AppStrings.openFuelCap,
-      'image': 'https://images.unsplash.com/photo-1492144534655-ae79c964c9d7',
-    },
-    {
-      'title': AppStrings.pairBluetooth,
-      'image': 'https://images.unsplash.com/photo-1511919884226-fd3cad34687c',
-    },
-    {
-      'title': AppStrings.voiceAssistant,
-      'image': 'https://images.unsplash.com/photo-1489824904134-891ab64532f1',
-    },
+  List<_TutorialItem> get tutorials => [
+    _TutorialItem(
+      title: AppStrings.openHood,
+      description: AppStrings.choose(
+        id: 'Panduan membuka kap mesin Veloz dengan aman.',
+        en: 'Guide to safely open the Veloz engine hood.',
+      ),
+      image: 'https://images.unsplash.com/photo-1503376780353-7e6692767b70',
+      action: _localizedOpenHoodAction,
+    ),
+    _TutorialItem(
+      title: AppStrings.openFuelCap,
+      description: AppStrings.choose(
+        id: 'Panduan membuka dan menutup tutup tangki kendaraan.',
+        en: 'Guide to open and close the vehicle fuel cap.',
+      ),
+      image: 'https://images.unsplash.com/photo-1492144534655-ae79c964c9d7',
+      action: _localizedOpenFuelCapAction,
+    ),
+    _TutorialItem(
+      title: AppStrings.choose(
+        id: 'Cek Level Oli',
+        en: 'Check Oil Level',
+      ),
+      description: AppStrings.choose(
+        id: 'Langkah mengecek level oli mesin sebelum berkendara.',
+        en: 'Steps to check engine oil level before driving.',
+      ),
+      image: 'https://images.unsplash.com/photo-1487754180451-c456f719a1fc',
+      action: VehicleAction.checkOilLevel,
+    ),
+    _TutorialItem(
+      title: AppStrings.choose(
+        id: 'Mengganti Ban',
+        en: 'Change Tire',
+      ),
+      description: AppStrings.choose(
+        id: 'Panduan mengganti ban saat kondisi darurat.',
+        en: 'Guide to change a tire during an emergency.',
+      ),
+      image: 'https://images.unsplash.com/photo-1600705722908-bab93dd6deab',
+      action: VehicleAction.changeTire,
+    ),
+    _TutorialItem(
+      title: AppStrings.choose(
+        id: 'Menggunakan APAR',
+        en: 'Use Fire Extinguisher',
+      ),
+      description: AppStrings.choose(
+        id: 'Cara menggunakan APAR untuk penanganan awal kebakaran.',
+        en: 'How to use a fire extinguisher for first response.',
+      ),
+      image: 'https://images.unsplash.com/photo-1578328819058-b69f3a3b0f6b',
+      action: VehicleAction.useFireExtinguisher,
+    ),
+    _TutorialItem(
+      title: AppStrings.choose(
+        id: 'Menolong Kecelakaan',
+        en: 'Help Accident',
+      ),
+      description: AppStrings.choose(
+        id: 'Langkah aman membantu kondisi kecelakaan di jalan.',
+        en: 'Safe steps to help during a road accident.',
+      ),
+      image: 'https://images.unsplash.com/photo-1502744688674-c619d1586c9e',
+      action: VehicleAction.helpAccident,
+    ),
   ];
+
+  VehicleAction get _localizedOpenHoodAction {
+    return AppLanguageControl.isEnglish
+        ? VehicleAction.openHoodEng
+        : VehicleAction.openHoodInd;
+  }
+
+  VehicleAction get _localizedOpenFuelCapAction {
+    return AppLanguageControl.isEnglish
+        ? VehicleAction.openTrunkEng
+        : VehicleAction.openTrunkInd;
+  }
 
   @override
   void initState() {
@@ -297,7 +361,15 @@ class _TutorialPageState extends State<TutorialPage> {
 
                               return GestureDetector(
                                 onTap: () {
-                                  /// PLAY VIDEO
+                                  final videoAsset =
+                                      VideoAssets.actionVideoMap[item.action];
+
+                                  if (videoAsset == null) return;
+
+                                  VideoOverlayService().show(
+                                    context: context,
+                                    videoAsset: videoAsset,
+                                  );
                                 },
 
                                 child: AnimatedContainer(
@@ -343,7 +415,7 @@ class _TutorialPageState extends State<TutorialPage> {
 
                                             children: [
                                               Image.network(
-                                                item['image'],
+                                                item.image,
 
                                                 fit: BoxFit.cover,
                                               ),
@@ -421,7 +493,7 @@ class _TutorialPageState extends State<TutorialPage> {
 
                                             children: [
                                               Text(
-                                                item['title'],
+                                                item.title,
 
                                                 style: TextStyle(
                                                   color: Colors.white,
@@ -437,7 +509,7 @@ class _TutorialPageState extends State<TutorialPage> {
                                               SizedBox(height: 14.h),
 
                                               Text(
-                                                AppStrings.tutorialDescription,
+                                                item.description,
 
                                                 style: TextStyle(
                                                   color: Colors.white
@@ -487,4 +559,18 @@ class _TutorialPageState extends State<TutorialPage> {
 
     return driver;
   }
+}
+
+class _TutorialItem {
+  const _TutorialItem({
+    required this.title,
+    required this.description,
+    required this.image,
+    required this.action,
+  });
+
+  final String title;
+  final String description;
+  final String image;
+  final VehicleAction action;
 }

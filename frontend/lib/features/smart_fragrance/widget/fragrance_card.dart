@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
-import 'package:frontend/core/themes/app_colors.dart';
 
 class FragranceCard extends StatelessWidget {
   final String title;
@@ -9,6 +8,10 @@ class FragranceCard extends StatelessWidget {
   final int fillPercent;
   final bool isEnabled;
   final VoidCallback onToggle;
+  final Color accentColor;
+  final Color textColor;
+  final Color panelColor;
+  final Color panelDarkColor;
 
   const FragranceCard({
     super.key,
@@ -18,6 +21,10 @@ class FragranceCard extends StatelessWidget {
     required this.fillPercent,
     required this.isEnabled,
     required this.onToggle,
+    required this.accentColor,
+    required this.textColor,
+    required this.panelColor,
+    required this.panelDarkColor,
   });
 
   @override
@@ -28,8 +35,9 @@ class FragranceCard extends StatelessWidget {
       width: 340.w,
       height: 370.h,
       decoration: BoxDecoration(
-        color: AppColors.panel,
+        color: panelColor,
         borderRadius: BorderRadius.circular(40.r),
+        border: Border.all(color: accentColor.withValues(alpha: 0.28)),
       ),
       child: ClipRRect(
         borderRadius: BorderRadius.circular(40.r),
@@ -49,7 +57,7 @@ class FragranceCard extends StatelessWidget {
               bottom: 0,
               child: Container(
                 decoration: BoxDecoration(
-                  color: AppColors.panelDark,
+                  color: panelDarkColor,
                   borderRadius: BorderRadius.only(
                     topLeft: Radius.circular(54.r),
                     topRight: Radius.circular(40.r),
@@ -75,17 +83,17 @@ class FragranceCard extends StatelessWidget {
                       child: Icon(
                         Icons.water_drop_outlined,
                         size: 28.sp,
-                        color: Colors.white.withValues(alpha: 0.95),
+                        color: textColor.withValues(alpha: 0.9),
                       ),
                     ),
                     const Spacer(),
-                    Icon(icon, size: 62.sp, color: const Color(0xFFC28A63)),
+                    Icon(icon, size: 62.sp, color: accentColor),
                     SizedBox(height: 18.h),
                     Text(
                       title,
                       textAlign: TextAlign.center,
                       style: TextStyle(
-                        color: AppColors.textLight,
+                        color: textColor,
                         fontSize: 30.sp,
                         fontWeight: FontWeight.w700,
                       ),
@@ -96,9 +104,9 @@ class FragranceCard extends StatelessWidget {
                       child: Switch(
                         value: isEnabled,
                         onChanged: (_) => onToggle(),
-                        activeThumbColor: AppColors.whiteSoft,
-                        activeTrackColor: AppColors.green,
-                        inactiveThumbColor: AppColors.whiteSoft,
+                        activeThumbColor: Colors.white,
+                        activeTrackColor: accentColor,
+                        inactiveThumbColor: Colors.white,
                         inactiveTrackColor: Colors.white24,
                         materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
                       ),

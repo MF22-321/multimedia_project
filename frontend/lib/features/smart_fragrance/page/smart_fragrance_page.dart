@@ -1,8 +1,11 @@
+import 'dart:async';
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:frontend/core/model/auto_interval_option.dart';
 import 'package:frontend/core/services/mqtt_service.dart';
-import 'package:frontend/core/themes/app_colors.dart';
+import 'package:frontend/core/themes/car_theme.dart';
 import 'package:frontend/features/smart_fragrance/widget/fragrance_card.dart';
 import 'package:frontend/features/smart_fragrance/widget/main_control_panel.dart';
 import 'package:frontend/features/smart_fragrance/widget/speed_control_card.dart';
@@ -16,8 +19,10 @@ class SmartFragrancePage extends StatefulWidget {
 
 class _HomeScreenState extends State<SmartFragrancePage> {
   final MQTTService mqtt = MQTTService();
+  StreamSubscription<Map<String, dynamic>>? _mqttSubscription;
+  StreamSubscription<bool>? _mqttConnectionSubscription;
 
-  bool coffeeEnabled = true;
+  bool coffeeEnabled = false;
   bool lavenderEnabled = false;
 
   int coffeeLevel = 75;
@@ -26,12 +31,14 @@ class _HomeScreenState extends State<SmartFragrancePage> {
   int coffeeSpeed = 1;
   int lavenderSpeed = 1;
 
-  bool mainPower = true;
+  bool mainPower = false;
   bool autoMode = false;
   AutoIntervalOption selectedAutoInterval = AutoIntervalOption.s10;
+  int selectedCartridge = 0;
 
   bool isLoading = true;
   bool isUpdating = false;
+  bool mqttConnected = false;
 
   @override
   void initState() {
@@ -40,115 +47,211 @@ class _HomeScreenState extends State<SmartFragrancePage> {
   }
 
   Future<void> _initMQTT() async {
-    await mqtt.connect();
+    _mqttConnectionSubscription = mqtt.connectionStream.listen((connected) {
+      if (!mounted) return;
+      setState(() => mqttConnected = connected);
+    });
+
+    final connected = await mqtt.connect();
 
     if (mounted) {
-      setState(() => isLoading = false);
+      setState(() {
+        isLoading = false;
+        mqttConnected = connected;
+      });
     }
 
-    mqtt.stream.listen((data) {
+    _mqttSubscription = mqtt.stream.listen((data) {
       if (!mounted) return;
 
       setState(() {
+        selectedCartridge =
+            (data['selectedCartridge'] as num?)?.toInt() ?? selectedCartridge;
         mainPower = data['mainPower'] ?? mainPower;
         autoMode = data['autoMode'] ?? autoMode;
+        selectedAutoInterval = AutoIntervalOptionX.fromFirebase(
+          data['autoInterval'],
+        );
 
         coffeeEnabled = data['motor1']?['enabled'] ?? coffeeEnabled;
-        coffeeSpeed = (data['motor1']?['speedLevel'] ?? coffeeSpeed).clamp(
-          1,
-          3,
-        );
+        coffeeSpeed =
+            ((data['motor1']?['speedLevel'] as num?)?.toInt() ?? coffeeSpeed)
+                .clamp(1, 3)
+                .toInt();
 
         lavenderEnabled = data['motor2']?['enabled'] ?? lavenderEnabled;
-        lavenderSpeed = (data['motor2']?['speedLevel'] ?? lavenderSpeed).clamp(
-          1,
-          3,
-        );
+        lavenderSpeed =
+            ((data['motor2']?['speedLevel'] as num?)?.toInt() ??
+                    lavenderSpeed)
+                .clamp(1, 3)
+                .toInt();
       });
     });
   }
 
-  void _publish(Map<String, dynamic> data) {
+  Future<void> _publish(Map<String, dynamic> data) async {
     setState(() => isUpdating = true);
 
-    mqtt.publish('humidifier/control', data);
+    final published = await mqtt.publish('humidifier/control', data);
+    if (mounted) {
+      setState(() => mqttConnected = published || mqtt.isConnected);
+    }
 
     Future.delayed(const Duration(milliseconds: 400), () {
       if (mounted) setState(() => isUpdating = false);
     });
   }
 
+  int _cartridgeForState({
+    required bool coffee,
+    required bool lavender,
+  }) {
+    if (coffee && lavender) return 3;
+    if (coffee && !lavender) return 1;
+    if (lavender && !coffee) return 2;
+    return 0;
+  }
+
+  Map<String, dynamic> _statePayload({
+    bool? power,
+    bool? auto,
+    AutoIntervalOption? interval,
+    bool? coffee,
+    bool? lavender,
+    int? coffeeSpeedLevel,
+    int? lavenderSpeedLevel,
+  }) {
+    final nextCoffee = coffee ?? coffeeEnabled;
+    final nextLavender = lavender ?? lavenderEnabled;
+    final nextCartridge = _cartridgeForState(
+      coffee: nextCoffee,
+      lavender: nextLavender,
+    );
+    final nextPower = power ?? nextCartridge != 0;
+
+    return {
+      'selectedCartridge': nextCartridge,
+      'mainPower': nextPower,
+      'autoMode': auto ?? autoMode,
+      'autoInterval': (interval ?? selectedAutoInterval).firebaseValue,
+      'motor1': {
+        'enabled': nextCoffee,
+        'speedLevel': coffeeSpeedLevel ?? coffeeSpeed,
+      },
+      'motor2': {
+        'enabled': nextLavender,
+        'speedLevel': lavenderSpeedLevel ?? lavenderSpeed,
+      },
+    };
+  }
+
   Future<void> _toggleMainPower() async {
     final newValue = !mainPower;
-    setState(() => mainPower = newValue);
-    _publish({'mainPower': newValue});
+    final nextCoffee = newValue && !coffeeEnabled && !lavenderEnabled
+        ? true
+        : coffeeEnabled;
+    final nextLavender = newValue ? lavenderEnabled : false;
+
+    setState(() {
+      mainPower = newValue;
+      coffeeEnabled = newValue ? nextCoffee : false;
+      lavenderEnabled = nextLavender;
+      selectedCartridge = _cartridgeForState(
+        coffee: coffeeEnabled,
+        lavender: lavenderEnabled,
+      );
+    });
+    await _publish(
+      _statePayload(
+        power: newValue,
+        coffee: newValue ? nextCoffee : false,
+        lavender: nextLavender,
+      ),
+    );
   }
 
   Future<void> _toggleAutoMode() async {
     final newValue = !autoMode;
     setState(() => autoMode = newValue);
 
-    _publish({
-      'autoMode': newValue,
-      'autoInterval': selectedAutoInterval.firebaseValue,
-    });
+    await _publish(_statePayload(auto: newValue));
   }
 
   Future<void> _setAutoInterval(AutoIntervalOption option) async {
     setState(() => selectedAutoInterval = option);
-    _publish({'autoInterval': option.firebaseValue});
+    await _publish(_statePayload(interval: option));
   }
 
   Future<void> _toggleCoffeeEnabled() async {
     final newValue = !coffeeEnabled;
-    setState(() => coffeeEnabled = newValue);
-    _publish({
-      'motor1': {'enabled': newValue},
+    final nextLavender = lavenderEnabled;
+    final nextPower = newValue || nextLavender;
+
+    setState(() {
+      coffeeEnabled = newValue;
+      selectedCartridge = _cartridgeForState(
+        coffee: newValue,
+        lavender: nextLavender,
+      );
+      mainPower = nextPower;
     });
+    await _publish(
+      _statePayload(
+        power: nextPower,
+        coffee: newValue,
+        lavender: nextLavender,
+      ),
+    );
   }
 
   Future<void> _increaseCoffeeSpeed() async {
     if (coffeeSpeed >= 3) return;
     final newValue = coffeeSpeed + 1;
     setState(() => coffeeSpeed = newValue);
-    _publish({
-      'motor1': {'speedLevel': newValue},
-    });
+    await _publish(_statePayload(coffeeSpeedLevel: newValue));
   }
 
   Future<void> _decreaseCoffeeSpeed() async {
     if (coffeeSpeed <= 1) return;
     final newValue = coffeeSpeed - 1;
     setState(() => coffeeSpeed = newValue);
-    _publish({
-      'motor1': {'speedLevel': newValue},
-    });
+    await _publish(_statePayload(coffeeSpeedLevel: newValue));
   }
 
   Future<void> _toggleLavenderEnabled() async {
     final newValue = !lavenderEnabled;
-    setState(() => lavenderEnabled = newValue);
-    _publish({
-      'motor2': {'enabled': newValue},
+    final nextCoffee = coffeeEnabled;
+    final nextPower = nextCoffee || newValue;
+
+    setState(() {
+      lavenderEnabled = newValue;
+      selectedCartridge = _cartridgeForState(
+        coffee: nextCoffee,
+        lavender: newValue,
+      );
+      mainPower = nextPower;
     });
+    await _publish(
+      _statePayload(
+        power: nextPower,
+        coffee: nextCoffee,
+        lavender: newValue,
+      ),
+    );
   }
 
   Future<void> _increaseLavenderSpeed() async {
     if (lavenderSpeed >= 3) return;
     final newValue = lavenderSpeed + 1;
     setState(() => lavenderSpeed = newValue);
-    _publish({
-      'motor2': {'speedLevel': newValue},
-    });
+    await _publish(_statePayload(lavenderSpeedLevel: newValue));
   }
 
   Future<void> _decreaseLavenderSpeed() async {
     if (lavenderSpeed <= 1) return;
     final newValue = lavenderSpeed - 1;
     setState(() => lavenderSpeed = newValue);
-    _publish({
-      'motor2': {'speedLevel': newValue},
-    });
+    await _publish(_statePayload(lavenderSpeedLevel: newValue));
   }
 
   void _showAutoUpdateMessage() {
@@ -165,42 +268,83 @@ class _HomeScreenState extends State<SmartFragrancePage> {
 
   @override
   void dispose() {
+    _mqttSubscription?.cancel();
+    _mqttConnectionSubscription?.cancel();
     mqtt.disconnect();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: AppColors.background,
-      body: isLoading
-          ? Center(child: CircularProgressIndicator(strokeWidth: 2.w))
-          : Stack(
+    return ValueListenableBuilder(
+      valueListenable: CarThemes.currentTheme,
+      builder: (context, themeType, _) {
+        return ValueListenableBuilder(
+          valueListenable: CarThemes.customTheme,
+          builder: (context, __, ___) {
+            final theme = CarThemes.getTheme(themeType);
+            final accent = getMusicAccentColor(themeType, theme);
+            final panelColor = Colors.black.withValues(alpha: 0.24);
+            final panelDarkColor = Colors.black.withValues(alpha: 0.38);
+            final surfaceColor = Colors.white.withValues(alpha: 0.88);
+            const surfaceTextColor = Color(0xFF111111);
+
+            return Scaffold(
+              backgroundColor: theme.backgroundGradient.first,
+              body: isLoading
+                  ? Center(
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2.w,
+                        color: accent,
+                      ),
+                    )
+                  : Stack(
               children: [
+                Positioned.fill(
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 500),
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: theme.backgroundGradient,
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                      ),
+                      image: theme.backgroundImage != null
+                          ? DecorationImage(
+                              image: FileImage(File(theme.backgroundImage!)),
+                              fit: BoxFit.cover,
+                            )
+                          : null,
+                    ),
+                  ),
+                ),
                 Column(
                   children: [
                     Container(
                       height: 110.h,
                       width: double.infinity,
-                      color: AppColors.topBar,
+                      color: Colors.black.withValues(alpha: 0.26),
                       alignment: Alignment.centerLeft,
                       padding: EdgeInsets.symmetric(horizontal: 44.w),
                       child: Row(
                         children: [
                           GestureDetector(
                             onTap: () => Navigator.pop(context),
+                            behavior: HitTestBehavior.opaque,
                             child: Row(
                               children: [
                                 Icon(
                                   Icons.arrow_back_ios,
-                                  color: Colors.white,
+                                  color: theme.textColor,
                                   size: 20.sp,
                                 ),
                                 SizedBox(width: 8.w),
                                 Text(
                                   "Back",
                                   style: TextStyle(
-                                    color: Colors.white70,
+                                    color: theme.textColor.withValues(
+                                      alpha: 0.78,
+                                    ),
                                     fontSize: 16.sp,
                                   ),
                                 ),
@@ -213,7 +357,31 @@ class _HomeScreenState extends State<SmartFragrancePage> {
                             style: TextStyle(
                               fontSize: 32.sp,
                               fontWeight: FontWeight.w700,
-                              color: Colors.white,
+                              color: theme.textColor,
+                            ),
+                          ),
+                          const Spacer(),
+                          Container(
+                            padding: EdgeInsets.symmetric(
+                              horizontal: 16.w,
+                              vertical: 8.h,
+                            ),
+                            decoration: BoxDecoration(
+                              color: mqttConnected
+                                  ? accent.withValues(alpha: 0.22)
+                                  : Colors.redAccent.withValues(alpha: 0.22),
+                              borderRadius: BorderRadius.circular(20.r),
+                              border: Border.all(
+                                color: mqttConnected ? accent : Colors.redAccent,
+                              ),
+                            ),
+                            child: Text(
+                              mqttConnected ? 'MQTT Connected' : 'MQTT Offline',
+                              style: TextStyle(
+                                color: theme.textColor,
+                                fontSize: 12.sp,
+                                fontWeight: FontWeight.w700,
+                              ),
                             ),
                           ),
                         ],
@@ -247,6 +415,10 @@ class _HomeScreenState extends State<SmartFragrancePage> {
                                                 fillPercent: coffeeLevel,
                                                 isEnabled: coffeeEnabled,
                                                 onToggle: _toggleCoffeeEnabled,
+                                                accentColor: accent,
+                                                textColor: theme.textColor,
+                                                panelColor: panelColor,
+                                                panelDarkColor: panelDarkColor,
                                               ),
                                               SizedBox(height: 28.h),
                                               SpeedControlCard(
@@ -255,6 +427,8 @@ class _HomeScreenState extends State<SmartFragrancePage> {
                                                     _increaseCoffeeSpeed,
                                                 onDecrease:
                                                     _decreaseCoffeeSpeed,
+                                                accentColor: accent,
+                                                textColor: theme.textColor,
                                               ),
                                             ],
                                           ),
@@ -268,6 +442,10 @@ class _HomeScreenState extends State<SmartFragrancePage> {
                                                 isEnabled: lavenderEnabled,
                                                 onToggle:
                                                     _toggleLavenderEnabled,
+                                                accentColor: accent,
+                                                textColor: theme.textColor,
+                                                panelColor: panelColor,
+                                                panelDarkColor: panelDarkColor,
                                               ),
                                               SizedBox(height: 28.h),
                                               SpeedControlCard(
@@ -276,6 +454,8 @@ class _HomeScreenState extends State<SmartFragrancePage> {
                                                     _increaseLavenderSpeed,
                                                 onDecrease:
                                                     _decreaseLavenderSpeed,
+                                                accentColor: accent,
+                                                textColor: theme.textColor,
                                               ),
                                             ],
                                           ),
@@ -293,6 +473,11 @@ class _HomeScreenState extends State<SmartFragrancePage> {
                                   onToggleAuto: _toggleAutoMode,
                                   onSelectAutoInterval: _setAutoInterval,
                                   onSave: _showAutoUpdateMessage,
+                                  accentColor: accent,
+                                  textColor: theme.textColor,
+                                  panelColor: panelColor,
+                                  surfaceColor: surfaceColor,
+                                  surfaceTextColor: surfaceTextColor,
                                 ),
                               ],
                             ),
@@ -313,6 +498,7 @@ class _HomeScreenState extends State<SmartFragrancePage> {
                       ),
                       decoration: BoxDecoration(
                         color: Colors.black.withValues(alpha: 0.65),
+                        border: Border.all(color: accent.withValues(alpha: 0.4)),
                         borderRadius: BorderRadius.circular(20.r),
                       ),
                       child: Row(
@@ -323,7 +509,7 @@ class _HomeScreenState extends State<SmartFragrancePage> {
                             height: 14.w,
                             child: CircularProgressIndicator(
                               strokeWidth: 2.w,
-                              color: Colors.white,
+                              color: accent,
                             ),
                           ),
                           SizedBox(width: 10.w),
@@ -340,6 +526,10 @@ class _HomeScreenState extends State<SmartFragrancePage> {
                   ),
               ],
             ),
+            );
+          },
+        );
+      },
     );
   }
 }

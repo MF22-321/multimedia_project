@@ -1,20 +1,20 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:frontend/core/services/overlay_service.dart';
-import '../../../core/services/lan_service.dart';
+import 'package:frontend/core/services/video_mqtt_service.dart';
 import '../../../core/utils/action_parser.dart';
 
 class VideoProvider extends ChangeNotifier {
-  final LanService _lanService = LanService();
+  final VideoMqttService _videoMqttService = VideoMqttService();
 
   StreamSubscription? _subscription;
 
   void init(BuildContext context) {
     final overlayState = Overlay.of(context, rootOverlay: true);
 
-    _lanService.connect();
+    _videoMqttService.connect();
 
-    _subscription = _lanService.stream.listen((message) {
+    _subscription = _videoMqttService.stream.listen((message) {
       final videoPath = ActionParser.parseToVideo(message);
       if (videoPath == null) return;
 
@@ -33,7 +33,7 @@ class VideoProvider extends ChangeNotifier {
   @override
   void dispose() {
     _subscription?.cancel();
-    _lanService.dispose();
+    _videoMqttService.dispose();
     super.dispose();
   }
 }

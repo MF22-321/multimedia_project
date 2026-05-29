@@ -35,6 +35,7 @@ def train_lbph(labels_map: dict):
             if img is None:
                 continue
             img = cv2.resize(img, FACE_SIZE)
+            img = cv2.equalizeHist(img)
             faces.append(img)
             ids.append(int(label))
 

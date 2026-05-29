@@ -22,7 +22,7 @@ CAPTURE_INTERVAL_SEC = 0.25
 MIN_FACE_PX = 120
 
 # identify defaults
-CONF_THRESHOLD = 0.5
+CONF_THRESHOLD = 0.30
 
 # stabilizer (voting)
 VOTE_WINDOW_SEC = 1.5
