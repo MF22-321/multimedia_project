@@ -11,10 +11,12 @@ import 'package:frontend/core/navigation/driver_session.dart';
 import 'package:frontend/core/navigation/smart_music_navigation.dart';
 import 'package:frontend/core/services/drive_pref_service.dart';
 import 'package:frontend/core/services/drowsiness_api.dart';
+import 'package:frontend/services/mqtt_avatar_service.dart';
 import 'package:frontend/features/home/presentation/widget/music_page.dart'
     hide getMusicAccentColor;
 import 'package:frontend/features/home/presentation/widget/phone_content.dart';
 import 'package:frontend/features/home/presentation/widget/settings_content.dart';
+import 'package:frontend/widgets/ai_assistant_overlay.dart';
 import 'package:provider/provider.dart';
 
 import 'package:frontend/core/navigation/app_navigation.dart';
@@ -45,6 +47,8 @@ class HomePage extends StatefulWidget {
 }
 
 class _HomePageState extends State<HomePage> {
+  final MqttAvatarService _avatarService = MqttAvatarService();
+
   bool isReady = false;
 
   Timer? _drowsyTimer;
@@ -63,6 +67,7 @@ class _HomePageState extends State<HomePage> {
     DrowsinessControl.enabled.addListener(_onDrowsinessSettingChanged);
 
     _init();
+    _avatarService.connect();
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
@@ -75,6 +80,7 @@ class _HomePageState extends State<HomePage> {
     DriverSession.currentDriver.removeListener(_onDriverChanged);
     DrowsinessControl.enabled.removeListener(_onDrowsinessSettingChanged);
     _drowsyTimer?.cancel();
+    _avatarService.dispose();
     super.dispose();
   }
 
@@ -467,6 +473,8 @@ class _HomePageState extends State<HomePage> {
               const SideMenu(),
             ],
           ),
+
+          AiAssistantOverlay(service: _avatarService),
         ],
       ),
     );
