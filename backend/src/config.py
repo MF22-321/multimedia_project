@@ -1,10 +1,12 @@
+import os
 from dataclasses import dataclass, field
 
 @dataclass
 class CameraConfig:
-    index: int = 2
-    width: int = 1280
-    height: int = 720
+    index: int = int(os.getenv("CAMERA_INDEX", "0"))
+    width: int = int(os.getenv("CAMERA_WIDTH", "640"))
+    height: int = int(os.getenv("CAMERA_HEIGHT", "480"))
+    fps: int = int(os.getenv("CAMERA_FPS", "15"))
     use_dshow: bool = False
 
 @dataclass

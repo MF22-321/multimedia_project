@@ -4,6 +4,7 @@ import 'dart:ui';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:frontend/core/services/jetson_performance.dart';
 import 'package:frontend/models/avatar_state.dart';
 import 'package:frontend/services/mqtt_avatar_service.dart';
 import 'package:media_kit/media_kit.dart';
@@ -41,13 +42,15 @@ class _AiAssistantOverlayState extends State<AiAssistantOverlay>
   void initState() {
     super.initState();
 
-    _player = Player();
+    _player = Player(
+      configuration: const PlayerConfiguration(bufferSize: 8 * 1024 * 1024),
+    );
     _videoController = VideoController(
       _player,
-      configuration: const VideoControllerConfiguration(
-        width: 520,
-        height: 292,
-        enableHardwareAcceleration: false,
+      configuration: VideoControllerConfiguration(
+        width: JetsonPerformance.assistantVideoWidth,
+        height: JetsonPerformance.assistantVideoHeight,
+        enableHardwareAcceleration: JetsonPerformance.videoHardwareAcceleration,
       ),
     );
 
@@ -109,6 +112,7 @@ class _AiAssistantOverlayState extends State<AiAssistantOverlay>
 
     _currentVideoAsset = asset;
     await _player.setPlaylistMode(PlaylistMode.single);
+    await _player.setVolume(100);
     await _player.open(Media('asset:///$asset'), play: true);
   }
 
@@ -167,9 +171,7 @@ class _AiAssistantOverlayState extends State<AiAssistantOverlay>
                           center: Alignment.center,
                           radius: 0.86,
                           colors: [
-                            const Color(
-                              0xFF001A20,
-                            ).withValues(alpha: 0.26),
+                            const Color(0xFF001A20).withValues(alpha: 0.26),
                             Colors.black.withValues(alpha: 0.58),
                             Colors.black.withValues(alpha: 0.78),
                           ],
@@ -384,7 +386,10 @@ class _AssistantCard extends StatelessWidget {
           AnimatedSwitcher(
             duration: const Duration(milliseconds: 220),
             child: state == AvatarState.thinking
-                ? _TypingIndicator(key: const ValueKey('typing'), typing: typing)
+                ? _TypingIndicator(
+                    key: const ValueKey('typing'),
+                    typing: typing,
+                  )
                 : _SubtitlePanel(
                     key: const ValueKey('subtitle'),
                     subtitle: subtitle,
@@ -521,9 +526,9 @@ class _TypingIndicator extends StatelessWidget {
                     margin: EdgeInsets.symmetric(horizontal: 5.w),
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
-                      color: const Color(0xFF54DFFF).withValues(
-                        alpha: 0.34 + (scale * 0.48),
-                      ),
+                      color: const Color(
+                        0xFF54DFFF,
+                      ).withValues(alpha: 0.34 + (scale * 0.48)),
                       boxShadow: [
                         BoxShadow(
                           color: const Color(
@@ -572,10 +577,7 @@ class _GlowingDot extends StatelessWidget {
 }
 
 class _AnsweringRingPainter extends CustomPainter {
-  const _AnsweringRingPainter({
-    required this.progress,
-    required this.active,
-  });
+  const _AnsweringRingPainter({required this.progress, required this.active});
 
   final double progress;
   final bool active;
@@ -649,9 +651,7 @@ class _AnsweringRingPainter extends CustomPainter {
           const Color(0xFF58F3FF).withValues(alpha: 0.10),
           Colors.transparent,
         ],
-      ).createShader(
-        Rect.fromCircle(center: center, radius: radius * 0.68),
-      );
+      ).createShader(Rect.fromCircle(center: center, radius: radius * 0.68));
 
     canvas.drawCircle(center, radius * 0.68, glowPaint);
   }

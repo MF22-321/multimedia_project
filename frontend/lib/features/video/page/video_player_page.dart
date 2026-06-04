@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:ui';
 
 import 'package:flutter/material.dart';
+import 'package:frontend/core/services/jetson_performance.dart';
 import 'package:frontend/core/themes/car_theme.dart';
 import 'package:media_kit/media_kit.dart';
 import 'package:media_kit_video/media_kit_video.dart';
@@ -38,13 +39,15 @@ class _VideoPlayerPageState extends State<VideoPlayerPage>
     super.initState();
 
     /// 🎬 Media init
-    player = Player();
+    player = Player(
+      configuration: const PlayerConfiguration(bufferSize: 16 * 1024 * 1024),
+    );
     controller = VideoController(
       player,
-      configuration: const VideoControllerConfiguration(
-        width: 1280,
-        height: 720,
-        enableHardwareAcceleration: false,
+      configuration: VideoControllerConfiguration(
+        width: JetsonPerformance.tutorialVideoWidth,
+        height: JetsonPerformance.tutorialVideoHeight,
+        enableHardwareAcceleration: JetsonPerformance.videoHardwareAcceleration,
       ),
     );
 
@@ -62,7 +65,8 @@ class _VideoPlayerPageState extends State<VideoPlayerPage>
     _fadeController.forward();
 
     /// ▶️ Play video
-    player.open(Media('asset:///${widget.videoAsset}'));
+    player.setVolume(100);
+    player.open(Media('asset:///${widget.videoAsset}'), play: true);
 
     _scheduleControlsHide();
 
@@ -298,10 +302,7 @@ class _VideoPlayerPageState extends State<VideoPlayerPage>
 }
 
 class _PremiumVideoControls extends StatelessWidget {
-  const _PremiumVideoControls({
-    required this.player,
-    required this.accent,
-  });
+  const _PremiumVideoControls({required this.player, required this.accent});
 
   final Player player;
   final Color accent;
@@ -443,8 +444,7 @@ class _PremiumVideoControls extends StatelessWidget {
                                         trackHeight: 5,
                                         overlayShape:
                                             SliderComponentShape.noOverlay,
-                                        thumbShape:
-                                            const RoundSliderThumbShape(
+                                        thumbShape: const RoundSliderThumbShape(
                                           enabledThumbRadius: 6,
                                         ),
                                         activeTrackColor: accent,
@@ -497,8 +497,8 @@ class _VideoControlButton extends StatelessWidget {
     final size = large ? 52.0 : 42.0;
     final foreground =
         ThemeData.estimateBrightnessForColor(accent) == Brightness.dark
-            ? Colors.white
-            : Colors.black;
+        ? Colors.white
+        : Colors.black;
 
     return Material(
       color: Colors.transparent,
@@ -509,9 +509,7 @@ class _VideoControlButton extends StatelessWidget {
           width: size,
           height: size,
           decoration: BoxDecoration(
-            color: large
-                ? accent
-                : Colors.white.withValues(alpha: 0.08),
+            color: large ? accent : Colors.white.withValues(alpha: 0.08),
             borderRadius: BorderRadius.circular(18),
             border: Border.all(
               color: large

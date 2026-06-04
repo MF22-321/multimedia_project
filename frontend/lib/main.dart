@@ -39,10 +39,10 @@ Future<void> main() async {
   /// Hide status bar
   SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
 
-  /// WINDOW MODE (Bukan Fullscreen)
+  /// Head-unit fullscreen mode.
   const WindowOptions windowOptions = WindowOptions(
-    fullScreen: false,
-    skipTaskbar: false,
+    fullScreen: true,
+    skipTaskbar: true,
     titleBarStyle: TitleBarStyle.hidden,
     backgroundColor: Colors.black,
   );
@@ -54,17 +54,9 @@ Future<void> main() async {
     /// fokus
     await windowManager.focus();
 
-    /// pindah ke monitor kedua
-    await windowManager.setPosition(const Offset(1920, 0));
+    await windowManager.setFullScreen(true);
 
-    /// ukuran tetap monitor kedua
-    await windowManager.setSize(const Size(2560, 1600));
-
-    /// pastikan bukan fullscreen
-    await windowManager.setFullScreen(false);
-
-    /// optional: tidak bisa resize user
-    await windowManager.setResizable(true);
+    await windowManager.setResizable(false);
   });
 
   runApp(const MyApp());

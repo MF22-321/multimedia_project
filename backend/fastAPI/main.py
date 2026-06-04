@@ -1,5 +1,6 @@
 import asyncio
 import logging
+import os
 import shutil
 import threading
 import time
@@ -149,12 +150,26 @@ def root():
 
 
 def generate_frames():
+    stream_width = int(os.getenv("CAMERA_STREAM_WIDTH", "640"))
+    stream_fps = float(os.getenv("CAMERA_STREAM_FPS", "15"))
+    jpeg_quality = int(os.getenv("CAMERA_JPEG_QUALITY", "70"))
+    frame_delay = 1.0 / max(stream_fps, 1.0)
+
     while True:
         frame = get_latest_frame()
 
-        ret, buffer = cv2.imencode(".jpg", frame)
+        if stream_width > 0 and frame.shape[1] > stream_width:
+            scale = stream_width / frame.shape[1]
+            stream_height = int(frame.shape[0] * scale)
+            frame = cv2.resize(frame, (stream_width, stream_height))
+
+        ret, buffer = cv2.imencode(
+            ".jpg",
+            frame,
+            [int(cv2.IMWRITE_JPEG_QUALITY), jpeg_quality],
+        )
         if not ret:
-            time.sleep(0.03)
+            time.sleep(frame_delay)
             continue
 
         frame_bytes = buffer.tobytes()
@@ -164,7 +179,7 @@ def generate_frames():
             b"Content-Type: image/jpeg\r\n\r\n" + frame_bytes + b"\r\n"
         )
 
-        time.sleep(0.03)
+        time.sleep(frame_delay)
 
 
 @app.get("/camera_feed")

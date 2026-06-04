@@ -157,12 +157,9 @@ class _MusicPageState extends State<MusicPage> {
       _searchDebounce?.cancel();
     }
 
-    _searchDebounce = Timer(
-      const Duration(milliseconds: 500),
-      () {
-        searchMusic(value);
-      },
-    );
+    _searchDebounce = Timer(const Duration(milliseconds: 500), () {
+      searchMusic(value);
+    });
   }
 
   Future<void> searchMusic(String query) async {
@@ -189,22 +186,21 @@ class _MusicPageState extends State<MusicPage> {
   /// ===============================
   Future<void> playSpotifySong(String uri, MusicProvider musicProvider) async {
     try {
+      if (uri.trim().startsWith('spotify:')) {
+        await musicProvider.playUri(uri);
+        musicProvider.startProgressListener();
+        return;
+      }
+
+      final target = _spotifyWebUrl(uri) ?? uri;
       final launched = await launchUrl(
-        Uri.parse(uri),
+        Uri.parse(target),
         mode: LaunchMode.externalApplication,
       );
 
       if (!launched) {
-        final trackId = uri.startsWith('spotify:track:')
-            ? uri.replaceFirst('spotify:track:', '')
-            : '';
-
-        if (trackId.isEmpty) return;
-
-        await launchUrl(
-          Uri.parse('https://open.spotify.com/track/$trackId'),
-          mode: LaunchMode.externalApplication,
-        );
+        debugPrint('Failed to launch Spotify target: $target');
+        return;
       }
 
       await Future.delayed(const Duration(milliseconds: 1200));
@@ -214,6 +210,19 @@ class _MusicPageState extends State<MusicPage> {
     } catch (e) {
       debugPrint(e.toString());
     }
+  }
+
+  String? _spotifyWebUrl(String uri) {
+    final parts = uri.split(':');
+    if (parts.length >= 3 && parts.first == 'spotify') {
+      return 'https://open.spotify.com/${parts[1]}/${parts[2]}';
+    }
+
+    if (uri.startsWith('https://open.spotify.com/')) {
+      return uri;
+    }
+
+    return null;
   }
 
   @override

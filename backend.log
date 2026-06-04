@@ -1,26 +1,125 @@
-INFO:     Will watch for changes in these directories: ['/home/febrian/development/multimedia_project']
-INFO:     Uvicorn running on http://127.0.0.1:8000 (Press CTRL+C to quit)
-INFO:     Started reloader process [6148] using StatReload
-INFO:     Started server process [6152]
+INFO:     Started server process [80385]
 INFO:     Waiting for application startup.
 INFO:     Application startup complete.
-[ WARN:0@0.755] global cap_v4l.cpp:914 open VIDEOIO(V4L2:/dev/video2): can't open camera by index
-[ WARN:0@0.860] global cap.cpp:438 open VIDEOIO(FFMPEG): raised OpenCV exception:
-
-OpenCV(4.13.0) /io/opencv/modules/videoio/src/cap_ffmpeg_impl.hpp:1220: error: (-2:Unspecified error) in function 'bool CvCapture_FFMPEG::open(const char*, int, const cv::Ptr<cv::IStreamReader>&, const cv::VideoCaptureParameters&)'
-> VIDEOIO/FFMPEG: Camera index out of range (expected: 'index < device_list->nb_devices'), where
->     'index' is 2
-> must be less than
->     'device_list->nb_devices' is 2
-
-
-[ERROR:0@0.862] global obsensor_uvc_stream_channel.cpp:163 getStreamChannelGroup Camera index out of range
-[ WARN:0@0.862] global cap_v4l.cpp:914 open VIDEOIO(V4L2:/dev/video2): can't open camera by index
-[ WARN:0@0.862] global cap.cpp:478 open VIDEOIO(V4L2): backend is generally available but can't be used to capture by index
+INFO:     Uvicorn running on http://127.0.0.1:8000 (Press CTRL+C to quit)
 WARNING: All log messages before absl::InitializeLog() is called are written to STDERR
-I0000 00:00:1780564179.063609    6207 gl_context_egl.cc:85] Successfully initialized EGL. Major : 1 Minor: 5
-I0000 00:00:1780564179.134139    6211 gl_context.cc:344] GL version: 3.2 (OpenGL ES 3.2 NVIDIA 595.71.05), renderer: NVIDIA GeForce RTX 4050 Laptop GPU/PCIe/SSE2
-W0000 00:00:1780564179.141010    6207 face_landmarker_graph.cc:174] Sets FaceBlendshapesGraph acceleration to xnnpack by default.
+W0000 00:00:1780578212.702630   80414 face_landmarker_graph.cc:174] Sets FaceBlendshapesGraph acceleration to xnnpack by default.
 INFO: Created TensorFlow Lite XNNPACK delegate for CPU.
-I0000 00:00:1780564179.264573    6207 gl_context_egl.cc:85] Successfully initialized EGL. Major : 1 Minor: 5
-I0000 00:00:1780564179.297156    6253 gl_context.cc:344] GL version: 3.2 (OpenGL ES 3.2 NVIDIA 595.71.05), renderer: NVIDIA GeForce RTX 4050 Laptop GPU/PCIe/SSE2
+[LANDMARKER] path = /home/multimedia/development/multimedia_project/backend/models/face_landmarker.task
+[LANDMARKER] exists = True
+INFO:     127.0.0.1:47816 - "GET /drivers HTTP/1.1" 200 OK
+INFO:     127.0.0.1:47818 - "GET /driver_status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:47834 - "GET /driver_status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:47838 - "POST /start_drowsiness HTTP/1.1" 200 OK
+INFO:     127.0.0.1:47846 - "GET /drowsiness_status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:47850 - "GET /drowsiness_status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:45272 - "GET /drowsiness_status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:45278 - "GET /drowsiness_status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:45288 - "GET /drowsiness_status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:45294 - "GET /drowsiness_status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:45300 - "GET /drowsiness_status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:45308 - "GET /drowsiness_status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:45314 - "GET /drowsiness_status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:45318 - "GET /drowsiness_status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:45324 - "GET /drowsiness_status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:45334 - "GET /drowsiness_status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:45346 - "GET /drowsiness_status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:45348 - "GET /drowsiness_status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:37754 - "GET /drowsiness_status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:37766 - "GET /drowsiness_status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:37778 - "GET /drowsiness_status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:37780 - "GET /drowsiness_status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:37784 - "GET /drowsiness_status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:37796 - "GET /drowsiness_status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:37810 - "GET /drowsiness_status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:37814 - "GET /drowsiness_status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:37826 - "GET /drowsiness_status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:37838 - "GET /drowsiness_status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:37840 - "GET /drowsiness_status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:37852 - "GET /drowsiness_status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:37856 - "GET /drowsiness_status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:42456 - "GET /drowsiness_status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:42458 - "GET /drowsiness_status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:42468 - "GET /drowsiness_status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:42480 - "GET /drowsiness_status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:42490 - "GET /drowsiness_status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:42498 - "GET /drowsiness_status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:42510 - "GET /drowsiness_status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:42522 - "GET /drowsiness_status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:42528 - "GET /drowsiness_status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:42544 - "GET /drowsiness_status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:42556 - "GET /drowsiness_status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:42560 - "GET /drowsiness_status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:33578 - "GET /drowsiness_status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:33586 - "GET /drowsiness_status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:33592 - "GET /drowsiness_status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:33600 - "GET /drowsiness_status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:33608 - "GET /drowsiness_status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:33624 - "GET /drowsiness_status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:33632 - "GET /drowsiness_status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:33644 - "GET /drowsiness_status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:33656 - "GET /drowsiness_status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:33672 - "GET /drowsiness_status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:33682 - "GET /drowsiness_status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:33686 - "GET /drowsiness_status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:33702 - "GET /drowsiness_status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54900 - "GET /drowsiness_status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54906 - "GET /drowsiness_status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54914 - "GET /drowsiness_status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54930 - "GET /drowsiness_status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54946 - "GET /drowsiness_status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54960 - "GET /drowsiness_status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54970 - "GET /drowsiness_status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54980 - "GET /drowsiness_status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54984 - "GET /drowsiness_status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54988 - "GET /drowsiness_status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54992 - "GET /drowsiness_status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55004 - "GET /drowsiness_status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57318 - "GET /drowsiness_status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57332 - "GET /drowsiness_status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57344 - "GET /drowsiness_status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57360 - "GET /drowsiness_status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57366 - "GET /drowsiness_status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57376 - "GET /drowsiness_status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57380 - "GET /drowsiness_status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57384 - "GET /drowsiness_status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57392 - "GET /drowsiness_status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57398 - "GET /drowsiness_status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57400 - "GET /drowsiness_status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57402 - "GET /drowsiness_status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57404 - "GET /drowsiness_status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:47584 - "GET /drowsiness_status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:47590 - "GET /drowsiness_status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:47596 - "GET /drowsiness_status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:47612 - "GET /drowsiness_status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:47624 - "GET /drowsiness_status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:47628 - "GET /drowsiness_status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:47638 - "GET /drowsiness_status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:47654 - "GET /drowsiness_status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:47670 - "GET /drowsiness_status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:47672 - "GET /drowsiness_status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:47688 - "GET /drowsiness_status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:47694 - "GET /drowsiness_status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:38846 - "GET /drowsiness_status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:38858 - "GET /drowsiness_status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:38868 - "GET /drowsiness_status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:38872 - "GET /drowsiness_status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:38876 - "GET /drowsiness_status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:38880 - "GET /drowsiness_status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:38886 - "GET /drowsiness_status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:38902 - "GET /drowsiness_status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:38916 - "GET /drowsiness_status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:38920 - "GET /drowsiness_status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:38932 - "GET /drowsiness_status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:38946 - "GET /drowsiness_status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:38948 - "GET /drowsiness_status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56710 - "GET /drowsiness_status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56712 - "GET /drowsiness_status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56720 - "GET /drowsiness_status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56730 - "GET /drowsiness_status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56742 - "GET /drowsiness_status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56754 - "GET /drowsiness_status HTTP/1.1" 200 OK
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+INFO:     Application shutdown complete.
+INFO:     Finished server process [80385]

@@ -8,21 +8,46 @@ class SpotifyDBusService {
 
   DBusClient? _client;
 
-  DBusRemoteObject get _playerObject {
+  DBusClient get _sessionClient {
     _client ??= DBusClient.session();
+    return _client!;
+  }
 
+  Future<DBusRemoteObject> _playerObject() async {
+    final name = await _resolvePlayerService();
     return DBusRemoteObject(
-      _client!,
-
-      name: service,
-
+      _sessionClient,
+      name: name,
       path: DBusObjectPath(path),
     );
   }
 
+  Future<String> _resolvePlayerService() async {
+    final names = await _sessionClient.listNames();
+    final players = names
+        .where((name) => name.startsWith('org.mpris.MediaPlayer2.'))
+        .toList();
+
+    if (players.contains(service)) {
+      return service;
+    }
+
+    for (final keyword in ['spotify', 'firefox', 'chromium', 'chrome']) {
+      final match = players.where(
+        (name) => name.toLowerCase().contains(keyword),
+      );
+      if (match.isNotEmpty) {
+        return match.first;
+      }
+    }
+
+    throw Exception('No MPRIS media player found');
+  }
+
   Future<Map<String, dynamic>> getMetadata() async {
     try {
-      final properties = await _playerObject.getAllProperties(
+      final playerObject = await _playerObject();
+      final properties = await playerObject.getAllProperties(
         'org.mpris.MediaPlayer2.Player',
       );
 
@@ -71,7 +96,8 @@ class SpotifyDBusService {
   }
 
   Future<void> playPause() async {
-    await _playerObject.callMethod(
+    final playerObject = await _playerObject();
+    await playerObject.callMethod(
       'org.mpris.MediaPlayer2.Player',
       'PlayPause',
       [],
@@ -79,15 +105,30 @@ class SpotifyDBusService {
   }
 
   Future<void> play() async {
-    await _playerObject.callMethod('org.mpris.MediaPlayer2.Player', 'Play', []);
+    final playerObject = await _playerObject();
+    await playerObject.callMethod('org.mpris.MediaPlayer2.Player', 'Play', []);
+  }
+
+  Future<void> pause() async {
+    final playerObject = await _playerObject();
+    await playerObject.callMethod('org.mpris.MediaPlayer2.Player', 'Pause', []);
+  }
+
+  Future<void> openUri(String uri) async {
+    final playerObject = await _playerObject();
+    await playerObject.callMethod('org.mpris.MediaPlayer2', 'OpenUri', [
+      DBusString(uri),
+    ]);
   }
 
   Future<void> next() async {
-    await _playerObject.callMethod('org.mpris.MediaPlayer2.Player', 'Next', []);
+    final playerObject = await _playerObject();
+    await playerObject.callMethod('org.mpris.MediaPlayer2.Player', 'Next', []);
   }
 
   Future<void> previous() async {
-    await _playerObject.callMethod(
+    final playerObject = await _playerObject();
+    await playerObject.callMethod(
       'org.mpris.MediaPlayer2.Player',
       'Previous',
       [],
@@ -102,7 +143,8 @@ class SpotifyDBusService {
       return;
     }
 
-    await _playerObject.callMethod(
+    final playerObject = await _playerObject();
+    await playerObject.callMethod(
       'org.mpris.MediaPlayer2.Player',
       'SetPosition',
       [DBusObjectPath(trackId), DBusInt64(position.inMicroseconds)],

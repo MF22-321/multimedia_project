@@ -1,4 +1,6 @@
 import 'dart:async';
+import 'dart:convert';
+import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:frontend/core/model/lyric_line.dart';
@@ -70,6 +72,12 @@ class MusicProvider extends ChangeNotifier {
 
   bool _isFetchingLyrics = false;
 
+  DateTime? _lastFetchAt;
+
+  DateTime? _lastCommandAt;
+
+  bool? _commandedPlaying;
+
   /// =========================
   /// START LISTENING
   /// =========================
@@ -92,7 +100,10 @@ class MusicProvider extends ChangeNotifier {
   /// =========================
   Future<void> _fetchMusic() async {
     try {
+      final now = DateTime.now();
+
       final data = await _service.getMetadata();
+      final logState = await _readSpotifydLogState();
 
       final rawTitle = data['title']?.toString() ?? '';
 
@@ -104,13 +115,48 @@ class MusicProvider extends ChangeNotifier {
 
       final newAlbumArt = data['albumArt'] ?? '';
 
-      final newPlaying = data['isPlaying'] ?? false;
+      final dbusPlaying = data['isPlaying'] ?? false;
 
       final newPosition = data['position'] ?? Duration.zero;
 
       final newDuration = data['duration'] ?? Duration.zero;
 
       final newTrackId = data['trackId'] ?? '';
+
+      final sameTrack =
+          title == newTitle && artist == newArtist && _trackId == newTrackId;
+
+      var effectivePlaying = dbusPlaying;
+      var effectivePosition = newPosition;
+
+      if (logState != null) {
+        if (logState.isPlaying != null) {
+          effectivePlaying = logState.isPlaying!;
+        }
+
+        if (logState.position != null && logState.position! > newPosition) {
+          effectivePosition = logState.position!;
+        }
+      }
+
+      if (_commandedPlaying != null &&
+          _lastCommandAt != null &&
+          now.difference(_lastCommandAt!).inSeconds < 12) {
+        effectivePlaying = _commandedPlaying!;
+      }
+
+      if (effectivePlaying &&
+          effectivePosition <= currentPosition &&
+          sameTrack) {
+        final elapsed = _lastFetchAt == null
+            ? const Duration(seconds: 1)
+            : now.difference(_lastFetchAt!);
+        effectivePosition = currentPosition + elapsed;
+      }
+
+      if (newDuration > Duration.zero && effectivePosition > newDuration) {
+        effectivePosition = newDuration;
+      }
 
       /// =========================
       /// UPDATE MUSIC
@@ -121,13 +167,15 @@ class MusicProvider extends ChangeNotifier {
 
       albumArt = newAlbumArt;
 
-      isPlaying = newPlaying;
+      isPlaying = effectivePlaying;
 
-      currentPosition = newPosition;
+      currentPosition = effectivePosition;
 
       totalDuration = newDuration;
 
       _trackId = newTrackId;
+
+      _lastFetchAt = now;
 
       /// =========================
       /// SONG KEY
@@ -194,7 +242,11 @@ class MusicProvider extends ChangeNotifier {
   /// =========================
   Future<void> togglePlay() async {
     try {
-      await _service.playPause();
+      if (isPlaying) {
+        await pause();
+      } else {
+        await play();
+      }
 
       await _fetchMusic();
     } catch (e) {
@@ -208,10 +260,42 @@ class MusicProvider extends ChangeNotifier {
   Future<void> play() async {
     try {
       await _service.play();
+      _markCommandedPlayback(true);
 
       await _fetchMusic();
     } catch (e) {
       debugPrint('PLAY ERROR => $e');
+    }
+  }
+
+  Future<void> pause() async {
+    try {
+      await _service.pause();
+      _markCommandedPlayback(false);
+
+      await _fetchMusic();
+    } catch (e) {
+      debugPrint('PAUSE ERROR => $e');
+    }
+  }
+
+  Future<void> playUri(String uri) async {
+    try {
+      final target = uri.trim();
+      if (target.isEmpty) {
+        return;
+      }
+
+      await _service.openUri(target);
+      _markCommandedPlayback(true);
+      currentPosition = Duration.zero;
+      notifyListeners();
+
+      await Future.delayed(const Duration(milliseconds: 700));
+      await _fetchMusic();
+    } catch (e) {
+      debugPrint('PLAY URI ERROR => $e');
+      rethrow;
     }
   }
 
@@ -251,6 +335,7 @@ class MusicProvider extends ChangeNotifier {
   Future<void> next() async {
     try {
       await _service.next();
+      _markCommandedPlayback(true);
 
       await _fetchMusic();
     } catch (e) {
@@ -264,6 +349,7 @@ class MusicProvider extends ChangeNotifier {
   Future<void> previous() async {
     try {
       await _service.previous();
+      _markCommandedPlayback(true);
 
       await _fetchMusic();
     } catch (e) {
@@ -281,4 +367,98 @@ class MusicProvider extends ChangeNotifier {
 
     super.dispose();
   }
+
+  void _markCommandedPlayback(bool playing) {
+    _commandedPlaying = playing;
+    _lastCommandAt = DateTime.now();
+    isPlaying = playing;
+    notifyListeners();
+  }
+
+  Future<_SpotifydLogState?> _readSpotifydLogState() async {
+    try {
+      final env = Platform.environment;
+      final candidates = [
+        env['SPOTIFYD_LOG_PATH'],
+        if ((env['MULTIMEDIA_ROOT'] ?? '').isNotEmpty)
+          '${env['MULTIMEDIA_ROOT']}/spotifyd.log',
+        '../spotifyd.log',
+      ].whereType<String>().where((path) => path.trim().isNotEmpty);
+
+      File? file;
+      for (final path in candidates) {
+        final candidate = File(path);
+        if (await candidate.exists()) {
+          file = candidate;
+          break;
+        }
+      }
+
+      if (file == null) {
+        return null;
+      }
+
+      final modified = await file.lastModified();
+      if (DateTime.now().difference(modified).inSeconds > 15) {
+        return null;
+      }
+
+      final size = await file.length();
+      final start = size > 131072 ? size - 131072 : 0;
+      final input = file.openRead(start);
+      final content = await utf8.decoder.bind(input).join();
+      final clean = content.replaceAll(RegExp(r'\x1B\[[0-9;]*m'), '');
+
+      bool? playing;
+      Duration? position;
+
+      for (final line in clean.split('\n')) {
+        final status = RegExp(
+          r'updated connect play status playing: (true|false), paused: (true|false)',
+        ).firstMatch(line);
+        if (status != null) {
+          playing = status.group(1) == 'true' && status.group(2) == 'false';
+        }
+
+        final paused = RegExp(
+          r'handling event Paused .* position_ms: ([0-9]+)',
+        ).firstMatch(line);
+        if (paused != null) {
+          playing = false;
+          position = Duration(milliseconds: int.parse(paused.group(1)!));
+        }
+
+        final pos = RegExp(
+          r'update position to ([0-9]+):([0-9]+)(?::([0-9]+))?',
+        ).firstMatch(line);
+        if (pos != null) {
+          final first = int.parse(pos.group(1)!);
+          final second = int.parse(pos.group(2)!);
+          final third = pos.group(3);
+          position = third == null
+              ? Duration(minutes: first, seconds: second)
+              : Duration(
+                  hours: first,
+                  minutes: second,
+                  seconds: int.parse(third),
+                );
+        }
+      }
+
+      if (playing == null && position == null) {
+        return null;
+      }
+
+      return _SpotifydLogState(isPlaying: playing, position: position);
+    } catch (_) {
+      return null;
+    }
+  }
+}
+
+class _SpotifydLogState {
+  const _SpotifydLogState({this.isPlaying, this.position});
+
+  final bool? isPlaying;
+  final Duration? position;
 }

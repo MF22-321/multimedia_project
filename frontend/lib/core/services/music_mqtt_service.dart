@@ -141,9 +141,7 @@ class MusicMqttService {
           provider.startProgressListener();
           break;
         case 'pause':
-          if (provider.isPlaying) {
-            await provider.togglePlay();
-          }
+          await provider.pause();
           break;
         case 'toggle':
         case 'play_pause':
@@ -255,16 +253,44 @@ class MusicMqttService {
   Future<void> _launchSpotify(String target, MusicProvider provider) async {
     if (target.trim().isEmpty) return;
 
-    final uri = Uri.parse(target);
+    if (target.trim().startsWith('spotify:')) {
+      try {
+        await provider.playUri(target);
+        provider.startProgressListener();
+        return;
+      } catch (e) {
+        AppLogger.error(
+          'Music MQTT OpenUri failed, using browser fallback: $e',
+        );
+      }
+    }
+
+    final launchTarget = _spotifyWebUrl(target) ?? target;
+    final uri = Uri.parse(launchTarget);
     final launched = await launchUrl(uri, mode: LaunchMode.externalApplication);
     if (!launched) {
-      AppLogger.error('Music MQTT failed to launch Spotify target: $target');
+      AppLogger.error(
+        'Music MQTT failed to launch Spotify target: $launchTarget',
+      );
       return;
     }
 
     await Future.delayed(const Duration(milliseconds: 1200));
     await provider.play();
     provider.startProgressListener();
+  }
+
+  String? _spotifyWebUrl(String target) {
+    final parts = target.split(':');
+    if (parts.length >= 3 && parts.first == 'spotify') {
+      return 'https://open.spotify.com/${parts[1]}/${parts[2]}';
+    }
+
+    if (target.startsWith('https://open.spotify.com/')) {
+      return target;
+    }
+
+    return null;
   }
 
   void _scheduleReconnect() {

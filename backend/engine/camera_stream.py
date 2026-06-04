@@ -170,7 +170,7 @@ def init_camera():
 
         camera.set(cv2.CAP_PROP_FRAME_WIDTH, cfg.width)
         camera.set(cv2.CAP_PROP_FRAME_HEIGHT, cfg.height)
-        camera.set(cv2.CAP_PROP_FPS, 30)
+        camera.set(cv2.CAP_PROP_FPS, cfg.fps)
 
         logger.info("[INIT] Webcam opened successfully")
 
