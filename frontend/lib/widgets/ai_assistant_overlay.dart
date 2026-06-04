@@ -13,7 +13,7 @@ class AiAssistantOverlay extends StatefulWidget {
   const AiAssistantOverlay({
     super.key,
     required this.service,
-    this.thinkingVideo = 'assets/video_sdr/sultan.mp4',
+    this.thinkingVideo = 'assets/video_sdr/think.mp4',
     this.answeringVideo = 'assets/video_sdr/what_else.mp4',
   });
 
@@ -220,15 +220,15 @@ class _AssistantCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final cardWidth = 0.74.sw.clamp(760.0, 1100.0).toDouble();
-    final cardHeight = 0.78.sh.clamp(520.0, 740.0).toDouble();
-    final avatarSize = 0.48.sh.clamp(340.0, 520.0).toDouble();
+    final cardWidth = 0.88.sw.clamp(980.0, 1540.0).toDouble();
+    final cardHeight = 0.88.sh.clamp(660.0, 900.0).toDouble();
+    final avatarCoreSize = math.min(cardHeight * 0.56, cardWidth * 0.42);
 
     return Container(
       width: cardWidth,
       height: cardHeight,
-      constraints: BoxConstraints(maxWidth: 0.84.sw, maxHeight: 0.84.sh),
-      padding: EdgeInsets.fromLTRB(34.w, 26.h, 34.w, 28.h),
+      constraints: BoxConstraints(maxWidth: 0.92.sw, maxHeight: 0.92.sh),
+      padding: EdgeInsets.fromLTRB(40.w, 30.h, 40.w, 32.h),
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(38.r),
         gradient: LinearGradient(
@@ -273,7 +273,7 @@ class _AssistantCard extends StatelessWidget {
                       overflow: TextOverflow.ellipsis,
                       style: TextStyle(
                         color: Colors.white,
-                        fontSize: 27.sp,
+                        fontSize: 31.sp,
                         fontWeight: FontWeight.w800,
                         letterSpacing: 0,
                       ),
@@ -298,30 +298,30 @@ class _AssistantCard extends StatelessWidget {
               _StatusPill(state: state),
             ],
           ),
-          SizedBox(height: 12.h),
+          SizedBox(height: 8.h),
           Expanded(
             child: Center(
               child: SizedBox(
-                width: avatarSize,
-                height: avatarSize,
+                width: avatarCoreSize,
+                height: avatarCoreSize,
                 child: Stack(
                   alignment: Alignment.center,
                   children: [
-                    if (state == AvatarState.answering)
-                      AnimatedBuilder(
-                        animation: pulse,
-                        builder: (context, _) {
-                          return CustomPaint(
-                            size: Size.square(avatarSize),
-                            painter: _AnsweringRingPainter(
-                              progress: pulse.value,
-                            ),
-                          );
-                        },
-                      ),
+                    AnimatedBuilder(
+                      animation: pulse,
+                      builder: (context, _) {
+                        return CustomPaint(
+                          size: Size.square(avatarCoreSize),
+                          painter: _AnsweringRingPainter(
+                            progress: pulse.value,
+                            active: state == AvatarState.answering,
+                          ),
+                        );
+                      },
+                    ),
                     Container(
-                      width: avatarSize * 0.92,
-                      height: avatarSize * 0.92,
+                      width: avatarCoreSize * 0.82,
+                      height: avatarCoreSize * 0.82,
                       decoration: BoxDecoration(
                         shape: BoxShape.circle,
                         color: Colors.black.withValues(alpha: 0.74),
@@ -335,20 +335,31 @@ class _AssistantCard extends StatelessWidget {
                           BoxShadow(
                             color: const Color(
                               0xFF00DFFF,
-                            ).withValues(alpha: 0.30),
-                            blurRadius: 54,
-                            spreadRadius: -10,
+                            ).withValues(alpha: 0.36),
+                            blurRadius: 64,
+                            spreadRadius: -6,
+                          ),
+                          BoxShadow(
+                            color: const Color(
+                              0xFF4DFFB8,
+                            ).withValues(alpha: 0.10),
+                            blurRadius: 100,
+                            spreadRadius: 6,
                           ),
                         ],
                       ),
                       child: ClipOval(
                         child: ColoredBox(
                           color: Colors.black,
-                          child: Video(
-                            controller: videoController,
-                            controls: NoVideoControls,
-                            fit: BoxFit.cover,
-                            alignment: Alignment.bottomCenter,
+                          child: Transform.scale(
+                            scale: 1.16,
+                            alignment: Alignment.topCenter,
+                            child: Video(
+                              controller: videoController,
+                              controls: NoVideoControls,
+                              fit: BoxFit.cover,
+                              alignment: Alignment.topCenter,
+                            ),
                           ),
                         ),
                       ),
@@ -364,7 +375,7 @@ class _AssistantCard extends StatelessWidget {
             overflow: TextOverflow.ellipsis,
             style: TextStyle(
               color: Colors.white.withValues(alpha: 0.92),
-              fontSize: 22.sp,
+              fontSize: 25.sp,
               fontWeight: FontWeight.w800,
               letterSpacing: 0,
             ),
@@ -502,23 +513,27 @@ class _TypingIndicator extends StatelessWidget {
                 final phase = (typing.value + index * 0.22) % 1.0;
                 final scale = 0.65 + (math.sin(phase * math.pi) * 0.35);
 
-                return Container(
-                  width: 10.w,
-                  height: 10.w,
-                  margin: EdgeInsets.symmetric(horizontal: 5.w),
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: const Color(0xFF54DFFF).withValues(
-                      alpha: 0.34 + (scale * 0.48),
-                    ),
-                    boxShadow: [
-                      BoxShadow(
-                        color: const Color(0xFF54DFFF).withValues(alpha: 0.34),
-                        blurRadius: 14 * scale,
+                return Transform.scale(
+                  scale: scale,
+                  child: Container(
+                    width: 10.w,
+                    height: 10.w,
+                    margin: EdgeInsets.symmetric(horizontal: 5.w),
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: const Color(0xFF54DFFF).withValues(
+                        alpha: 0.34 + (scale * 0.48),
                       ),
-                    ],
+                      boxShadow: [
+                        BoxShadow(
+                          color: const Color(
+                            0xFF54DFFF,
+                          ).withValues(alpha: 0.34),
+                          blurRadius: 14 * scale,
+                        ),
+                      ],
+                    ),
                   ),
-                  transform: Matrix4.identity()..scale(scale),
                 );
               }),
             );
@@ -557,31 +572,92 @@ class _GlowingDot extends StatelessWidget {
 }
 
 class _AnsweringRingPainter extends CustomPainter {
-  const _AnsweringRingPainter({required this.progress});
+  const _AnsweringRingPainter({
+    required this.progress,
+    required this.active,
+  });
 
   final double progress;
+  final bool active;
 
   @override
   void paint(Canvas canvas, Size size) {
     final center = Offset(size.width / 2, size.height / 2);
-    final baseRadius = size.shortestSide * 0.31;
+    final radius = size.shortestSide / 2;
 
-    for (var i = 0; i < 3; i++) {
-      final local = (progress + i / 3) % 1.0;
-      final radius = baseRadius + local * size.shortestSide * 0.18;
-      final alpha = (1 - local).clamp(0.0, 1.0);
+    final basePaint = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.2
+      ..color = const Color(0xFF58F3FF).withValues(alpha: 0.18);
 
-      final paint = Paint()
+    canvas.drawCircle(center, radius * 0.44, basePaint);
+    canvas.drawCircle(center, radius * 0.50, basePaint);
+    canvas.drawCircle(center, radius * 0.58, basePaint);
+
+    for (var i = 0; i < 48; i++) {
+      final angle = (math.pi * 2 / 48) * i;
+      final start = Offset(
+        center.dx + math.cos(angle) * radius * 0.61,
+        center.dy + math.sin(angle) * radius * 0.61,
+      );
+      final end = Offset(
+        center.dx + math.cos(angle) * radius * 0.64,
+        center.dy + math.sin(angle) * radius * 0.64,
+      );
+      final tickPaint = Paint()
         ..style = PaintingStyle.stroke
-        ..strokeWidth = 2.0
-        ..color = const Color(0xFF58F3FF).withValues(alpha: 0.42 * alpha);
+        ..strokeWidth = i % 4 == 0 ? 1.7 : 1.0
+        ..color = const Color(0xFF58F3FF).withValues(alpha: 0.16);
 
-      canvas.drawCircle(center, radius, paint);
+      canvas.drawLine(start, end, tickPaint);
     }
+
+    final sweepPaint = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeCap = StrokeCap.round
+      ..strokeWidth = active ? 3.4 : 2.4
+      ..color = (active ? const Color(0xFF4DFFB8) : const Color(0xFF58F3FF))
+          .withValues(alpha: active ? 0.74 : 0.38);
+
+    final rect = Rect.fromCircle(center: center, radius: radius * 0.56);
+    final startAngle = progress * math.pi * 2;
+    canvas.drawArc(
+      rect,
+      startAngle,
+      active ? math.pi * 0.74 : math.pi * 0.36,
+      false,
+      sweepPaint,
+    );
+
+    if (active) {
+      for (var i = 0; i < 3; i++) {
+        final local = (progress + i / 3) % 1.0;
+        final waveRadius = radius * (0.46 + local * 0.18);
+        final alpha = (1 - local).clamp(0.0, 1.0);
+        final wavePaint = Paint()
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 1.7
+          ..color = const Color(0xFF58F3FF).withValues(alpha: 0.24 * alpha);
+
+        canvas.drawCircle(center, waveRadius, wavePaint);
+      }
+    }
+
+    final glowPaint = Paint()
+      ..shader = RadialGradient(
+        colors: [
+          const Color(0xFF58F3FF).withValues(alpha: 0.10),
+          Colors.transparent,
+        ],
+      ).createShader(
+        Rect.fromCircle(center: center, radius: radius * 0.68),
+      );
+
+    canvas.drawCircle(center, radius * 0.68, glowPaint);
   }
 
   @override
   bool shouldRepaint(covariant _AnsweringRingPainter oldDelegate) {
-    return oldDelegate.progress != progress;
+    return oldDelegate.progress != progress || oldDelegate.active != active;
   }
 }

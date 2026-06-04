@@ -1,11 +1,11 @@
 INFO:     Will watch for changes in these directories: ['/home/febrian/development/multimedia_project']
 INFO:     Uvicorn running on http://127.0.0.1:8000 (Press CTRL+C to quit)
-INFO:     Started reloader process [23681] using StatReload
-INFO:     Started server process [23685]
+INFO:     Started reloader process [6148] using StatReload
+INFO:     Started server process [6152]
 INFO:     Waiting for application startup.
 INFO:     Application startup complete.
-[ WARN:0@0.602] global cap_v4l.cpp:914 open VIDEOIO(V4L2:/dev/video2): can't open camera by index
-[ WARN:0@0.699] global cap.cpp:438 open VIDEOIO(FFMPEG): raised OpenCV exception:
+[ WARN:0@0.755] global cap_v4l.cpp:914 open VIDEOIO(V4L2:/dev/video2): can't open camera by index
+[ WARN:0@0.860] global cap.cpp:438 open VIDEOIO(FFMPEG): raised OpenCV exception:
 
 OpenCV(4.13.0) /io/opencv/modules/videoio/src/cap_ffmpeg_impl.hpp:1220: error: (-2:Unspecified error) in function 'bool CvCapture_FFMPEG::open(const char*, int, const cv::Ptr<cv::IStreamReader>&, const cv::VideoCaptureParameters&)'
 > VIDEOIO/FFMPEG: Camera index out of range (expected: 'index < device_list->nb_devices'), where
@@ -14,23 +14,13 @@ OpenCV(4.13.0) /io/opencv/modules/videoio/src/cap_ffmpeg_impl.hpp:1220: error: (
 >     'device_list->nb_devices' is 2
 
 
-[ERROR:0@0.700] global obsensor_uvc_stream_channel.cpp:163 getStreamChannelGroup Camera index out of range
-[ WARN:0@0.700] global cap_v4l.cpp:914 open VIDEOIO(V4L2:/dev/video2): can't open camera by index
-[ WARN:0@0.700] global cap.cpp:478 open VIDEOIO(V4L2): backend is generally available but can't be used to capture by index
+[ERROR:0@0.862] global obsensor_uvc_stream_channel.cpp:163 getStreamChannelGroup Camera index out of range
+[ WARN:0@0.862] global cap_v4l.cpp:914 open VIDEOIO(V4L2:/dev/video2): can't open camera by index
+[ WARN:0@0.862] global cap.cpp:478 open VIDEOIO(V4L2): backend is generally available but can't be used to capture by index
 WARNING: All log messages before absl::InitializeLog() is called are written to STDERR
-I0000 00:00:1780389416.479327   23739 gl_context_egl.cc:85] Successfully initialized EGL. Major : 1 Minor: 5
-I0000 00:00:1780389416.533867   23740 gl_context.cc:344] GL version: 3.2 (OpenGL ES 3.2 NVIDIA 595.71.05), renderer: NVIDIA GeForce RTX 4050 Laptop GPU/PCIe/SSE2
-W0000 00:00:1780389416.535812   23739 face_landmarker_graph.cc:174] Sets FaceBlendshapesGraph acceleration to xnnpack by default.
+I0000 00:00:1780564179.063609    6207 gl_context_egl.cc:85] Successfully initialized EGL. Major : 1 Minor: 5
+I0000 00:00:1780564179.134139    6211 gl_context.cc:344] GL version: 3.2 (OpenGL ES 3.2 NVIDIA 595.71.05), renderer: NVIDIA GeForce RTX 4050 Laptop GPU/PCIe/SSE2
+W0000 00:00:1780564179.141010    6207 face_landmarker_graph.cc:174] Sets FaceBlendshapesGraph acceleration to xnnpack by default.
 INFO: Created TensorFlow Lite XNNPACK delegate for CPU.
-I0000 00:00:1780389416.567218   23739 gl_context_egl.cc:85] Successfully initialized EGL. Major : 1 Minor: 5
-I0000 00:00:1780389416.610823   23782 gl_context.cc:344] GL version: 3.2 (OpenGL ES 3.2 NVIDIA 595.71.05), renderer: NVIDIA GeForce RTX 4050 Laptop GPU/PCIe/SSE2
-[LANDMARKER] path = /home/febrian/development/multimedia_project/backend/models/face_landmarker.task
-[LANDMARKER] exists = True
-INFO:     127.0.0.1:35520 - "GET /drivers HTTP/1.1" 200 OK
-INFO:     127.0.0.1:35524 - "GET /driver_status HTTP/1.1" 200 OK
-INFO:     127.0.0.1:35532 - "GET /driver_status HTTP/1.1" 200 OK
-INFO:     Shutting down
-INFO:     Waiting for application shutdown.
-INFO:     Application shutdown complete.
-INFO:     Finished server process [23685]
-INFO:     Stopping reloader process [23681]
+I0000 00:00:1780564179.264573    6207 gl_context_egl.cc:85] Successfully initialized EGL. Major : 1 Minor: 5
+I0000 00:00:1780564179.297156    6253 gl_context.cc:344] GL version: 3.2 (OpenGL ES 3.2 NVIDIA 595.71.05), renderer: NVIDIA GeForce RTX 4050 Laptop GPU/PCIe/SSE2

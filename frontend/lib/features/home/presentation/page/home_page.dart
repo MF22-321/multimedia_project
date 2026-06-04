@@ -4,19 +4,24 @@ import 'dart:ui';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:frontend/core/model/fragrance_feedback.dart';
 import 'package:frontend/core/localization/app_strings.dart';
 import 'package:frontend/core/navigation/app_language_control.dart';
 import 'package:frontend/core/navigation/drowsiness_control.dart';
 import 'package:frontend/core/navigation/driver_session.dart';
 import 'package:frontend/core/navigation/smart_music_navigation.dart';
+import 'package:frontend/core/provider/music_provider.dart';
 import 'package:frontend/core/services/drive_pref_service.dart';
 import 'package:frontend/core/services/drowsiness_api.dart';
+import 'package:frontend/core/services/fragrance_ai_mqtt_service.dart';
+import 'package:frontend/core/services/music_mqtt_service.dart';
 import 'package:frontend/services/mqtt_avatar_service.dart';
 import 'package:frontend/features/home/presentation/widget/music_page.dart'
     hide getMusicAccentColor;
 import 'package:frontend/features/home/presentation/widget/phone_content.dart';
 import 'package:frontend/features/home/presentation/widget/settings_content.dart';
 import 'package:frontend/widgets/ai_assistant_overlay.dart';
+import 'package:frontend/widgets/fragrance_feedback_overlay.dart';
 import 'package:provider/provider.dart';
 
 import 'package:frontend/core/navigation/app_navigation.dart';
@@ -48,6 +53,8 @@ class HomePage extends StatefulWidget {
 
 class _HomePageState extends State<HomePage> {
   final MqttAvatarService _avatarService = MqttAvatarService();
+  final MusicMqttService _musicMqttService = MusicMqttService();
+  late final FragranceAiMqttService _fragranceAiMqttService;
 
   bool isReady = false;
 
@@ -58,6 +65,9 @@ class _HomePageState extends State<HomePage> {
   _HomePopup _activePopup = _HomePopup.none;
   String? _lastSuggestedMood;
   DateTime? _lastMoodSuggestionAt;
+  Timer? _fragranceFeedbackTimer;
+  FragranceFeedback? _fragranceFeedback;
+  bool _showFragranceFeedback = false;
 
   @override
   void initState() {
@@ -65,13 +75,18 @@ class _HomePageState extends State<HomePage> {
 
     DriverSession.currentDriver.addListener(_onDriverChanged);
     DrowsinessControl.enabled.addListener(_onDrowsinessSettingChanged);
+    _fragranceAiMqttService = FragranceAiMqttService(
+      onFeedback: _showFragranceOverlay,
+    );
 
     _init();
     _avatarService.connect();
+    _fragranceAiMqttService.connect();
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
       context.read<VideoProvider>().init(context);
+      _musicMqttService.connect(musicProvider: context.read<MusicProvider>());
     });
   }
 
@@ -80,8 +95,27 @@ class _HomePageState extends State<HomePage> {
     DriverSession.currentDriver.removeListener(_onDriverChanged);
     DrowsinessControl.enabled.removeListener(_onDrowsinessSettingChanged);
     _drowsyTimer?.cancel();
+    _fragranceFeedbackTimer?.cancel();
     _avatarService.dispose();
+    _musicMqttService.dispose();
+    _fragranceAiMqttService.dispose();
     super.dispose();
+  }
+
+  void _showFragranceOverlay(FragranceFeedback feedback) {
+    if (!mounted) return;
+
+    _fragranceFeedbackTimer?.cancel();
+
+    setState(() {
+      _fragranceFeedback = feedback;
+      _showFragranceFeedback = true;
+    });
+
+    _fragranceFeedbackTimer = Timer(const Duration(seconds: 3), () {
+      if (!mounted) return;
+      setState(() => _showFragranceFeedback = false);
+    });
   }
 
   /// ================= INIT =================
@@ -472,6 +506,11 @@ class _HomePageState extends State<HomePage> {
               ),
               const SideMenu(),
             ],
+          ),
+
+          FragranceFeedbackOverlay(
+            feedback: _fragranceFeedback,
+            visible: _showFragranceFeedback,
           ),
 
           AiAssistantOverlay(service: _avatarService),
