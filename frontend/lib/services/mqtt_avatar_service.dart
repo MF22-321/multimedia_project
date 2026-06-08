@@ -123,6 +123,8 @@ class MqttAvatarService extends ChangeNotifier {
   }
 
   void setState(AvatarState nextState, {bool resetText = false}) {
+    if (_state == nextState && !resetText) return;
+
     _state = nextState;
 
     if (resetText ||

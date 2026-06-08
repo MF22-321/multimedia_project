@@ -40,8 +40,10 @@ class DrowsinessStatusResponse(BaseModel):
     eye_score: float = 0.0
     yawn_score: float = 0.0
     ear_ratio: Optional[float] = None
+    eye_closed_elapsed: float = 0.0
     score: float = 0.0
     alert_active: bool = False
+    alert_reason: Optional[str] = None
     calibrating: bool = False
     calib_remaining: float = 0.0
     status: str = "inactive"

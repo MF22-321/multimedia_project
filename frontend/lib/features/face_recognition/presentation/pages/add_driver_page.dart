@@ -100,7 +100,7 @@ class _AddDriverPageState extends State<AddDriverPage2>
       final result = await FaceIdApi.enrollLiveBurst(
         driverName: name,
         durationSec: 8.0,
-        targetSamples: 60,
+        targetSamples: 40,
       );
 
       if (!mounted) return;
@@ -203,7 +203,12 @@ class _AddDriverPageState extends State<AddDriverPage2>
                   secondsLeft: shownNumber,
                   width: 300,
                   height: 300,
-                  child: LiveCameraWS(url: FaceIdApi.cameraWs),
+                  child: LiveCameraWS(
+                    url: FaceIdApi.cameraPreviewWs,
+                    width: 280,
+                    height: 210,
+                    maxFps: 16,
+                  ),
                 );
               },
             ),

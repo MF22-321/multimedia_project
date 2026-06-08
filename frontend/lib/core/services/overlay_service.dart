@@ -21,13 +21,17 @@ class VideoOverlayService {
     required OverlayState overlayState,
     required String videoAsset,
   }) {
-    /// 🔥 prevent double overlay
+    /// Prevent double overlay.
     if (_overlayEntry != null) return;
 
     _overlayEntry = OverlayEntry(
+      opaque: true,
+      maintainState: false,
       builder: (context) => Material(
-        color: Colors.transparent,
-        child: VideoPlayerPage(videoAsset: videoAsset, onFinish: hide),
+        color: Colors.black,
+        child: SizedBox.expand(
+          child: VideoPlayerPage(videoAsset: videoAsset, onFinish: hide),
+        ),
       ),
     );
 

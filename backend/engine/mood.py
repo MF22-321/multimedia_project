@@ -14,6 +14,7 @@ def clamp01(value):
 @dataclass(frozen=True)
 class MoodConfig:
     confirm_seconds: float = 7.0
+    sad_confirm_seconds: float = 10.0
     neutral_confirm_seconds: float = 2.0
 
 
@@ -47,17 +48,18 @@ def extract_mood_from_landmarks(points):
 
         mouth_center_y = float((upper_lip[1] + lower_lip[1]) / 2.0)
         corner_y = float((left_corner[1] + right_corner[1]) / 2.0)
+        mouth_open = float(np.linalg.norm(lower_lip - upper_lip) / face_width)
 
         # MediaPipe image coordinates grow downward on the y axis.
         mouth_curve = (mouth_center_y - corner_y) / face_width
 
         smile_score = clamp01((mouth_curve - 0.010) / 0.040)
-        sadness_score = clamp01((-mouth_curve - 0.004) / 0.026)
+        sadness_score = clamp01((-mouth_curve - 0.014) / 0.036)
 
         if smile_score >= 0.45 and smile_score >= sadness_score:
             mood = "happy"
             confidence = smile_score
-        elif sadness_score >= 0.35:
+        elif mouth_open < 0.055 and sadness_score >= 0.55:
             mood = "sad"
             confidence = sadness_score
         else:
@@ -94,11 +96,12 @@ class MoodTracker:
     def step(self, points, now):
         raw = extract_mood_from_landmarks(points)
         raw_mood = raw["mood"]
-        required_sec = (
-            self.config.neutral_confirm_seconds
-            if raw_mood in ("neutral", "unknown")
-            else self.config.confirm_seconds
-        )
+        if raw_mood == "sad":
+            required_sec = self.config.sad_confirm_seconds
+        elif raw_mood in ("neutral", "unknown"):
+            required_sec = self.config.neutral_confirm_seconds
+        else:
+            required_sec = self.config.confirm_seconds
 
         if raw_mood != self.candidate:
             self.candidate = raw_mood

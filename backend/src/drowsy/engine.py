@@ -18,8 +18,10 @@ class DrowsyOutputs:
     eye_score: float
     yawn_score: float
     ear_ratio: float | None
+    eye_closed_elapsed: float
     score: float
     alert_active: bool
+    alert_reason: str | None
 
     calibrating: bool
     calib_remaining: float
@@ -45,6 +47,9 @@ class DrowsinessEngine:
         self.score_smoothed = 0.0
         self.yawn_points = 0.0
         self.alert_until = 0.0
+        self.eye_closed_since = None
+        self.eye_closed_elapsed = 0.0
+        self.alert_reason = None
 
     def _reset_monitoring(self):
         self.yawn_frame_counter = 0
@@ -56,6 +61,9 @@ class DrowsinessEngine:
         self.score_smoothed = 0.0
         self.yawn_points = 0.0
         self.alert_until = 0.0
+        self.eye_closed_since = None
+        self.eye_closed_elapsed = 0.0
+        self.alert_reason = None
 
     def set_profile_baseline(self, baseline_ear: float, source: str):
         self.baseline_ear = float(baseline_ear)
@@ -103,8 +111,10 @@ class DrowsinessEngine:
                 baseline_source=self.baseline_source,
                 yawn_status="NO", yawn_total=self.yawn_total, yawns_in_window=0,
                 eye_score=0.0, yawn_score=0.0, ear_ratio=None,
+                eye_closed_elapsed=0.0,
                 score=self.score_smoothed,
                 alert_active=False,
+                alert_reason=None,
                 calibrating=True,
                 calib_remaining=remaining
             )
@@ -139,6 +149,7 @@ class DrowsinessEngine:
         yawn_score = 0.0
         ear_ratio = None
         alert_from_score = False
+        alert_from_closed_eye = False
 
         if c.use_score:
             self.yawn_points = max(0.0, self.yawn_points - c.yawn_decay_per_sec)
@@ -159,7 +170,18 @@ class DrowsinessEngine:
 
             score_raw = c.w_eye * eye_score + c.w_yawn * yawn_score
             self.score_smoothed = (1 - c.score_alpha) * self.score_smoothed + c.score_alpha * score_raw
-            alert_from_score = (self.score_smoothed >= c.score_alert_th)
+
+        closed_by_ratio = ear_ratio is not None and ear_ratio <= c.closed_eye_ratio
+        closed_by_absolute_ear = ear is not None and ear <= c.closed_eye_ear
+
+        if closed_by_ratio or closed_by_absolute_ear:
+            if self.eye_closed_since is None:
+                self.eye_closed_since = now
+            self.eye_closed_elapsed = now - self.eye_closed_since
+            alert_from_closed_eye = self.eye_closed_elapsed >= c.closed_eye_alert_sec
+        else:
+            self.eye_closed_since = None
+            self.eye_closed_elapsed = 0.0
 
         # yawn rule
         alert_from_yawn_rule = False
@@ -168,10 +190,29 @@ class DrowsinessEngine:
             self.yawn_times = []
             yawns_in_window = 0
 
-        alert_should = alert_from_score or alert_from_yawn_rule
+        alert_from_score = (
+            self.score_smoothed >= c.score_alert_th
+            and (
+                alert_from_closed_eye
+                or yawn_event
+                or yawns_in_window > 0
+            )
+        )
+
+        alert_should = alert_from_score or alert_from_yawn_rule or alert_from_closed_eye
         if alert_should:
             self.alert_until = max(self.alert_until, now + c.alert_hold_sec)
+
+            if alert_from_closed_eye:
+                self.alert_reason = "closed_eye"
+            elif alert_from_yawn_rule:
+                self.alert_reason = "yawn"
+            else:
+                self.alert_reason = "score"
+
         alert_active = (now < self.alert_until) or alert_should
+        if not alert_active:
+            self.alert_reason = None
 
         return DrowsyOutputs(
             ear=ear, mar=mar,
@@ -183,8 +224,10 @@ class DrowsinessEngine:
             eye_score=eye_score,
             yawn_score=yawn_score,
             ear_ratio=ear_ratio,
+            eye_closed_elapsed=self.eye_closed_elapsed,
             score=self.score_smoothed,
             alert_active=alert_active,
+            alert_reason=self.alert_reason,
             calibrating=False,
             calib_remaining=0.0
         )

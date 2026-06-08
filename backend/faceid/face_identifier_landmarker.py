@@ -34,11 +34,11 @@ class FaceIdentifierLandmarker:
 
     def __init__(
         self,
-        conf_threshold: float = 0.50,         # you found 0.30 works; ok for prototype
+        conf_threshold: float = 0.42,
         min_face_px: int = 120,
-        vote_window_sec: float = 1.5,         # duration of history used for voting
-        vote_min_ratio: float = 0.60,         # winner must occupy >= 60% votes
-        vote_min_samples: int = 6             # need enough samples before deciding
+        vote_window_sec: float = 1.8,
+        vote_min_ratio: float = 0.65,
+        vote_min_samples: int = 4
     ):
         if not MODEL_PATH.exists():
             raise FileNotFoundError(f"LBPH model not found: {MODEL_PATH}")

@@ -7,6 +7,12 @@ import numpy as np
 import mediapipe as mp
 
 from backend.faceid import FaceID
+from backend.faceid.config import (
+    CONF_THRESHOLD,
+    VOTE_MIN_RATIO,
+    VOTE_MIN_SAMPLES,
+    VOTE_WINDOW_SEC,
+)
 from backend.src.drowsy.engine import DrowsinessEngine
 from backend.src.drowsy.metrics import eye_aspect_ratio, mouth_aspect_ratio
 from backend.src.config import CameraConfig
@@ -19,11 +25,34 @@ DEBUG_CAMERA_STREAM = os.getenv("BACKEND_DEBUG_CAMERA", "").lower() in {
     "yes",
     "on",
 }
+DRAW_CAMERA_OVERLAY = os.getenv("DRAW_CAMERA_OVERLAY", "0").lower() in {
+    "1",
+    "true",
+    "yes",
+    "on",
+}
+CAMERA_LOOP_FPS = float(os.getenv("CAMERA_LOOP_FPS", "12"))
+FACEID_EVERY_N_FRAMES = max(1, int(os.getenv("FACEID_EVERY_N_FRAMES", "3")))
+DROWSY_EVERY_N_FRAMES = max(1, int(os.getenv("DROWSY_EVERY_N_FRAMES", "3")))
+DROWSY_FRAME_OFFSET = max(0, int(os.getenv("DROWSY_FRAME_OFFSET", "1")))
+CV2_THREADS = max(1, int(os.getenv("CV2_THREADS", "2")))
+DRIVER_MATCH_GRACE_SEC = float(os.getenv("DRIVER_MATCH_GRACE_SEC", "10"))
+FACE_FRONTAL_YAW_THRESHOLD = float(os.getenv("FACE_FRONTAL_YAW_THRESHOLD", "0.06"))
+
+try:
+    cv2.setNumThreads(CV2_THREADS)
+except Exception:
+    pass
 
 
 def log_debug(message, *args):
     if DEBUG_CAMERA_STREAM:
         logger.info(message, *args)
+
+
+def sleep_remaining(start_time, target_delay):
+    elapsed = time.time() - start_time
+    time.sleep(max(0.0, target_delay - elapsed))
 
 
 # =========================================================
@@ -32,11 +61,13 @@ def log_debug(message, *args):
 camera = None
 last_frame = None
 frame_lock = threading.Lock()
+last_driver_match_at = 0.0
 
 recognizer = None
 drowsy_engine = None
 face_mesh = None
 mood_tracker = MoodTracker()
+enrollment_active = False
 
 
 # =========================================================
@@ -70,8 +101,10 @@ drowsiness_status = {
     "eye_score": 0.0,
     "yawn_score": 0.0,
     "ear_ratio": None,
+    "eye_closed_elapsed": 0.0,
     "score": 0.0,
     "alert_active": False,
+    "alert_reason": None,
     "calibrating": False,
     "calib_remaining": 0.0,
     "status": "inactive",
@@ -87,24 +120,27 @@ class DrowsyConfig:
     calib_seconds = 5.0
     min_baseline = 0.15
 
-    mar_threshold = 0.23
-    consec_frames_yawn = 6
-    yawn_cooldown_sec = 3.0
-    yawn_window_sec = 20.0
-    yawn_alert_count = 5
+    mar_threshold = float(os.getenv("DROWSY_MAR_THRESHOLD", "0.32"))
+    consec_frames_yawn = int(os.getenv("DROWSY_CONSEC_FRAMES_YAWN", "4"))
+    yawn_cooldown_sec = float(os.getenv("DROWSY_YAWN_COOLDOWN_SEC", "4.0"))
+    yawn_window_sec = float(os.getenv("DROWSY_YAWN_WINDOW_SEC", "60.0"))
+    yawn_alert_count = int(os.getenv("DROWSY_YAWN_ALERT_COUNT", "3"))
 
     use_score = True
-    eye_low_ratio = 0.75
-    eye_full_close_ratio = 0.55
+    eye_low_ratio = float(os.getenv("DROWSY_EYE_LOW_RATIO", "0.62"))
+    eye_full_close_ratio = float(os.getenv("DROWSY_EYE_FULL_CLOSE_RATIO", "0.45"))
+    closed_eye_ratio = float(os.getenv("DROWSY_CLOSED_EYE_RATIO", "0.55"))
+    closed_eye_ear = float(os.getenv("DROWSY_CLOSED_EYE_EAR", "0.16"))
+    closed_eye_alert_sec = float(os.getenv("DROWSY_CLOSED_EYE_ALERT_SEC", "3.0"))
     yawn_points_max = 1.0
     yawn_points_per_event = 0.35
     yawn_decay_per_sec = 0.02
 
-    w_eye = 0.7
-    w_yawn = 0.3
+    w_eye = 0.55
+    w_yawn = 0.45
     score_alpha = 0.20
-    score_alert_th = 0.65
-    alert_hold_sec = 3.0
+    score_alert_th = 0.85
+    alert_hold_sec = 4.0
 
 
 # =========================================================
@@ -168,6 +204,14 @@ def init_camera():
         if camera is None or not camera.isOpened():
             raise RuntimeError("Cannot open webcam")
 
+        fourcc = os.getenv("CAMERA_FOURCC", "MJPG")[:4]
+        if len(fourcc) == 4:
+            camera.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter_fourcc(*fourcc[:4]))
+
+        camera.set(
+            cv2.CAP_PROP_BUFFERSIZE,
+            int(os.getenv("CAMERA_BUFFER_SIZE", "1")),
+        )
         camera.set(cv2.CAP_PROP_FRAME_WIDTH, cfg.width)
         camera.set(cv2.CAP_PROP_FRAME_HEIGHT, cfg.height)
         camera.set(cv2.CAP_PROP_FPS, cfg.fps)
@@ -180,10 +224,10 @@ def init_recognizer():
 
     if recognizer is None:
         recognizer = FaceID(
-            conf_threshold=0.38,
-            vote_window_sec=1.5,
-            vote_min_ratio=0.60,
-            vote_min_samples=6,
+            conf_threshold=CONF_THRESHOLD,
+            vote_window_sec=VOTE_WINDOW_SEC,
+            vote_min_ratio=VOTE_MIN_RATIO,
+            vote_min_samples=VOTE_MIN_SAMPLES,
         )
         logger.info("[INIT] Recognizer initialized")
 
@@ -205,7 +249,8 @@ def init_face_mesh():
         face_mesh = face_mesh_module.FaceMesh(
             static_image_mode=False,
             max_num_faces=1,
-            refine_landmarks=True,
+            refine_landmarks=os.getenv("FACE_MESH_REFINE", "0").lower()
+            in {"1", "true", "yes", "on"},
             min_detection_confidence=0.5,
             min_tracking_confidence=0.5,
         )
@@ -222,10 +267,10 @@ def reload_recognizer():
         pass
 
     recognizer = FaceID(
-        conf_threshold=0.30,
-        vote_window_sec=1.5,
-        vote_min_ratio=0.60,
-        vote_min_samples=6,
+        conf_threshold=CONF_THRESHOLD,
+        vote_window_sec=VOTE_WINDOW_SEC,
+        vote_min_ratio=VOTE_MIN_RATIO,
+        vote_min_samples=VOTE_MIN_SAMPLES,
     )
     logger.info("[INIT] Recognizer reloaded")
 
@@ -234,9 +279,10 @@ def reload_recognizer():
 # RESET / START / STOP
 # =========================================================
 def reset_drowsiness_status(driver_name=None):
-    global drowsiness_status
+    global drowsiness_status, last_driver_match_at
 
     is_active = driver_name is not None
+    last_driver_match_at = time.time() if is_active else 0.0
     mood_tracker.reset()
 
     drowsiness_status = {
@@ -260,8 +306,10 @@ def reset_drowsiness_status(driver_name=None):
         "eye_score": 0.0,
         "yawn_score": 0.0,
         "ear_ratio": None,
+        "eye_closed_elapsed": 0.0,
         "score": 0.0,
         "alert_active": False,
+        "alert_reason": None,
         "calibrating": is_active,
         "calib_remaining": 3.0 if is_active else 0.0,
         "status": "calibrating" if is_active else "inactive",
@@ -312,6 +360,11 @@ def get_driver_status():
     return dict(driver_status)
 
 
+def set_enrollment_active(active: bool):
+    global enrollment_active
+    enrollment_active = bool(active)
+
+
 # =========================================================
 # DROWSINESS UPDATE
 # =========================================================
@@ -335,20 +388,39 @@ def reset_detection_values(status="waiting_driver"):
     drowsiness_status["eye_score"] = 0.0
     drowsiness_status["yawn_score"] = 0.0
     drowsiness_status["ear_ratio"] = None
+    drowsiness_status["eye_closed_elapsed"] = 0.0
     drowsiness_status["score"] = 0.0
     drowsiness_status["alert_active"] = False
+    drowsiness_status["alert_reason"] = None
     drowsiness_status["status"] = status
 
 
 def update_driver_match_status():
+    global last_driver_match_at
+
     target_driver = drowsiness_status.get("driver_name")
     recognized_driver = driver_status.get("driver")
+
+    now = time.time()
+    if target_driver and recognized_driver == target_driver:
+        last_driver_match_at = now
+
+    has_recent_driver_match = (
+        last_driver_match_at > 0.0
+        and (now - last_driver_match_at) <= DRIVER_MATCH_GRACE_SEC
+    )
+    faceid_temporarily_missing = bool(target_driver) and recognized_driver is None
+    within_grace = faceid_temporarily_missing and (
+        has_recent_driver_match
+    )
 
     driver_match = bool(
         drowsiness_status.get("active")
         and target_driver
-        and recognized_driver
-        and recognized_driver == target_driver
+        and (
+            (recognized_driver == target_driver)
+            or within_grace
+        )
     )
 
     drowsiness_status["recognized_driver"] = recognized_driver
@@ -379,13 +451,16 @@ def update_drowsiness_from_metrics(ear, mar, now):
 
     log_debug(
         "[DROWSY OUT] calibrating=%s calib_remaining=%.2f "
-        "eye_score=%.3f yawn_score=%.3f score=%.3f alert=%s",
+        "eye_score=%.3f eye_closed=%.2fs yawn_score=%.3f "
+        "score=%.3f alert=%s reason=%s",
         out.calibrating,
         out.calib_remaining,
         out.eye_score,
+        out.eye_closed_elapsed,
         out.yawn_score,
         out.score,
         out.alert_active,
+        out.alert_reason,
     )
 
     drowsiness_status["ear"] = None if out.ear is None else float(out.ear)
@@ -396,8 +471,10 @@ def update_drowsiness_from_metrics(ear, mar, now):
     drowsiness_status["eye_score"] = float(out.eye_score)
     drowsiness_status["yawn_score"] = float(out.yawn_score)
     drowsiness_status["ear_ratio"] = None if out.ear_ratio is None else float(out.ear_ratio)
+    drowsiness_status["eye_closed_elapsed"] = float(out.eye_closed_elapsed)
     drowsiness_status["score"] = float(out.score)
     drowsiness_status["alert_active"] = bool(out.alert_active)
+    drowsiness_status["alert_reason"] = out.alert_reason
     drowsiness_status["calibrating"] = bool(out.calibrating)
     drowsiness_status["calib_remaining"] = float(out.calib_remaining)
 
@@ -457,7 +534,7 @@ def extract_ear_mar(frame):
     face_landmarks = result.multi_face_landmarks[0]
 
     # NEW: frontal face check
-    frontal = is_frontal_face(face_landmarks, yaw_threshold=0.035)
+    frontal = is_frontal_face(face_landmarks, yaw_threshold=FACE_FRONTAL_YAW_THRESHOLD)
     if not frontal:
         log_debug("[POSE] face not frontal -> skip EAR/MAR update")
         return None, None, None, False
@@ -606,6 +683,8 @@ def camera_loop():
     global last_frame
 
     logger.info("[SYSTEM] Camera thread started")
+    frame_count = 0
+    loop_delay = 1.0 / max(CAMERA_LOOP_FPS, 1.0)
 
     init_camera()
     init_recognizer()
@@ -623,6 +702,8 @@ def camera_loop():
     )
 
     while True:
+        loop_started = time.time()
+
         try:
             ret, frame = camera.read()
 
@@ -633,55 +714,81 @@ def camera_loop():
                 time.sleep(0.1)
                 continue
 
+            frame_count += 1
+
+            if not DRAW_CAMERA_OVERLAY:
+                with frame_lock:
+                    last_frame = frame.copy()
+
             # =================================================
             # FACE RECOGNITION
             # =================================================
-            stable_name, stable_ratio, bbox = recognizer.step(frame)
+            if enrollment_active:
+                stable_name = (
+                    driver_status.get("driver")
+                    if driver_status.get("recognized")
+                    else None
+                )
+                stable_ratio = None
+                bbox = recognizer.last_bbox
+            elif frame_count % FACEID_EVERY_N_FRAMES == 0:
+                stable_name, stable_ratio, bbox = recognizer.step(frame)
+            else:
+                stable_name = (
+                    driver_status.get("driver")
+                    if driver_status.get("recognized")
+                    else None
+                )
+                stable_ratio = None
+                bbox = recognizer.last_bbox
+
             raw_name = recognizer.last_raw_name
             raw_conf = recognizer.last_raw_conf
 
-            preview = frame.copy()
+            preview = frame.copy() if DRAW_CAMERA_OVERLAY else frame
 
-            if bbox is not None:
+            if DRAW_CAMERA_OVERLAY and bbox is not None:
                 x, y, w, h = bbox
                 cv2.rectangle(preview, (x, y), (x + w, y + h), (0, 255, 0), 2)
 
-            if raw_name:
-                driver_status["driver"] = raw_name
+            if stable_name:
+                driver_status["driver"] = stable_name
                 driver_status["recognized"] = True
-                driver_status["confidence"] = raw_conf
+                driver_status["confidence"] = raw_conf if raw_name == stable_name else 0.0
                 driver_status["bbox"] = bbox
 
-                cv2.putText(
-                    preview,
-                    f"{raw_name} | {raw_conf:.2f}",
-                    (20, 30),
-                    cv2.FONT_HERSHEY_SIMPLEX,
-                    0.8,
-                    (0, 255, 0),
-                    2,
-                    cv2.LINE_AA,
-                )
+                if DRAW_CAMERA_OVERLAY:
+                    cv2.putText(
+                        preview,
+                        f"{stable_name} | {driver_status['confidence']:.2f}",
+                        (20, 30),
+                        cv2.FONT_HERSHEY_SIMPLEX,
+                        0.8,
+                        (0, 255, 0),
+                        2,
+                        cv2.LINE_AA,
+                    )
             else:
                 driver_status["driver"] = None
                 driver_status["recognized"] = False
                 driver_status["confidence"] = raw_conf
                 driver_status["bbox"] = bbox
 
-                unknown_text = "Unknown"
-                if bbox is not None:
-                    unknown_text = f"Unknown | {raw_conf:.2f}"
+                if DRAW_CAMERA_OVERLAY:
+                    unknown_text = "Unknown"
+                    if bbox is not None:
+                        unknown_text = f"Unknown | {raw_conf:.2f}"
 
-                cv2.putText(
-                    preview,
-                    unknown_text,
-                    (20, 30),
-                    cv2.FONT_HERSHEY_SIMPLEX,
-                    0.8,
-                    (0, 0, 255),
-                    2,
-                    cv2.LINE_AA,
-                )
+                    cv2.putText(
+                        preview,
+                        unknown_text,
+                        (20, 30),
+                        cv2.FONT_HERSHEY_SIMPLEX,
+                        0.8,
+                        (0, 0, 255),
+                        2,
+                        cv2.LINE_AA,
+                    )
 
             # =================================================
             # DROWSINESS
@@ -710,21 +817,33 @@ def camera_loop():
                         drowsiness_status["recognized_driver"],
                         drowsiness_status["driver_name"],
                     )
-                    draw_drowsiness_overlay(preview)
+                    if DRAW_CAMERA_OVERLAY:
+                        draw_drowsiness_overlay(preview)
 
                     with frame_lock:
                         last_frame = preview
 
-                    time.sleep(0.03)
+                    sleep_remaining(loop_started, loop_delay)
                     continue
 
-                ear, mar, pts, frontal = extract_ear_mar(frame)
+                should_update_drowsy = (
+                    (frame_count - DROWSY_FRAME_OFFSET)
+                    % DROWSY_EVERY_N_FRAMES
+                    == 0
+                )
+
+                if should_update_drowsy:
+                    ear, mar, pts, frontal = extract_ear_mar(frame)
+                else:
+                    frontal = drowsiness_status.get("face_position") == "frontal"
 
                 drowsiness_status["face_position"] = "frontal" if frontal else "not_frontal"
 
                 log_debug("[LOOP DEBUG] frontal=%s ear=%s mar=%s", frontal, ear, mar)
 
-                if frontal and ear is not None and mar is not None:
+                if not should_update_drowsy:
+                    pass
+                elif frontal and ear is not None and mar is not None:
                     now = time.time()
                     update_drowsiness_from_metrics(ear, mar, now)
                     update_mood_from_landmarks(pts, now)
@@ -739,12 +858,13 @@ def camera_loop():
                 drowsiness_status["recognized_driver"] = driver_status.get("driver")
                 drowsiness_status["driver_match"] = False
 
-            draw_drowsiness_overlay(preview)
+            if DRAW_CAMERA_OVERLAY:
+                draw_drowsiness_overlay(preview)
 
             with frame_lock:
                 last_frame = preview
 
-            time.sleep(0.03)
+            sleep_remaining(loop_started, loop_delay)
 
         except Exception as e:
             logger.exception("[SYSTEM] camera_loop error: %s", e)

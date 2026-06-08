@@ -1,6 +1,5 @@
 import 'dart:async';
 import 'dart:math' as math;
-import 'dart:ui';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
@@ -35,6 +34,7 @@ class _AiAssistantOverlayState extends State<AiAssistantOverlay>
 
   AvatarState _lastState = AvatarState.idle;
   String? _currentVideoAsset;
+  int _videoSyncGeneration = 0;
   Timer? _subtitleScrollTimer;
   final ScrollController _subtitleScrollController = ScrollController();
 
@@ -98,8 +98,12 @@ class _AiAssistantOverlayState extends State<AiAssistantOverlay>
   }
 
   Future<void> _syncVideoWithState(AvatarState state) async {
+    final generation = ++_videoSyncGeneration;
+
     if (state == AvatarState.idle) {
       _currentVideoAsset = null;
+      await Future<void>.delayed(Duration.zero);
+      if (generation != _videoSyncGeneration) return;
       await _player.stop();
       return;
     }
@@ -113,6 +117,7 @@ class _AiAssistantOverlayState extends State<AiAssistantOverlay>
     _currentVideoAsset = asset;
     await _player.setPlaylistMode(PlaylistMode.single);
     await _player.setVolume(100);
+    if (generation != _videoSyncGeneration) return;
     await _player.open(Media('asset:///$asset'), play: true);
   }
 
@@ -150,49 +155,47 @@ class _AiAssistantOverlayState extends State<AiAssistantOverlay>
         ignoring: !visible,
         child: AnimatedOpacity(
           opacity: visible ? 1 : 0,
-          duration: const Duration(milliseconds: 320),
+          duration: const Duration(milliseconds: 220),
           curve: Curves.easeOutCubic,
           child: AnimatedScale(
-            scale: visible ? 1 : 0.94,
-            duration: const Duration(milliseconds: 360),
+            scale: visible ? 1 : 0.98,
+            duration: const Duration(milliseconds: 260),
             curve: Curves.easeOutCubic,
-            child: Stack(
-              children: [
-                Positioned.fill(
-                  child: BackdropFilter(
-                    filter: ImageFilter.blur(
-                      sigmaX: visible ? 7 : 0,
-                      sigmaY: visible ? 7 : 0,
-                    ),
+            child: RepaintBoundary(
+              child: Stack(
+                children: [
+                  Positioned.fill(
                     child: DecoratedBox(
                       decoration: BoxDecoration(
-                        color: Colors.black.withValues(alpha: 0.70),
+                        color: const Color(0xFF02070B),
                         gradient: RadialGradient(
                           center: Alignment.center,
                           radius: 0.86,
                           colors: [
-                            const Color(0xFF001A20).withValues(alpha: 0.26),
-                            Colors.black.withValues(alpha: 0.58),
-                            Colors.black.withValues(alpha: 0.78),
+                            const Color(0xFF062631),
+                            const Color(0xFF02070B),
+                            Colors.black,
                           ],
                           stops: const [0, 0.62, 1],
                         ),
                       ),
                     ),
                   ),
-                ),
-                Center(
-                  child: _AssistantCard(
-                    state: state,
-                    subtitle: widget.service.subtitle,
-                    isConnected: widget.service.isConnected,
-                    pulse: _pulseController,
-                    typing: _typingController,
-                    videoController: _videoController,
-                    subtitleScrollController: _subtitleScrollController,
+                  Center(
+                    child: RepaintBoundary(
+                      child: _AssistantCard(
+                        state: state,
+                        subtitle: widget.service.subtitle,
+                        isConnected: widget.service.isConnected,
+                        pulse: _pulseController,
+                        typing: _typingController,
+                        videoController: _videoController,
+                        subtitleScrollController: _subtitleScrollController,
+                      ),
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
           ),
         ),
@@ -237,8 +240,8 @@ class _AssistantCard extends StatelessWidget {
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
           colors: [
-            const Color(0xFF07131A).withValues(alpha: 0.76),
-            const Color(0xFF02070B).withValues(alpha: 0.62),
+            const Color(0xFF07131A),
+            const Color(0xFF02070B),
           ],
         ),
         border: Border.all(

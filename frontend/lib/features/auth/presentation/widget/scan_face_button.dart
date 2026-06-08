@@ -29,6 +29,7 @@ class _ScanFaceButtonState extends State<ScanFaceButton> {
   final Duration _steadyDuration = const Duration(milliseconds: 800);
 
   bool _isTriggered = false;
+  bool _pollingBusy = false;
 
   String? _currentDriverName;
   double? _confidence;
@@ -60,6 +61,7 @@ class _ScanFaceButtonState extends State<ScanFaceButton> {
   void _stopScan() {
     _timer?.cancel();
     _countdownTimer?.cancel();
+    _pollingBusy = false;
 
     if (!mounted) return;
 
@@ -81,6 +83,8 @@ class _ScanFaceButtonState extends State<ScanFaceButton> {
     _countdownTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
       if (_countdown == 0) {
         timer.cancel();
+        _timer?.cancel();
+        _pollingBusy = false;
 
         debugPrint("🚀 START ENROLL");
 
@@ -98,10 +102,12 @@ class _ScanFaceButtonState extends State<ScanFaceButton> {
     _timer?.cancel();
 
     _timer = Timer.periodic(const Duration(milliseconds: 500), (_) async {
+      if (_pollingBusy) return;
+      _pollingBusy = true;
+
       try {
         final result = await FaceIdApi.getDriverStatus();
-
-        debugPrint("API RESULT: $result");
+        if (!mounted) return;
 
         final bbox = result["bbox"];
         final detected = bbox is List && bbox.length == 4;
@@ -143,6 +149,8 @@ class _ScanFaceButtonState extends State<ScanFaceButton> {
         }
       } catch (e) {
         debugPrint("❌ Polling error: $e");
+      } finally {
+        _pollingBusy = false;
       }
     });
   }
@@ -174,7 +182,15 @@ class _ScanFaceButtonState extends State<ScanFaceButton> {
             ? Stack(
                 children: [
                   /// CAMERA
-                  Positioned.fill(child: LiveCameraWS(url: FaceIdApi.cameraWs)),
+                  Positioned.fill(
+                    child: LiveCameraWS(
+                      url: FaceIdApi.cameraScanWs,
+                      width: 400.w,
+                      height: 300.h,
+                      maxFps: 12,
+                      fit: BoxFit.cover,
+                    ),
+                  ),
 
                   /// 🔥 COUNTDOWN BESAR
                   if (_countdown > 0)

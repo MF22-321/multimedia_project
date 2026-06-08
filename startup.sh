@@ -16,7 +16,7 @@ fi
 
 BACKEND_HOST="${BACKEND_HOST:-127.0.0.1}"
 BACKEND_PORT="${BACKEND_PORT:-8000}"
-FRONTEND_MODE="${FRONTEND_MODE:-run}"
+FRONTEND_MODE="${FRONTEND_MODE:-release}"
 BACKEND_RELOAD="${BACKEND_RELOAD:-0}"
 START_SPOTIFYD="${START_SPOTIFYD:-1}"
 VIDEO_HW_ACCEL="${VIDEO_HW_ACCEL:-0}"
@@ -24,6 +24,19 @@ VIDEO_SURFACE_WIDTH="${VIDEO_SURFACE_WIDTH:-960}"
 VIDEO_SURFACE_HEIGHT="${VIDEO_SURFACE_HEIGHT:-540}"
 AI_VIDEO_WIDTH="${AI_VIDEO_WIDTH:-360}"
 AI_VIDEO_HEIGHT="${AI_VIDEO_HEIGHT:-202}"
+CAMERA_LOOP_FPS="${CAMERA_LOOP_FPS:-16}"
+CAMERA_FPS="${CAMERA_FPS:-16}"
+CAMERA_STREAM_WIDTH="${CAMERA_STREAM_WIDTH:-640}"
+CAMERA_STREAM_FPS="${CAMERA_STREAM_FPS:-16}"
+CAMERA_JPEG_QUALITY="${CAMERA_JPEG_QUALITY:-80}"
+CAMERA_WS_WIDTH="${CAMERA_WS_WIDTH:-640}"
+CAMERA_WS_FPS="${CAMERA_WS_FPS:-16}"
+CAMERA_WS_JPEG_QUALITY="${CAMERA_WS_JPEG_QUALITY:-80}"
+FACEID_EVERY_N_FRAMES="${FACEID_EVERY_N_FRAMES:-2}"
+DROWSY_EVERY_N_FRAMES="${DROWSY_EVERY_N_FRAMES:-2}"
+DRAW_CAMERA_OVERLAY="${DRAW_CAMERA_OVERLAY:-0}"
+FACE_MESH_REFINE="${FACE_MESH_REFINE:-0}"
+CV2_THREADS="${CV2_THREADS:-2}"
 SPOTIFYD_SCRIPT="$ROOT_DIR/scripts/start_spotifyd_jetson.sh"
 SPOTIFYD_CACHE_PATH="${SPOTIFYD_CACHE_PATH:-$HOME/.cache/spotifyd}"
 
@@ -55,6 +68,19 @@ export VIDEO_SURFACE_WIDTH
 export VIDEO_SURFACE_HEIGHT
 export AI_VIDEO_WIDTH
 export AI_VIDEO_HEIGHT
+export CAMERA_LOOP_FPS
+export CAMERA_FPS
+export CAMERA_STREAM_WIDTH
+export CAMERA_STREAM_FPS
+export CAMERA_JPEG_QUALITY
+export CAMERA_WS_WIDTH
+export CAMERA_WS_FPS
+export CAMERA_WS_JPEG_QUALITY
+export FACEID_EVERY_N_FRAMES
+export DROWSY_EVERY_N_FRAMES
+export DRAW_CAMERA_OVERLAY
+export FACE_MESH_REFINE
+export CV2_THREADS
 
 cleanup() {
   if [[ -n "${SPOTIFYD_PID:-}" ]] && kill -0 "$SPOTIFYD_PID" 2>/dev/null; then
@@ -66,6 +92,19 @@ cleanup() {
   fi
 }
 trap cleanup EXIT INT TERM
+
+stop_existing_backend() {
+  echo "[backend] stopping existing backend on port ${BACKEND_PORT} if any"
+
+  if command -v fuser >/dev/null 2>&1; then
+    fuser -k "${BACKEND_PORT}/tcp" >/dev/null 2>&1 || true
+    sleep 1
+    return
+  fi
+
+  pkill -f "uvicorn backend.fastAPI.main:app" >/dev/null 2>&1 || true
+  sleep 1
+}
 
 if [[ "$START_SPOTIFYD" == "1" ]]; then
   if [[ -x "$SPOTIFYD_SCRIPT" ]]; then
@@ -91,9 +130,7 @@ if [[ "$START_SPOTIFYD" == "1" ]]; then
   fi
 fi
 
-if command -v fuser >/dev/null 2>&1; then
-  fuser -k "${BACKEND_PORT}/tcp" >/dev/null 2>&1 || true
-fi
+stop_existing_backend
 
 echo "[backend] starting http://${BACKEND_HOST}:${BACKEND_PORT}"
 echo "[backend] python: $PYTHON_BIN"

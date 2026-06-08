@@ -31,6 +31,7 @@ class _AddDriverPageState extends State<AddDriverPage> {
   bool isCapturing = false;
   bool isScanning = false; // 🔥 tambahan penting
   String? detectedDriverName;
+  String? _enrolledDriverName;
 
   Timer? _timer;
   Timer? _recognitionTimer;
@@ -59,6 +60,7 @@ class _AddDriverPageState extends State<AddDriverPage> {
   Future<void> handleEnroll() async {
     setState(() {
       detectedDriverName = null;
+      _enrolledDriverName = null;
       confidence = null;
       _prefLoaded = false;
     });
@@ -93,12 +95,23 @@ class _AddDriverPageState extends State<AddDriverPage> {
       final result = await FaceIdApi.enrollLiveBurst(
         driverName: name,
         durationSec: 8,
-        targetSamples: 60,
+        targetSamples: 40,
       );
 
       if (!mounted) return;
 
       if (result["success"] == true) {
+        final enrolledName = result["driver_name"]?.toString().trim();
+
+        setState(() {
+          _enrolledDriverName = enrolledName != null && enrolledName.isNotEmpty
+              ? enrolledName
+              : name;
+          detectedDriverName = _enrolledDriverName;
+          confidence = null;
+          phaseText = "Ready to save";
+        });
+
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text("Driver registered successfully")),
         );
@@ -112,7 +125,9 @@ class _AddDriverPageState extends State<AddDriverPage> {
         setState(() {
           isCapturing = false;
           isScanning = true; // 🔥 tetap camera mode
-          phaseText = "Scanning...";
+          phaseText = _enrolledDriverName == null
+              ? "Scanning..."
+              : "Ready to save";
         });
         _startRecognitionPolling(); // ✅ aman
       }
@@ -122,7 +137,7 @@ class _AddDriverPageState extends State<AddDriverPage> {
   void _startRecognitionPolling() {
     _recognitionTimer?.cancel();
 
-    _recognitionTimer = Timer.periodic(const Duration(milliseconds: 400), (
+    _recognitionTimer = Timer.periodic(const Duration(milliseconds: 700), (
       _,
     ) async {
       try {
@@ -134,17 +149,27 @@ class _AddDriverPageState extends State<AddDriverPage> {
 
         if (recognized && name != null) {
           final previousDriverName = detectedDriverName;
+          final nextDriverName = name.toString();
+          final nextConfidence = conf is num ? conf.toDouble() : confidence;
+          final enrolledDriverName = _enrolledDriverName;
+
+          if (enrolledDriverName != null &&
+              nextDriverName.trim().toLowerCase() !=
+                  enrolledDriverName.trim().toLowerCase()) {
+            return;
+          }
 
           /// 🔥 1. TAMPILKAN NAMA REALTIME
-          setState(() {
-            detectedDriverName = name.toString();
-            if (conf is num) {
-              confidence = conf.toDouble();
-            }
-            if (previousDriverName != detectedDriverName) {
-              _prefLoaded = false;
-            }
-          });
+          if (detectedDriverName != nextDriverName ||
+              confidence != nextConfidence) {
+            setState(() {
+              detectedDriverName = nextDriverName;
+              confidence = nextConfidence;
+              if (previousDriverName != detectedDriverName) {
+                _prefLoaded = false;
+              }
+            });
+          }
 
           /// 🔥 2. LOAD PREFERENCE (JIKA ADA)
           final pref = DriverHiveService.load(name.toLowerCase());
@@ -162,10 +187,13 @@ class _AddDriverPageState extends State<AddDriverPage> {
           }
         } else {
           /// 🔥 RESET kalau tidak ada face
-          setState(() {
-            detectedDriverName = null;
-            confidence = null;
-          });
+          if (_enrolledDriverName == null &&
+              (detectedDriverName != null || confidence != null)) {
+            setState(() {
+              detectedDriverName = null;
+              confidence = null;
+            });
+          }
         }
       } catch (e) {
         debugPrint("Recognition error: $e");
@@ -174,9 +202,10 @@ class _AddDriverPageState extends State<AddDriverPage> {
   }
 
   Future<void> _saveDriver() async {
-    if (detectedDriverName == null) return;
+    final current = detectedDriverName ?? _enrolledDriverName;
 
-    final current = detectedDriverName!;
+    if (current == null || current.trim().isEmpty) return;
+
     final rawName = current; // 🔥 langsung pakai hasil face
     final key = rawName.trim().toLowerCase();
     final existingPreference = DriverHiveService.load(key);
@@ -271,258 +300,273 @@ class _AddDriverPageState extends State<AddDriverPage> {
                 child: Padding(
                   padding: EdgeInsets.all(40.w),
                   child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          /// BACK
-                          GestureDetector(
-                            behavior: HitTestBehavior.opaque,
-                            onTap: () => Navigator.pop(context),
-                            child: Padding(
-                              padding: EdgeInsets.symmetric(
-                                horizontal: 4.w,
-                                vertical: 8.h,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      /// BACK
+                      GestureDetector(
+                        behavior: HitTestBehavior.opaque,
+                        onTap: () => Navigator.pop(context),
+                        child: Padding(
+                          padding: EdgeInsets.symmetric(
+                            horizontal: 4.w,
+                            vertical: 8.h,
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(
+                                Icons.arrow_back_ios,
+                                color: previewTheme.textColor,
+                                size: 20.sp,
                               ),
-                              child: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  Icon(
-                                    Icons.arrow_back_ios,
-                                    color: previewTheme.textColor,
-                                    size: 20.sp,
+                              SizedBox(width: 8.w),
+                              Text(
+                                "Back",
+                                style: TextStyle(
+                                  color: previewTheme.textColor.withValues(
+                                    alpha: 0.74,
                                   ),
-                                  SizedBox(width: 8.w),
-                                  Text(
-                                    "Back",
-                                    style: TextStyle(
-                                      color: previewTheme.textColor.withValues(
-                                        alpha: 0.74,
-                                      ),
-                                      fontSize: 16.sp,
-                                    ),
-                                  ),
-                                ],
+                                  fontSize: 16.sp,
+                                ),
                               ),
-                            ),
+                            ],
                           ),
+                        ),
+                      ),
 
-                          SizedBox(height: 20.h),
+                      SizedBox(height: 20.h),
 
-                          /// TITLE
-                          Text(
-                            "Profile\nAdd New Driver",
-                            style: TextStyle(
-                              fontSize: 28.sp,
-                              fontWeight: FontWeight.bold,
-                              color: previewTheme.textColor,
-                            ),
-                          ),
+                      /// TITLE
+                      Text(
+                        "Profile\nAdd New Driver",
+                        style: TextStyle(
+                          fontSize: 28.sp,
+                          fontWeight: FontWeight.bold,
+                          color: previewTheme.textColor,
+                        ),
+                      ),
 
-                          Divider(color: previewAccent, thickness: 2.h),
+                      Divider(color: previewAccent, thickness: 2.h),
 
-                          SizedBox(height: 30.h),
+                      SizedBox(height: 30.h),
 
-                          /// NAME
-                          Text(
-                            "Name",
-                            style: TextStyle(
-                              fontSize: 20.sp,
-                              color: previewTheme.textColor,
-                            ),
-                          ),
+                      /// NAME
+                      Text(
+                        "Name",
+                        style: TextStyle(
+                          fontSize: 20.sp,
+                          color: previewTheme.textColor,
+                        ),
+                      ),
 
-                          SizedBox(height: 20.h),
+                      SizedBox(height: 20.h),
 
-                          TextField(
+                      TextField(
+                        controller: nameController,
+                        readOnly: true,
+                        showCursor: true,
+                        onTap: () {
+                          showInAppKeyboard(
+                            context: context,
                             controller: nameController,
-                            readOnly: true,
-                            showCursor: true,
-                            onTap: () {
-                              showInAppKeyboard(
-                                context: context,
-                                controller: nameController,
-                                title: "Enter driver name",
-                                accentColor: previewAccent,
-                                onChanged: (_) => setState(() {}),
-                              );
-                            },
+                            title: "Enter driver name",
+                            accentColor: previewAccent,
                             onChanged: (_) => setState(() {}),
-                            style: const TextStyle(color: Colors.black),
-                            decoration: InputDecoration(
-                              hintText: "Enter name",
-                              filled: true,
-                              fillColor: Colors.white,
-                              border: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(20.r),
-                                borderSide: BorderSide.none,
-                              ),
-                              contentPadding: const EdgeInsets.symmetric(
-                                vertical: 30, // 🔥 tinggi box
-                                horizontal: 20,
-                              ),
-                            ),
+                          );
+                        },
+                        onChanged: (_) => setState(() {}),
+                        style: const TextStyle(color: Colors.black),
+                        decoration: InputDecoration(
+                          hintText: "Enter name",
+                          filled: true,
+                          fillColor: Colors.white,
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(20.r),
+                            borderSide: BorderSide.none,
                           ),
+                          contentPadding: const EdgeInsets.symmetric(
+                            vertical: 30, // 🔥 tinggi box
+                            horizontal: 20,
+                          ),
+                        ),
+                      ),
 
-                          SizedBox(height: 40.h),
+                      SizedBox(height: 40.h),
 
-                          /// ================= CAMERA =================
-                          Center(
-                            child: (isCapturing || isScanning)
-                                ? Column(
-                                    children: [
-                                      SizedBox(
-                                        width:
-                                            400.w, // 🔥 lebih besar & konsisten
-                                        height:
-                                            300.h, // 🔥 konsisten & lebih besar
-                                        child: Stack(
-                                          children: [
-                                            /// 🎥 CAMERA
-                                            Positioned.fill(
-                                              child: LiveCameraWS(
-                                                url: FaceIdApi.cameraWs,
+                      /// ================= CAMERA =================
+                      Center(
+                        child: (isCapturing || isScanning)
+                            ? Column(
+                                children: [
+                                  SizedBox(
+                                    width: 400.w, // 🔥 lebih besar & konsisten
+                                    height: 300.h, // 🔥 konsisten & lebih besar
+                                    child: Stack(
+                                      children: [
+                                        /// 🎥 CAMERA
+                                        Positioned.fill(
+                                          child: isCapturing
+                                              ? Container(
+                                                  color: Colors.black,
+                                                  alignment: Alignment.center,
+                                                )
+                                              : LiveCameraWS(
+                                                  url: FaceIdApi.cameraScanWs,
+                                                  width: 400.w,
+                                                  height: 300.h,
+                                                  maxFps: 12,
+                                                ),
+                                        ),
+
+                                        if (isCapturing)
+                                          Positioned(
+                                            left: 0,
+                                            right: 0,
+                                            bottom: 72,
+                                            child: Center(
+                                              child: Text(
+                                                "Capturing face samples",
+                                                style: TextStyle(
+                                                  color: Colors.white70,
+                                                  fontSize: 14.sp,
+                                                  fontWeight: FontWeight.w600,
+                                                ),
                                               ),
                                             ),
+                                          ),
 
-                                            /// 🔥 DRIVER NAME (NEW)
-                                            if (detectedDriverName != null)
-                                              Positioned(
-                                                bottom: 80,
-                                                left: 0,
-                                                right: 0,
-                                                child: Center(
-                                                  child: Container(
-                                                    padding:
-                                                        const EdgeInsets.symmetric(
-                                                          horizontal: 16,
-                                                          vertical: 8,
-                                                        ),
-                                                    decoration: BoxDecoration(
-                                                      color: Colors.green
-                                                          .withValues(
-                                                            alpha: 0.9,
-                                                          ),
-                                                      borderRadius:
-                                                          BorderRadius.circular(
-                                                            12,
-                                                          ),
+                                        /// 🔥 DRIVER NAME (NEW)
+                                        if (detectedDriverName != null)
+                                          Positioned(
+                                            bottom: 80,
+                                            left: 0,
+                                            right: 0,
+                                            child: Center(
+                                              child: Container(
+                                                padding:
+                                                    const EdgeInsets.symmetric(
+                                                      horizontal: 16,
+                                                      vertical: 8,
                                                     ),
-                                                    child: Text(
-                                                      detectedDriverName!,
-                                                      style: const TextStyle(
-                                                        color: Colors.white,
-                                                        fontWeight:
-                                                            FontWeight.bold,
-                                                      ),
-                                                    ),
-                                                  ),
+                                                decoration: BoxDecoration(
+                                                  color: Colors.green
+                                                      .withValues(alpha: 0.9),
+                                                  borderRadius:
+                                                      BorderRadius.circular(12),
                                                 ),
-                                              ),
-
-                                            if (confidence != null)
-                                              Positioned(
-                                                bottom: 30,
-                                                left: 0,
-                                                right: 0,
-                                                child: Center(
-                                                  child: Text(
-                                                    "Confidence: ${confidence!.toStringAsFixed(2)}",
-                                                    style: const TextStyle(
-                                                      color: Colors.white,
-                                                      fontSize: 11,
-                                                    ),
-                                                  ),
-                                                ),
-                                              ),
-
-                                            /// 🔥 STATUS REGISTERED (NEW)
-                                            if (!isCapturing &&
-                                                detectedDriverName != null)
-                                              Positioned(
-                                                bottom: 50,
-                                                left: 0,
-                                                right: 0,
-                                                child: Center(
-                                                  child: Text(
-                                                    "Registered ✅",
-                                                    style: TextStyle(
-                                                      color: Colors.greenAccent,
-                                                      fontSize: 12.sp,
-                                                      fontWeight:
-                                                          FontWeight.bold,
-                                                    ),
-                                                  ),
-                                                ),
-                                              ),
-
-                                            /// ⏱ TIMER (tetap ada)
-                                            if (isCapturing)
-                                              Center(
                                                 child: Text(
-                                                  "$captureSeconds",
+                                                  detectedDriverName!,
                                                   style: const TextStyle(
-                                                    fontSize: 60,
                                                     color: Colors.white,
                                                     fontWeight: FontWeight.bold,
                                                   ),
                                                 ),
                                               ),
-                                          ],
-                                        ),
-                                      ),
+                                            ),
+                                          ),
 
-                                      SizedBox(height: 10.h),
+                                        if (confidence != null)
+                                          Positioned(
+                                            bottom: 30,
+                                            left: 0,
+                                            right: 0,
+                                            child: Center(
+                                              child: Text(
+                                                "Confidence: ${confidence!.toStringAsFixed(2)}",
+                                                style: const TextStyle(
+                                                  color: Colors.white,
+                                                  fontSize: 11,
+                                                ),
+                                              ),
+                                            ),
+                                          ),
 
-                                      Text(
-                                        phaseText,
-                                        style: const TextStyle(
-                                          color: Colors.white,
-                                        ),
-                                      ),
-                                    ],
-                                  )
-                                : ScanFaceButton(
-                                    driverName: nameController.text,
-                                    onFaceStable: () {
-                                      setState(() {
-                                        isScanning = true;
-                                      });
+                                        /// 🔥 STATUS REGISTERED (NEW)
+                                        if (!isCapturing &&
+                                            detectedDriverName != null)
+                                          Positioned(
+                                            bottom: 50,
+                                            left: 0,
+                                            right: 0,
+                                            child: Center(
+                                              child: Text(
+                                                "Registered ✅",
+                                                style: TextStyle(
+                                                  color: Colors.greenAccent,
+                                                  fontSize: 12.sp,
+                                                  fontWeight: FontWeight.bold,
+                                                ),
+                                              ),
+                                            ),
+                                          ),
 
-                                      handleEnroll();
-                                    },
+                                        /// ⏱ TIMER (tetap ada)
+                                        if (isCapturing)
+                                          Center(
+                                            child: Text(
+                                              "$captureSeconds",
+                                              style: const TextStyle(
+                                                fontSize: 60,
+                                                color: Colors.white,
+                                                fontWeight: FontWeight.bold,
+                                              ),
+                                            ),
+                                          ),
+                                      ],
+                                    ),
                                   ),
+
+                                  SizedBox(height: 10.h),
+
+                                  Text(
+                                    phaseText,
+                                    style: const TextStyle(color: Colors.white),
+                                  ),
+                                ],
+                              )
+                            : ScanFaceButton(
+                                driverName: nameController.text,
+                                onFaceStable: () {
+                                  setState(() {
+                                    isScanning = true;
+                                  });
+
+                                  handleEnroll();
+                                },
+                              ),
+                      ),
+
+                      const Spacer(),
+
+                      /// SAVE BUTTON
+                      GestureDetector(
+                        onTap: _saveDriver,
+                        child: AnimatedContainer(
+                          duration: const Duration(milliseconds: 250),
+                          padding: EdgeInsets.symmetric(
+                            horizontal: 40.w,
+                            vertical: 16.h,
                           ),
-
-                          const Spacer(),
-
-                          /// SAVE BUTTON
-                          GestureDetector(
-                            onTap: _saveDriver,
-                            child: AnimatedContainer(
-                              duration: const Duration(milliseconds: 250),
-                              padding: EdgeInsets.symmetric(
-                                horizontal: 40.w,
-                                vertical: 16.h,
-                              ),
-                              decoration: BoxDecoration(
-                                color: saveButtonColor,
-                                borderRadius: BorderRadius.circular(30.r),
-                              ),
-                              child: Text(
-                                "Save Driver",
-                                style: TextStyle(
-                                  color:
-                                      ThemeData.estimateBrightnessForColor(
-                                                saveButtonColor,
-                                              ) ==
-                                              Brightness.dark
-                                          ? Colors.white
-                                          : Colors.black,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
+                          decoration: BoxDecoration(
+                            color: saveButtonColor,
+                            borderRadius: BorderRadius.circular(30.r),
+                          ),
+                          child: Text(
+                            "Save Driver",
+                            style: TextStyle(
+                              color:
+                                  ThemeData.estimateBrightnessForColor(
+                                        saveButtonColor,
+                                      ) ==
+                                      Brightness.dark
+                                  ? Colors.white
+                                  : Colors.black,
+                              fontWeight: FontWeight.bold,
                             ),
                           ),
-                        ],
+                        ),
+                      ),
+                    ],
                   ),
                 ),
               ),

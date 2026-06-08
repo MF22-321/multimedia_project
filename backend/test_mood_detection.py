@@ -77,7 +77,8 @@ def main():
                 "match={match} | face={face} | drowsy={drowsy} | "
                 "mood={mood} ({mood_conf}) | raw={raw_mood} | "
                 "hold={hold}/{required}s | happy={happy} | sad={sad} | "
-                "EAR={ear} | MAR={mar} | score={score}".format(
+                "EAR={ear} | ratio={ear_ratio} | closed={closed}s | "
+                "reason={reason} | MAR={mar} | score={score}".format(
                     active=status.get("active"),
                     target=status.get("driver_name"),
                     recognized=status.get("recognized_driver"),
@@ -92,6 +93,9 @@ def main():
                     happy=format_number(status.get("smile_score")),
                     sad=format_number(status.get("sadness_score")),
                     ear=format_number(status.get("ear")),
+                    ear_ratio=format_number(status.get("ear_ratio")),
+                    closed=format_number(status.get("eye_closed_elapsed"), 1),
+                    reason=status.get("alert_reason") or "-",
                     mar=format_number(status.get("mar")),
                     score=format_number(status.get("score")),
                 )

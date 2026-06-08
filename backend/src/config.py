@@ -12,10 +12,10 @@ class CameraConfig:
 @dataclass
 class FaceIDConfig:
     enable: bool = True
-    conf_threshold: float = 0.38
-    vote_window_sec: float = 1.5
-    vote_min_ratio: float = 0.60
-    vote_min_samples: int = 6
+    conf_threshold: float = float(os.getenv("FACEID_CONF_THRESHOLD", "0.42"))
+    vote_window_sec: float = float(os.getenv("FACEID_VOTE_WINDOW_SEC", "1.8"))
+    vote_min_ratio: float = float(os.getenv("FACEID_VOTE_MIN_RATIO", "0.65"))
+    vote_min_samples: int = int(os.getenv("FACEID_VOTE_MIN_SAMPLES", "4"))
     every_n_frames: int = 2
 
     unknown_prompt_sec: float = 2.0
@@ -35,24 +35,27 @@ class DrowsyConfig:
     min_baseline: float = 0.08
     thresh_ratio_display: float = 0.75
 
-    mar_threshold: float = 0.45
-    consec_frames_yawn: int = 6
-    yawn_cooldown_sec: float = 2.0
-    yawn_window_sec: float = 120.0
+    mar_threshold: float = float(os.getenv("DROWSY_MAR_THRESHOLD", "0.32"))
+    consec_frames_yawn: int = int(os.getenv("DROWSY_CONSEC_FRAMES_YAWN", "4"))
+    yawn_cooldown_sec: float = float(os.getenv("DROWSY_YAWN_COOLDOWN_SEC", "4.0"))
+    yawn_window_sec: float = float(os.getenv("DROWSY_YAWN_WINDOW_SEC", "60.0"))
     yawn_alert_count: int = 3
 
     use_score: bool = True
-    eye_low_ratio: float = 0.75
-    eye_full_close_ratio: float = 0.55
-    w_eye: float = 0.75
-    w_yawn: float = 0.25
+    eye_low_ratio: float = float(os.getenv("DROWSY_EYE_LOW_RATIO", "0.62"))
+    eye_full_close_ratio: float = float(os.getenv("DROWSY_EYE_FULL_CLOSE_RATIO", "0.45"))
+    closed_eye_ratio: float = float(os.getenv("DROWSY_CLOSED_EYE_RATIO", "0.55"))
+    closed_eye_ear: float = float(os.getenv("DROWSY_CLOSED_EYE_EAR", "0.16"))
+    closed_eye_alert_sec: float = float(os.getenv("DROWSY_CLOSED_EYE_ALERT_SEC", "3.0"))
+    w_eye: float = 0.55
+    w_yawn: float = 0.45
     score_alpha: float = 0.20
-    score_alert_th: float = 0.70
-    alert_hold_sec: float = 2.0
+    score_alert_th: float = 0.85
+    alert_hold_sec: float = 4.0
 
-    yawn_points_per_event: float = 1.0
-    yawn_points_max: float = 3.0
-    yawn_decay_per_sec: float = 1.0 / 30.0
+    yawn_points_per_event: float = 0.35
+    yawn_points_max: float = 1.0
+    yawn_decay_per_sec: float = 0.02
 
 @dataclass
 class ModelPaths:

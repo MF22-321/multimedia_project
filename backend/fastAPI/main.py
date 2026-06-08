@@ -12,7 +12,15 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse, Response
 
 from backend.faceid import FaceID
-from backend.faceid.config import DATASET_DIR, LBPH_MODEL_PATH, PROFILES_DIR
+from backend.faceid.config import (
+    CONF_THRESHOLD,
+    DATASET_DIR,
+    LBPH_MODEL_PATH,
+    PROFILES_DIR,
+    VOTE_MIN_RATIO,
+    VOTE_MIN_SAMPLES,
+    VOTE_WINDOW_SEC,
+)
 from backend.faceid.labels_store import load_labels, ensure_label, remove_label
 from backend.faceid.lbph_model import train_lbph
 from backend.fastAPI.routes.drowsiness_routes import router as drowsiness_router
@@ -22,6 +30,7 @@ from backend.engine.camera_stream import (
     get_latest_frame,
     get_driver_status,
     reload_recognizer,
+    set_enrollment_active,
 )
 
 app = FastAPI(title="FaceID Backend")
@@ -45,10 +54,10 @@ def get_faceid():
     global faceid
     if faceid is None:
         faceid = FaceID(
-            conf_threshold=0.38,
-            vote_window_sec=1.5,
-            vote_min_ratio=0.60,
-            vote_min_samples=6,
+            conf_threshold=CONF_THRESHOLD,
+            vote_window_sec=VOTE_WINDOW_SEC,
+            vote_min_ratio=VOTE_MIN_RATIO,
+            vote_min_samples=VOTE_MIN_SAMPLES,
         )
         logger.info("[API] recognizer initialized")
     return faceid
@@ -64,10 +73,10 @@ def reload_faceid():
         pass
 
     faceid = FaceID(
-        conf_threshold=0.30,
-        vote_window_sec=1.5,
-        vote_min_ratio=0.60,
-        vote_min_samples=6,
+        conf_threshold=CONF_THRESHOLD,
+        vote_window_sec=VOTE_WINDOW_SEC,
+        vote_min_ratio=VOTE_MIN_RATIO,
+        vote_min_samples=VOTE_MIN_SAMPLES,
     )
     logger.info("[API] recognizer reloaded")
 
@@ -82,7 +91,7 @@ def save_face_samples_from_live_camera(
     driver_name: str,
     duration_sec: float = 5.0,
     target_samples: int = 40,
-    interval_sec: float = 0.12,
+    interval_sec: float = 0.18,
 ):
     """
     Capture multiple face crops directly from live camera for a certain duration.
@@ -151,11 +160,12 @@ def root():
 
 def generate_frames():
     stream_width = int(os.getenv("CAMERA_STREAM_WIDTH", "640"))
-    stream_fps = float(os.getenv("CAMERA_STREAM_FPS", "15"))
-    jpeg_quality = int(os.getenv("CAMERA_JPEG_QUALITY", "70"))
+    stream_fps = float(os.getenv("CAMERA_STREAM_FPS", "12"))
+    jpeg_quality = int(os.getenv("CAMERA_JPEG_QUALITY", "78"))
     frame_delay = 1.0 / max(stream_fps, 1.0)
 
     while True:
+        frame_started = time.time()
         frame = get_latest_frame()
 
         if stream_width > 0 and frame.shape[1] > stream_width:
@@ -169,7 +179,7 @@ def generate_frames():
             [int(cv2.IMWRITE_JPEG_QUALITY), jpeg_quality],
         )
         if not ret:
-            time.sleep(frame_delay)
+            time.sleep(max(0.0, frame_delay - (time.time() - frame_started)))
             continue
 
         frame_bytes = buffer.tobytes()
@@ -179,7 +189,7 @@ def generate_frames():
             b"Content-Type: image/jpeg\r\n\r\n" + frame_bytes + b"\r\n"
         )
 
-        time.sleep(frame_delay)
+        time.sleep(max(0.0, frame_delay - (time.time() - frame_started)))
 
 
 @app.get("/camera_feed")
@@ -237,20 +247,39 @@ def delete_driver(name: str):
 async def websocket_camera(websocket: WebSocket):
     await websocket.accept()
     logger.info("[WS] Client connected")
+    ws_width = int(websocket.query_params.get(
+        "width",
+        os.getenv("CAMERA_WS_WIDTH", "640"),
+    ))
+    ws_fps = float(websocket.query_params.get(
+        "fps",
+        os.getenv("CAMERA_WS_FPS", "12"),
+    ))
+    ws_quality = int(websocket.query_params.get(
+        "quality",
+        os.getenv("CAMERA_WS_JPEG_QUALITY", "78"),
+    ))
+    frame_delay = 1.0 / max(ws_fps, 1.0)
 
     try:
         while True:
+            frame_started = time.time()
             frame = get_latest_frame()
 
             if frame is None:
                 await asyncio.sleep(0.01)
                 continue
 
-            # 🔥 compress frame (WAJIB biar ringan)
+            if ws_width > 0 and frame.shape[1] > ws_width:
+                scale = ws_width / frame.shape[1]
+                ws_height = int(frame.shape[0] * scale)
+                frame = cv2.resize(frame, (ws_width, ws_height))
+
+            # compress frame for Flutter preview
             ret, buffer = cv2.imencode(
                 ".jpg",
                 frame,
-                [int(cv2.IMWRITE_JPEG_QUALITY), 70],
+                [int(cv2.IMWRITE_JPEG_QUALITY), ws_quality],
             )
 
             if not ret:
@@ -258,8 +287,9 @@ async def websocket_camera(websocket: WebSocket):
 
             await websocket.send_bytes(buffer.tobytes())
 
-            # 🔥 FPS control (30 FPS)
-            await asyncio.sleep(0.03)
+            await asyncio.sleep(
+                max(0.0, frame_delay - (time.time() - frame_started))
+            )
 
     except Exception as e:
         logger.info("[WS] Client disconnected: %s", e)
@@ -377,8 +407,10 @@ async def enroll(
 async def enroll_live_burst(
     driver_name: str = Form(...),
     duration_sec: float = Form(8.0),
-    target_samples: int = Form(60),
+    target_samples: int = Form(40),
 ):
+    set_enrollment_active(True)
+
     try:
         driver_name = driver_name.strip()
 
@@ -402,7 +434,7 @@ async def enroll_live_burst(
             driver_name=driver_name,
             duration_sec=duration_sec,
             target_samples=target_samples,
-            interval_sec=0.12,
+            interval_sec=0.18,
         )
 
         logger.info("[/enroll_live_burst] saved_paths count = %s", len(saved_paths))
@@ -451,3 +483,5 @@ async def enroll_live_burst(
             "success": False,
             "message": f"Burst enroll exception: {str(e)}"
         }
+    finally:
+        set_enrollment_active(False)

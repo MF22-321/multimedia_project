@@ -16,6 +16,7 @@ import 'package:frontend/core/services/drowsiness_api.dart';
 import 'package:frontend/core/services/fragrance_ai_mqtt_service.dart';
 import 'package:frontend/core/services/music_mqtt_service.dart';
 import 'package:frontend/services/mqtt_avatar_service.dart';
+import 'package:frontend/models/avatar_state.dart';
 import 'package:frontend/features/home/presentation/widget/music_page.dart'
     hide getMusicAccentColor;
 import 'package:frontend/features/home/presentation/widget/phone_content.dart';
@@ -235,22 +236,29 @@ class _HomePageState extends State<HomePage> {
         final mood = result["mood"]?.toString() ?? "unknown";
         final rawMood = result["raw_mood"]?.toString() ?? "unknown";
         final driverMatch = result["driver_match"] == true;
+        final eyeClosedElapsed = result["eye_closed_elapsed"];
+        final alertReason = result["alert_reason"]?.toString() ?? "-";
+        final ear = result["ear"];
+        final earRatio = result["ear_ratio"];
 
         debugPrint(
-          "📊 STATUS: $status | mood=$mood | raw=$rawMood | match=$driverMatch",
+          "📊 STATUS: $status | mood=$mood | raw=$rawMood | "
+          "match=$driverMatch | ear=$ear | ratio=$earRatio | "
+          "closed=${eyeClosedElapsed}s | reason=$alertReason",
         );
 
+        if (status == "drowsy") {
+          if (!_dialogShown) {
+            _dialogShown = true;
+            await _showDrowsyWarning();
+          }
+          return;
+        }
+
+        _dialogShown = false;
+
         if (driverMatch) {
-          _maybeShowMoodSuggestion(mood);
-        }
-
-        if (status == "drowsy" && !_dialogShown) {
-          _dialogShown = true;
-          await _showDrowsyWarning();
-        }
-
-        if (status != "drowsy") {
-          _dialogShown = false;
+          await _maybeShowMoodSuggestion(mood);
         }
       } catch (e) {
         debugPrint("❌ polling error: $e");
@@ -424,97 +432,126 @@ class _HomePageState extends State<HomePage> {
     }
 
     return Scaffold(
-      body: Stack(
-        children: [
-          /// BACKGROUND
-          ValueListenableBuilder(
-            valueListenable: CarThemes.currentTheme,
-            builder: (context, themeType, _) {
-              return ValueListenableBuilder(
-                valueListenable: CarThemes.customTheme,
-                builder: (context, __, ___) {
-                  final theme = CarThemes.getTheme(themeType);
+      body: AnimatedBuilder(
+        animation: _avatarService,
+        builder: (context, _) {
+          final avatarVisible = _avatarService.state.isVisible;
 
-                  return Stack(
-                    children: [
-                      AnimatedContainer(
-                        duration: const Duration(milliseconds: 600),
-                        decoration: BoxDecoration(
-                          gradient: LinearGradient(
-                            colors: theme.backgroundGradient,
-                            begin: Alignment.topCenter,
-                            end: Alignment.bottomCenter,
-                          ),
-                          image: theme.backgroundImage != null
-                              ? DecorationImage(
-                                  image: FileImage(
-                                    File(theme.backgroundImage!),
-                                  ),
-                                  fit: BoxFit.cover,
-                                )
-                              : null,
-                        ),
+          if (avatarVisible) {
+            return Stack(
+              children: [
+                const Positioned.fill(
+                  child: DecoratedBox(
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        begin: Alignment.topCenter,
+                        end: Alignment.bottomCenter,
+                        colors: [
+                          Color(0xFF061017),
+                          Color(0xFF010407),
+                        ],
                       ),
+                    ),
+                  ),
+                ),
+                AiAssistantOverlay(service: _avatarService),
+              ],
+            );
+          }
 
-                      if (themeType == CarThemeType.comfort)
-                        const Positioned.fill(child: DottedBackground()),
+          return Stack(
+            children: [
+              /// BACKGROUND
+              ValueListenableBuilder(
+                valueListenable: CarThemes.currentTheme,
+                builder: (context, themeType, _) {
+                  return ValueListenableBuilder(
+                    valueListenable: CarThemes.customTheme,
+                    builder: (context, __, ___) {
+                      final theme = CarThemes.getTheme(themeType);
 
-                      if (themeType == CarThemeType.futuristic)
-                        const Positioned.fill(
-                          child: FuturisticParticlesBackground(),
-                        ),
+                      return Stack(
+                        children: [
+                          AnimatedContainer(
+                            duration: const Duration(milliseconds: 600),
+                            decoration: BoxDecoration(
+                              gradient: LinearGradient(
+                                colors: theme.backgroundGradient,
+                                begin: Alignment.topCenter,
+                                end: Alignment.bottomCenter,
+                              ),
+                              image: theme.backgroundImage != null
+                                  ? DecorationImage(
+                                      image: FileImage(
+                                        File(theme.backgroundImage!),
+                                      ),
+                                      fit: BoxFit.cover,
+                                    )
+                                  : null,
+                            ),
+                          ),
 
-                      if (themeType == CarThemeType.retro)
-                        const Positioned.fill(
-                          child: RetroParticlesBackground(),
-                        ),
+                          if (themeType == CarThemeType.comfort)
+                            const Positioned.fill(child: DottedBackground()),
 
-                      if (themeType == CarThemeType.playful)
-                        const Positioned.fill(
-                          child: PlayfulParticlesBackground(),
-                        ),
-                    ],
+                          if (themeType == CarThemeType.futuristic)
+                            const Positioned.fill(
+                              child: FuturisticParticlesBackground(),
+                            ),
+
+                          if (themeType == CarThemeType.retro)
+                            const Positioned.fill(
+                              child: RetroParticlesBackground(),
+                            ),
+
+                          if (themeType == CarThemeType.playful)
+                            const Positioned.fill(
+                              child: PlayfulParticlesBackground(),
+                            ),
+                        ],
+                      );
+                    },
                   );
                 },
-              );
-            },
-          ),
-
-          /// MAIN UI
-          Row(
-            children: [
-              Expanded(
-                child: ValueListenableBuilder(
-                  valueListenable: AppNavigation.currentIndex,
-                  builder: (context, index, _) {
-                    switch (index) {
-                      case 0:
-                        return const MusicPage();
-                      case 1:
-                        return const PhoneContent();
-                      case 2:
-                        return const _HomeContent();
-                      case 3:
-                        return const MenuContent();
-                      case 4:
-                        return const SettingsContent();
-                      default:
-                        return const _HomeContent();
-                    }
-                  },
-                ),
               ),
-              const SideMenu(),
+
+              /// MAIN UI
+              Row(
+                children: [
+                  Expanded(
+                    child: ValueListenableBuilder(
+                      valueListenable: AppNavigation.currentIndex,
+                      builder: (context, index, _) {
+                        switch (index) {
+                          case 0:
+                            return const MusicPage();
+                          case 1:
+                            return const PhoneContent();
+                          case 2:
+                            return const _HomeContent();
+                          case 3:
+                            return const MenuContent();
+                          case 4:
+                            return const SettingsContent();
+                          default:
+                            return const _HomeContent();
+                        }
+                      },
+                    ),
+                  ),
+                  const SideMenu(),
+                ],
+              ),
+
+              FragranceFeedbackOverlay(
+                feedback: _fragranceFeedback,
+                visible: _showFragranceFeedback,
+              ),
+
+              AiAssistantOverlay(service: _avatarService),
             ],
-          ),
-
-          FragranceFeedbackOverlay(
-            feedback: _fragranceFeedback,
-            visible: _showFragranceFeedback,
-          ),
-
-          AiAssistantOverlay(service: _avatarService),
-        ],
+          );
+        },
       ),
     );
   }

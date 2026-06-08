@@ -1,3 +1,4 @@
+import os
 from pathlib import Path
 
 # backend/faceid/config.py
@@ -22,9 +23,13 @@ CAPTURE_INTERVAL_SEC = 0.25
 MIN_FACE_PX = 120
 
 # identify defaults
-CONF_THRESHOLD = 0.30
+#
+# LBPH returns distance where lower is better; the app maps it into 0..1
+# confidence. Keep the default strict enough to avoid different users being
+# accepted as the closest registered label.
+CONF_THRESHOLD = float(os.getenv("FACEID_CONF_THRESHOLD", "0.42"))
 
 # stabilizer (voting)
-VOTE_WINDOW_SEC = 1.5
-VOTE_MIN_RATIO = 0.60
-VOTE_MIN_SAMPLES = 6
+VOTE_WINDOW_SEC = float(os.getenv("FACEID_VOTE_WINDOW_SEC", "1.8"))
+VOTE_MIN_RATIO = float(os.getenv("FACEID_VOTE_MIN_RATIO", "0.65"))
+VOTE_MIN_SAMPLES = int(os.getenv("FACEID_VOTE_MIN_SAMPLES", "4"))

@@ -7,6 +7,27 @@ class FaceIdApi {
   /// 🔥 WebSocket camera stream
   static String get cameraWs => "${BackendConfig.wsBase}/ws/camera";
 
+  static String cameraWsWith({int? width, int? fps, int? quality}) {
+    final params = <String, String>{};
+
+    if (width != null) params["width"] = width.toString();
+    if (fps != null) params["fps"] = fps.toString();
+    if (quality != null) params["quality"] = quality.toString();
+
+    if (params.isEmpty) {
+      return cameraWs;
+    }
+
+    final query = Uri(queryParameters: params).query;
+    return "$cameraWs?$query";
+  }
+
+  static String get cameraPreviewWs =>
+      cameraWsWith(width: 480, fps: 12, quality: 65);
+
+  static String get cameraScanWs =>
+      cameraWsWith(width: 640, fps: 12, quality: 78);
+
   /// ==============================
   /// 📊 DRIVER STATUS
   /// ==============================
