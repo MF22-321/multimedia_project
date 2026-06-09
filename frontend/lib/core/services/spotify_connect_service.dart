@@ -199,18 +199,64 @@ class SpotifyConnectService {
             'context_uri': uri,
           };
 
+    for (var attempt = 1; attempt <= 4; attempt++) {
+      final response = await http.put(
+        Uri.parse(
+          'https://api.spotify.com/v1/me/player/play?device_id=$deviceId',
+        ),
+        headers: {
+          'Authorization': 'Bearer $token',
+          'Content-Type': 'application/json',
+        },
+        body: jsonEncode(body),
+      );
+
+      if (response.statusCode == 204) {
+        return;
+      }
+
+      final retryable = response.statusCode == 404 ||
+          response.statusCode == 502 ||
+          response.statusCode == 503 ||
+          response.statusCode == 504;
+
+      if (!retryable || attempt == 4) {
+        throw Exception(
+          'Spotify play failed: ${response.statusCode} ${response.body}',
+        );
+      }
+
+      AppLogger.error(
+        'Spotify play retry $attempt: ${response.statusCode} ${response.body}',
+      );
+
+      if (attempt == 1) {
+        await _transferPlayback(token: token, deviceId: deviceId);
+      }
+
+      await Future.delayed(Duration(milliseconds: 450 * attempt));
+    }
+  }
+
+  Future<void> _transferPlayback({
+    required String token,
+    required String deviceId,
+  }) async {
     final response = await http.put(
-      Uri.parse('https://api.spotify.com/v1/me/player/play?device_id=$deviceId'),
+      Uri.parse('https://api.spotify.com/v1/me/player'),
       headers: {
         'Authorization': 'Bearer $token',
         'Content-Type': 'application/json',
       },
-      body: jsonEncode(body),
+      body: jsonEncode({
+        'device_ids': [deviceId],
+        'play': false,
+      }),
     );
 
     if (response.statusCode != 204) {
-      throw Exception(
-        'Spotify play failed: ${response.statusCode} ${response.body}',
+      AppLogger.error(
+        'Spotify transfer fallback failed: ${response.statusCode} ${response.body}',
       );
     }
   }
