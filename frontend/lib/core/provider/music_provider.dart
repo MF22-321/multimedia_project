@@ -5,11 +5,13 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:frontend/core/model/lyric_line.dart';
 import 'package:frontend/core/services/lyric_service.dart';
+import 'package:frontend/core/services/spotify_connect_service.dart';
 import 'package:frontend/core/services/spotify_linux_service.dart';
 import 'package:frontend/core/utils/app_logger.dart';
 
 class MusicProvider extends ChangeNotifier {
   final SpotifyDBusService _service = SpotifyDBusService();
+  final SpotifyConnectService _connectService = SpotifyConnectService();
 
   final LyricsService _lyricsService = LyricsService();
 
@@ -286,7 +288,13 @@ class MusicProvider extends ChangeNotifier {
         return;
       }
 
-      await _service.openUri(target);
+      try {
+        await _service.openUri(target);
+      } catch (e) {
+        AppLogger.error('DBus OpenUri unavailable, using Spotify Connect: $e');
+        await _connectService.playUri(target);
+      }
+
       _markCommandedPlayback(true);
       currentPosition = Duration.zero;
       notifyListeners();
@@ -334,7 +342,13 @@ class MusicProvider extends ChangeNotifier {
   /// =========================
   Future<void> next() async {
     try {
-      await _service.next();
+      try {
+        await _service.next();
+      } catch (e) {
+        AppLogger.error('DBus Next unavailable, using Spotify Connect: $e');
+        await _connectService.next();
+      }
+
       _markCommandedPlayback(true);
 
       await _fetchMusic();
@@ -348,7 +362,13 @@ class MusicProvider extends ChangeNotifier {
   /// =========================
   Future<void> previous() async {
     try {
-      await _service.previous();
+      try {
+        await _service.previous();
+      } catch (e) {
+        AppLogger.error('DBus Previous unavailable, using Spotify Connect: $e');
+        await _connectService.previous();
+      }
+
       _markCommandedPlayback(true);
 
       await _fetchMusic();

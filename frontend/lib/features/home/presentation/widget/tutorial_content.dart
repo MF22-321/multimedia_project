@@ -29,7 +29,7 @@ class _TutorialPageState extends State<TutorialPage> {
         id: 'Panduan membuka kap mesin Veloz dengan aman.',
         en: 'Guide to safely open the Veloz engine hood.',
       ),
-      image: 'https://images.unsplash.com/photo-1503376780353-7e6692767b70',
+      image: 'https://source.unsplash.com/featured/900x520?car-engine-open-hood',
       action: _localizedOpenHoodAction,
     ),
     _TutorialItem(
@@ -38,7 +38,7 @@ class _TutorialPageState extends State<TutorialPage> {
         id: 'Panduan membuka dan menutup tutup tangki kendaraan.',
         en: 'Guide to open and close the vehicle fuel cap.',
       ),
-      image: 'https://images.unsplash.com/photo-1492144534655-ae79c964c9d7',
+      image: 'https://source.unsplash.com/featured/900x520?car-fuel-cap',
       action: _localizedOpenFuelCapAction,
     ),
     _TutorialItem(
@@ -50,7 +50,7 @@ class _TutorialPageState extends State<TutorialPage> {
         id: 'Langkah mengecek level oli mesin sebelum berkendara.',
         en: 'Steps to check engine oil level before driving.',
       ),
-      image: 'https://images.unsplash.com/photo-1487754180451-c456f719a1fc',
+      image: 'https://source.unsplash.com/featured/900x520?engine-oil-dipstick',
       action: VehicleAction.checkOilLevel,
     ),
     _TutorialItem(
@@ -62,7 +62,7 @@ class _TutorialPageState extends State<TutorialPage> {
         id: 'Panduan mengganti ban saat kondisi darurat.',
         en: 'Guide to change a tire during an emergency.',
       ),
-      image: 'https://images.unsplash.com/photo-1600705722908-bab93dd6deab',
+      image: 'https://source.unsplash.com/featured/900x520?change-car-tire-jack',
       action: VehicleAction.changeTire,
     ),
     _TutorialItem(
@@ -74,7 +74,7 @@ class _TutorialPageState extends State<TutorialPage> {
         id: 'Cara menggunakan APAR untuk penanganan awal kebakaran.',
         en: 'How to use a fire extinguisher for first response.',
       ),
-      image: 'https://images.unsplash.com/photo-1578328819058-b69f3a3b0f6b',
+      image: 'https://source.unsplash.com/featured/900x520?fire-extinguisher-safety',
       action: VehicleAction.useFireExtinguisher,
     ),
     _TutorialItem(
@@ -86,7 +86,7 @@ class _TutorialPageState extends State<TutorialPage> {
         id: 'Langkah aman membantu kondisi kecelakaan di jalan.',
         en: 'Safe steps to help during a road accident.',
       ),
-      image: 'https://images.unsplash.com/photo-1502744688674-c619d1586c9e',
+      image: 'https://source.unsplash.com/featured/900x520?roadside-assistance-car-accident',
       action: VehicleAction.helpAccident,
     ),
   ];
@@ -416,8 +416,15 @@ class _TutorialPageState extends State<TutorialPage> {
                                             children: [
                                               Image.network(
                                                 item.image,
-
                                                 fit: BoxFit.cover,
+                                                errorBuilder:
+                                                    (context, error, _) {
+                                                      return _TutorialImageFallback(
+                                                        action: item.action,
+                                                        accentColor:
+                                                            accentColor,
+                                                      );
+                                                    },
                                               ),
 
                                               Container(
@@ -558,6 +565,51 @@ class _TutorialPageState extends State<TutorialPage> {
     }
 
     return driver;
+  }
+}
+
+class _TutorialImageFallback extends StatelessWidget {
+  const _TutorialImageFallback({
+    required this.action,
+    required this.accentColor,
+  });
+
+  final VehicleAction action;
+  final Color accentColor;
+
+  @override
+  Widget build(BuildContext context) {
+    final icon = switch (action) {
+      VehicleAction.checkOilLevel => Icons.opacity_rounded,
+      VehicleAction.changeTire => Icons.build_rounded,
+      VehicleAction.useFireExtinguisher => Icons.local_fire_department_rounded,
+      VehicleAction.helpAccident => Icons.health_and_safety_rounded,
+      VehicleAction.openTrunkEng ||
+      VehicleAction.openTrunkInd ||
+      VehicleAction.openTrunkJpn => Icons.local_gas_station_rounded,
+      _ => Icons.car_repair_rounded,
+    };
+
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            accentColor.withValues(alpha: 0.26),
+            const Color(0xFF071018),
+            Colors.black,
+          ],
+        ),
+      ),
+      child: Center(
+        child: Icon(
+          icon,
+          color: Colors.white.withValues(alpha: 0.84),
+          size: 62.sp,
+        ),
+      ),
+    );
   }
 }
 

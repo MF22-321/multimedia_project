@@ -1,6 +1,8 @@
 import 'dart:async';
 import 'dart:convert';
 
+import 'package:frontend/core/navigation/app_navigation.dart';
+import 'package:frontend/core/navigation/smart_music_navigation.dart';
 import 'package:frontend/core/provider/music_provider.dart';
 import 'package:frontend/core/services/spotify_search_service.dart';
 import 'package:frontend/core/utils/app_logger.dart';
@@ -191,15 +193,22 @@ class MusicMqttService {
     final url = (command['url'] ?? '').toString().trim();
 
     if (uri.isNotEmpty || url.isNotEmpty) {
+      _showMusicPageForQuery(query);
       await _launchSpotify(uri.isNotEmpty ? uri : url, provider);
       return;
     }
 
     if (query.isEmpty) {
+      _showMusicPageForQuery(null);
       await provider.play();
       provider.startProgressListener();
       return;
     }
+
+    _showMusicPageForQuery(
+      query,
+      autoPlay: true,
+    );
 
     final safeType = _safeSpotifySearchType(type);
     final result = await _spotifySearchService.search(query, safeType);
@@ -220,6 +229,31 @@ class MusicMqttService {
       targetUri.isNotEmpty ? targetUri : externalUrl,
       provider,
     );
+  }
+
+  void _showMusicPageForQuery(
+    String? query, {
+    bool autoPlay = false,
+  }) {
+    final keyword = query?.trim();
+
+    scheduleMicrotask(() {
+      AppNavigation.currentIndex.value = 0;
+
+      if (keyword != null && keyword.isNotEmpty) {
+        if (autoPlay) {
+          if (SmartMusicSuggestion.autoPlayKeyword.value == keyword) {
+            SmartMusicSuggestion.autoPlayKeyword.value = null;
+          }
+          SmartMusicSuggestion.autoPlayKeyword.value = keyword;
+        }
+
+        if (SmartMusicSuggestion.suggestedKeyword.value == keyword) {
+          SmartMusicSuggestion.suggestedKeyword.value = null;
+        }
+        SmartMusicSuggestion.suggestedKeyword.value = keyword;
+      }
+    });
   }
 
   String _safeSpotifySearchType(String type) {
@@ -253,44 +287,64 @@ class MusicMqttService {
   Future<void> _launchSpotify(String target, MusicProvider provider) async {
     if (target.trim().isEmpty) return;
 
-    if (target.trim().startsWith('spotify:')) {
+    final trimmedTarget = target.trim();
+    final spotifyTarget = trimmedTarget.startsWith('spotify:')
+        ? trimmedTarget
+        : _spotifyUriFromWebUrl(trimmedTarget);
+
+    if (spotifyTarget != null) {
       try {
-        await provider.playUri(target);
+        AppLogger.info('Music MQTT opening Spotify URI: $spotifyTarget');
+        await provider.playUri(spotifyTarget);
         provider.startProgressListener();
-        return;
       } catch (e) {
         AppLogger.error(
-          'Music MQTT OpenUri failed, using browser fallback: $e',
+          'Music MQTT OpenUri failed. Spotifyd/MPRIS is not ready: $e',
         );
       }
-    }
 
-    final launchTarget = _spotifyWebUrl(target) ?? target;
-    final uri = Uri.parse(launchTarget);
-    final launched = await launchUrl(uri, mode: LaunchMode.externalApplication);
-    if (!launched) {
-      AppLogger.error(
-        'Music MQTT failed to launch Spotify target: $launchTarget',
-      );
       return;
     }
 
-    await Future.delayed(const Duration(milliseconds: 1200));
-    await provider.play();
-    provider.startProgressListener();
+    final uri = Uri.parse(trimmedTarget);
+    final launched = await launchUrl(uri, mode: LaunchMode.externalApplication);
+    if (!launched) {
+      AppLogger.error(
+        'Music MQTT failed to launch external target: $trimmedTarget',
+      );
+      return;
+    }
   }
 
-  String? _spotifyWebUrl(String target) {
-    final parts = target.split(':');
-    if (parts.length >= 3 && parts.first == 'spotify') {
-      return 'https://open.spotify.com/${parts[1]}/${parts[2]}';
+  String? _spotifyUriFromWebUrl(String target) {
+    final uri = Uri.tryParse(target);
+    if (uri == null || uri.host != 'open.spotify.com') {
+      return null;
     }
 
-    if (target.startsWith('https://open.spotify.com/')) {
-      return target;
+    final segments = uri.pathSegments
+        .where((segment) => segment.trim().isNotEmpty)
+        .toList();
+    if (segments.length < 2) {
+      return null;
     }
 
-    return null;
+    final typeIndex = segments[0].startsWith('intl-') ? 1 : 0;
+    if (segments.length <= typeIndex + 1) {
+      return null;
+    }
+
+    final type = segments[typeIndex];
+    final id = segments[typeIndex + 1];
+    switch (type) {
+      case 'album':
+      case 'artist':
+      case 'playlist':
+      case 'track':
+        return 'spotify:$type:$id';
+      default:
+        return null;
+    }
   }
 
   void _scheduleReconnect() {

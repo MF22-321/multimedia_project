@@ -166,87 +166,50 @@ class _VideoPlayerPageState extends State<VideoPlayerPage>
                 child: Stack(
                   children: [
                     Positioned.fill(
-                      child: Padding(
-                        padding: const EdgeInsets.fromLTRB(28, 72, 28, 68),
-                        child: Center(
-                          child: DecoratedBox(
-                            decoration: BoxDecoration(
-                              borderRadius: BorderRadius.circular(22),
-                              border: Border.all(
-                                color: accent.withValues(alpha: 0.46),
-                                width: 1.4,
-                              ),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: accent.withValues(alpha: 0.20),
-                                  blurRadius: 34,
-                                  spreadRadius: -10,
-                                ),
-                                BoxShadow(
-                                  color: Colors.black.withValues(alpha: 0.60),
-                                  blurRadius: 26,
-                                  offset: const Offset(0, 18),
-                                ),
+                      child: ColoredBox(
+                        color: Colors.black,
+                        child: Video(
+                          controller: controller,
+                          controls: NoVideoControls,
+                          fit: BoxFit.contain,
+                          fill: Colors.black,
+                        ),
+                      ),
+                    ),
+                    Positioned.fill(
+                      child: IgnorePointer(
+                        child: DecoratedBox(
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              begin: Alignment.topCenter,
+                              end: Alignment.bottomCenter,
+                              colors: [
+                                Colors.black.withValues(alpha: 0.22),
+                                Colors.transparent,
+                                Colors.black.withValues(alpha: 0.58),
                               ],
+                              stops: const [0, 0.54, 1],
                             ),
-                            child: ClipRRect(
-                              borderRadius: BorderRadius.circular(21),
-                              child: AspectRatio(
-                                aspectRatio: 16 / 9,
-                                child: ColoredBox(
-                                  color: Colors.black,
-                                  child: Stack(
-                                    children: [
-                                      Positioned.fill(
-                                        child: Video(
-                                          controller: controller,
-                                          controls: NoVideoControls,
-                                        ),
-                                      ),
-                                      Positioned.fill(
-                                        child: GestureDetector(
-                                          behavior: HitTestBehavior.translucent,
-                                          onTap: () {
-                                            if (_controlsVisible &&
-                                                player.state.playing) {
-                                              _controlsHideTimer?.cancel();
-                                              setState(() {
-                                                _controlsVisible = false;
-                                              });
-                                              return;
-                                            }
-
-                                            _showControls();
-                                          },
-                                        ),
-                                      ),
-                                      Positioned(
-                                        left: 18,
-                                        right: 18,
-                                        bottom: 16,
-                                        child: Listener(
-                                          behavior: HitTestBehavior.translucent,
-                                          onPointerDown: (_) => _showControls(),
-                                          child: AnimatedOpacity(
-                                            opacity: _controlsVisible ? 1 : 0,
-                                            duration: const Duration(
-                                              milliseconds: 220,
-                                            ),
-                                            curve: Curves.easeOut,
-                                            child: IgnorePointer(
-                                              ignoring: !_controlsVisible,
-                                              child: _PremiumVideoControls(
-                                                player: player,
-                                                accent: accent,
-                                              ),
-                                            ),
-                                          ),
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ),
+                          ),
+                        ),
+                      ),
+                    ),
+                    Positioned(
+                      left: 48,
+                      right: 48,
+                      bottom: 28,
+                      child: Listener(
+                        behavior: HitTestBehavior.translucent,
+                        onPointerDown: (_) => _showControls(),
+                        child: AnimatedOpacity(
+                          opacity: _controlsVisible ? 1 : 0,
+                          duration: const Duration(milliseconds: 220),
+                          curve: Curves.easeOut,
+                          child: IgnorePointer(
+                            ignoring: !_controlsVisible,
+                            child: _PremiumVideoControls(
+                              player: player,
+                              accent: accent,
                             ),
                           ),
                         ),

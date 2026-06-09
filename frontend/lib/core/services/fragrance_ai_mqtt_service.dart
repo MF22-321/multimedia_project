@@ -16,6 +16,7 @@ class FragranceAiMqttService {
   static const int port = 1883;
   static const String commandTopic = 'toyota/fragrance/command';
   static const String stateTopic = 'humidifier/state';
+  static const String controlTopic = 'humidifier/control';
 
   final void Function(FragranceFeedback feedback)? onFeedback;
   final String _clientId =
@@ -58,6 +59,7 @@ class FragranceAiMqttService {
     client.onConnected = () {
       AppLogger.info('Fragrance AI MQTT connected');
       client.subscribe(stateTopic, MqttQos.atLeastOnce);
+      client.subscribe(commandTopic, MqttQos.atLeastOnce);
     };
 
     client.onDisconnected = () {
@@ -92,8 +94,352 @@ class FragranceAiMqttService {
 
       if (event.topic == stateTopic) {
         _handleState(payload, retained: message.header?.retain == true);
+      } else if (event.topic == commandTopic) {
+        if (message.header?.retain == true) {
+          AppLogger.info('Fragrance command retained message ignored');
+          continue;
+        }
+        unawaited(_handleCommand(payload));
       }
     }
+  }
+
+  Future<void> _handleCommand(String payload) async {
+    try {
+      final command = _parseCommand(payload);
+      if (command == null) return;
+
+      final control = _controlPayloadForCommand(command);
+      if (control == null) {
+        AppLogger.info('Fragrance command ignored: $payload');
+        return;
+      }
+
+      _lastState = Map<String, dynamic>.from(control);
+      await _publishControl(control);
+    } catch (e) {
+      AppLogger.error('Fragrance command failed: $e');
+    }
+  }
+
+  Map<String, dynamic>? _parseCommand(String payload) {
+    try {
+      final data = jsonDecode(payload);
+      if (data is Map<String, dynamic>) return data;
+    } catch (_) {
+      final text = payload.trim();
+      if (text.isNotEmpty) {
+        return {'action': text};
+      }
+    }
+
+    return null;
+  }
+
+  Map<String, dynamic>? _controlPayloadForCommand(Map<String, dynamic> command) {
+    final action = (command['action'] ?? command['command'] ?? '')
+        .toString()
+        .trim()
+        .toLowerCase();
+    final target = (command['target'] ?? command['fragrance'] ?? '')
+        .toString()
+        .trim()
+        .toLowerCase();
+    final state = _currentControlState();
+
+    if (_matches(action, ['off', 'turn_off', 'matikan', 'mati', 'stop'])) {
+      return _offPayload();
+    }
+
+    if (_matches(action, ['on', 'turn_on', 'nyalakan', 'hidup', 'start'])) {
+      final cartridge = _readCartridge(command, fallback: _selectedOrBoth(state));
+      return _cartridgePayload(cartridge, state: state);
+    }
+
+    if (_matches(action, ['coffee', 'kopi']) || _matches(target, ['coffee', 'kopi'])) {
+      return _cartridgePayload(1, state: state);
+    }
+
+    if (_matches(action, ['lavender']) || _matches(target, ['lavender'])) {
+      return _cartridgePayload(2, state: state);
+    }
+
+    if (_matches(action, ['both', 'all', 'campur', 'keduanya', 'semua']) ||
+        _matches(target, ['both', 'all', 'campur', 'keduanya', 'semua'])) {
+      return _cartridgePayload(3, state: state);
+    }
+
+    if (_matches(action, ['auto', 'automatic', 'otomatis'])) {
+      final payload = _cartridgePayload(_selectedOrBoth(state), state: state);
+      payload['autoMode'] = true;
+      payload['autoInterval'] = command['interval'] ?? state['autoInterval'] ?? '10s';
+      return payload;
+    }
+
+    if (_matches(action, ['manual'])) {
+      final payload = _currentControlState();
+      payload['mainPower'] = true;
+      payload['autoMode'] = false;
+      return payload;
+    }
+
+    if (_matches(action, ['speed', 'set_speed', 'kecepatan', 'level'])) {
+      final level = _readSpeedLevel(command, fallback: _speedFromText(action));
+      if (level == null) return null;
+      return _speedPayload(
+        level,
+        target: target,
+        state: state,
+      );
+    }
+
+    final natural = _naturalLanguagePayload(action, state);
+    if (natural != null) return natural;
+
+    return null;
+  }
+
+  Map<String, dynamic>? _naturalLanguagePayload(
+    String text,
+    Map<String, dynamic> state,
+  ) {
+    if (text.isEmpty) return null;
+
+    if (text.contains('mati') || text.contains('off')) {
+      return _offPayload();
+    }
+
+    final level = _speedFromText(text);
+    final hasSpeed = text.contains('speed') ||
+        text.contains('kecepatan') ||
+        text.contains('level');
+
+    if (text.contains('kopi') || text.contains('coffee')) {
+      final payload = _cartridgePayload(1, state: state);
+      return level == null ? payload : _speedPayload(level, target: 'coffee', state: payload);
+    }
+
+    if (text.contains('lavender')) {
+      final payload = _cartridgePayload(2, state: state);
+      return level == null ? payload : _speedPayload(level, target: 'lavender', state: payload);
+    }
+
+    if (text.contains('semua') ||
+        text.contains('keduanya') ||
+        text.contains('both') ||
+        text.contains('all')) {
+      final payload = _cartridgePayload(3, state: state);
+      return level == null ? payload : _speedPayload(level, target: 'all', state: payload);
+    }
+
+    if (text.contains('auto') || text.contains('otomatis')) {
+      final payload = _cartridgePayload(_selectedOrBoth(state), state: state);
+      payload['autoMode'] = true;
+      return payload;
+    }
+
+    if (text.contains('manual')) {
+      final payload = _currentControlState();
+      payload['mainPower'] = true;
+      payload['autoMode'] = false;
+      return payload;
+    }
+
+    if (hasSpeed && level != null) {
+      return _speedPayload(level, target: 'all', state: state);
+    }
+
+    if (text.contains('nyala') || text.contains('hidup') || text.contains('on')) {
+      return _cartridgePayload(_selectedOrBoth(state), state: state);
+    }
+
+    return null;
+  }
+
+  Map<String, dynamic> _currentControlState() {
+    final current = _lastState;
+    if (current == null) return _offPayload();
+
+    return {
+      'selectedCartridge': ((current['selectedCartridge'] as num?)?.toInt() ?? 0)
+          .clamp(0, 3)
+          .toInt(),
+      'mainPower': current['mainPower'] == true,
+      'autoMode': current['autoMode'] == true,
+      if (current['autoInterval'] != null) 'autoInterval': current['autoInterval'],
+      'motor1': _motorState(current, 'motor1'),
+      'motor2': _motorState(current, 'motor2'),
+    };
+  }
+
+  Map<String, dynamic> _motorState(Map<String, dynamic> state, String key) {
+    final motor = state[key];
+    if (motor is Map) {
+      return {
+        'enabled': motor['enabled'] == true,
+        'speedLevel':
+            (((motor['speedLevel'] as num?)?.toInt() ?? 1).clamp(1, 3)).toInt(),
+      };
+    }
+
+    return {'enabled': false, 'speedLevel': 1};
+  }
+
+  Map<String, dynamic> _offPayload() {
+    return {
+      'selectedCartridge': 0,
+      'mainPower': false,
+      'autoMode': false,
+      'motor1': {'enabled': false, 'speedLevel': 1},
+      'motor2': {'enabled': false, 'speedLevel': 1},
+    };
+  }
+
+  Map<String, dynamic> _cartridgePayload(
+    int cartridge, {
+    required Map<String, dynamic> state,
+  }) {
+    final coffeeSpeed = _speedLevel(state, 'motor1', fallback: 3);
+    final lavenderSpeed = _speedLevel(state, 'motor2', fallback: 3);
+
+    switch (cartridge.clamp(0, 3).toInt()) {
+      case 1:
+        return {
+          'selectedCartridge': 1,
+          'mainPower': true,
+          'autoMode': false,
+          'motor1': {'enabled': true, 'speedLevel': coffeeSpeed},
+          'motor2': {'enabled': false, 'speedLevel': 1},
+        };
+      case 2:
+        return {
+          'selectedCartridge': 2,
+          'mainPower': true,
+          'autoMode': false,
+          'motor1': {'enabled': false, 'speedLevel': 1},
+          'motor2': {'enabled': true, 'speedLevel': lavenderSpeed},
+        };
+      case 3:
+        return {
+          'selectedCartridge': 3,
+          'mainPower': true,
+          'autoMode': false,
+          'motor1': {'enabled': true, 'speedLevel': coffeeSpeed},
+          'motor2': {'enabled': true, 'speedLevel': lavenderSpeed},
+        };
+      default:
+        return _offPayload();
+    }
+  }
+
+  Map<String, dynamic> _speedPayload(
+    int level, {
+    required String target,
+    required Map<String, dynamic> state,
+  }) {
+    final clamped = level.clamp(1, 3);
+    final payload = Map<String, dynamic>.from(state);
+    payload['mainPower'] = true;
+    payload['autoMode'] = state['autoMode'] == true;
+    payload['motor1'] = _motorState(state, 'motor1');
+    payload['motor2'] = _motorState(state, 'motor2');
+
+    final normalizedTarget = target.toLowerCase();
+    final selected = _selectedOrBoth(state);
+    if (normalizedTarget == 'coffee' || normalizedTarget == 'kopi') {
+      payload['selectedCartridge'] = 1;
+      payload['motor1'] = {'enabled': true, 'speedLevel': clamped};
+      payload['motor2'] = {'enabled': false, 'speedLevel': 1};
+      return payload;
+    }
+
+    if (normalizedTarget == 'lavender') {
+      payload['selectedCartridge'] = 2;
+      payload['motor1'] = {'enabled': false, 'speedLevel': 1};
+      payload['motor2'] = {'enabled': true, 'speedLevel': clamped};
+      return payload;
+    }
+
+    if (selected == 1) {
+      payload['motor1'] = {'enabled': true, 'speedLevel': clamped};
+    } else if (selected == 2) {
+      payload['motor2'] = {'enabled': true, 'speedLevel': clamped};
+    } else {
+      payload['selectedCartridge'] = 3;
+      payload['motor1'] = {'enabled': true, 'speedLevel': clamped};
+      payload['motor2'] = {'enabled': true, 'speedLevel': clamped};
+    }
+
+    return payload;
+  }
+
+  int _selectedOrBoth(Map<String, dynamic> state) {
+    final selected = (state['selectedCartridge'] as num?)?.toInt() ?? 0;
+    if (selected >= 1 && selected <= 3) return selected;
+    return 3;
+  }
+
+  int _speedLevel(
+    Map<String, dynamic> state,
+    String motor, {
+    required int fallback,
+  }) {
+    return (((state[motor] as Map?)?['speedLevel'] as num?)?.toInt() ??
+            fallback)
+        .clamp(1, 3)
+        .toInt();
+  }
+
+  int _readCartridge(Map<String, dynamic> command, {required int fallback}) {
+    final raw = command['cartridge'] ?? command['selectedCartridge'];
+    if (raw is num) return raw.toInt().clamp(0, 3).toInt();
+    final text = raw?.toString().toLowerCase() ?? '';
+    if (text.contains('coffee') || text.contains('kopi')) return 1;
+    if (text.contains('lavender')) return 2;
+    if (text.contains('both') || text.contains('semua')) return 3;
+    return fallback;
+  }
+
+  int? _readSpeedLevel(Map<String, dynamic> command, {int? fallback}) {
+    final raw = command['level'] ?? command['speed'] ?? command['speedLevel'];
+    if (raw is num) return raw.toInt().clamp(1, 3).toInt();
+    return _speedFromText(raw?.toString() ?? '') ?? fallback;
+  }
+
+  int? _speedFromText(String text) {
+    final normalized = text.toLowerCase();
+    final match = RegExp(r'\b([123])\b').firstMatch(normalized);
+    if (match != null) return int.parse(match.group(1)!);
+    if (normalized.contains('low') || normalized.contains('pelan')) return 1;
+    if (normalized.contains('medium') || normalized.contains('sedang')) return 2;
+    if (normalized.contains('high') ||
+        normalized.contains('cepat') ||
+        normalized.contains('kencang')) {
+      return 3;
+    }
+    return null;
+  }
+
+  bool _matches(String value, List<String> options) {
+    return options.any((option) => value == option || value.contains(option));
+  }
+
+  Future<void> _publishControl(Map<String, dynamic> data) async {
+    final client = _client;
+    if (client == null || !isConnected) {
+      AppLogger.error('Fragrance control publish skipped: MQTT disconnected');
+      return;
+    }
+
+    final builder = MqttClientPayloadBuilder();
+    builder.addString(jsonEncode(data));
+    client.publishMessage(
+      controlTopic,
+      MqttQos.atLeastOnce,
+      builder.payload!,
+      retain: true,
+    );
+    AppLogger.info('Fragrance control published: ${jsonEncode(data)}');
   }
 
   void _handleState(String payload, {required bool retained}) {

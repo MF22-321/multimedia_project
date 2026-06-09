@@ -32,7 +32,7 @@ class SpotifyDBusService {
       return service;
     }
 
-    for (final keyword in ['spotify', 'firefox', 'chromium', 'chrome']) {
+    for (final keyword in ['spotifyd', 'spotify']) {
       final match = players.where(
         (name) => name.toLowerCase().contains(keyword),
       );
@@ -41,7 +41,9 @@ class SpotifyDBusService {
       }
     }
 
-    throw Exception('No MPRIS media player found');
+    throw Exception(
+      'No Spotify MPRIS player found. Start spotifyd with --use-mpris=true.',
+    );
   }
 
   Future<Map<String, dynamic>> getMetadata() async {

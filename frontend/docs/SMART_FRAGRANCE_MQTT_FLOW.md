@@ -12,6 +12,12 @@ Flutter publish command ke:
 humidifier/control
 ```
 
+Voice/AI command dari MQTTX dapat publish ke:
+
+```text
+toyota/fragrance/command
+```
+
 Device dapat publish state balik ke:
 
 ```text
@@ -19,6 +25,69 @@ humidifier/state
 ```
 
 Topic `humidifier/state` sudah dipakai oleh `SmartFragrancePage` untuk sinkron state detail.
+
+## Voice Command via MQTTX
+
+Flutter subscribe `toyota/fragrance/command`, lalu menerjemahkan command ke
+payload `humidifier/control` untuk ESP32.
+
+### Nyalakan Semua Aroma
+
+```bash
+mosquitto_pub -h broker.hivemq.com -p 1883 -t toyota/fragrance/command -m '{"action":"on","cartridge":3}'
+```
+
+### Matikan Smart Fragrance
+
+```bash
+mosquitto_pub -h broker.hivemq.com -p 1883 -t toyota/fragrance/command -m '{"action":"off"}'
+```
+
+### Pilih Coffee
+
+```bash
+mosquitto_pub -h broker.hivemq.com -p 1883 -t toyota/fragrance/command -m '{"action":"coffee"}'
+```
+
+### Pilih Lavender
+
+```bash
+mosquitto_pub -h broker.hivemq.com -p 1883 -t toyota/fragrance/command -m '{"action":"lavender"}'
+```
+
+### Atur Kecepatan Semua Motor
+
+Level valid: `1`, `2`, atau `3`.
+
+```bash
+mosquitto_pub -h broker.hivemq.com -p 1883 -t toyota/fragrance/command -m '{"action":"speed","level":2}'
+```
+
+### Atur Kecepatan Aroma Tertentu
+
+```bash
+mosquitto_pub -h broker.hivemq.com -p 1883 -t toyota/fragrance/command -m '{"action":"speed","target":"coffee","level":3}'
+```
+
+```bash
+mosquitto_pub -h broker.hivemq.com -p 1883 -t toyota/fragrance/command -m '{"action":"speed","target":"lavender","level":1}'
+```
+
+### Auto / Manual Mode
+
+```bash
+mosquitto_pub -h broker.hivemq.com -p 1883 -t toyota/fragrance/command -m '{"action":"auto","interval":"10s"}'
+```
+
+```bash
+mosquitto_pub -h broker.hivemq.com -p 1883 -t toyota/fragrance/command -m '{"action":"manual"}'
+```
+
+Payload plain text juga diterima, misalnya:
+
+```bash
+mosquitto_pub -h broker.hivemq.com -p 1883 -t toyota/fragrance/command -m 'nyalakan lavender speed 2'
+```
 
 ## Profile Shortcut
 

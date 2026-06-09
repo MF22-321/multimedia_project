@@ -71,6 +71,7 @@ class MqttAvatarService extends ChangeNotifier {
     final client = _client;
     if (client == null) return;
 
+    debugPrint('MQTT avatar connected');
     _connected = true;
     notifyListeners();
 
@@ -101,8 +102,10 @@ class MqttAvatarService extends ChangeNotifier {
       ).trim();
 
       if (event.topic == stateTopic) {
+        debugPrint('MQTT avatar state payload: $payload');
         _handleStatePayload(payload);
       } else if (event.topic == wordTopic) {
+        debugPrint('MQTT avatar word payload: $payload');
         appendWord(payload);
       }
     }
@@ -126,6 +129,7 @@ class MqttAvatarService extends ChangeNotifier {
     if (_state == nextState && !resetText) return;
 
     _state = nextState;
+    debugPrint('MQTT avatar state applied: ${nextState.name}');
 
     if (resetText ||
         nextState == AvatarState.idle ||

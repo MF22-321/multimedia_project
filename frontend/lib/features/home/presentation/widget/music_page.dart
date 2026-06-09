@@ -56,6 +56,8 @@ class _MusicPageState extends State<MusicPage> {
 
   Timer? _searchDebounce;
 
+  bool _autoPlayingFromSuggestion = false;
+
   final SpotifySearchService spotifySearchService = SpotifySearchService();
 
   Map<String, dynamic> spotifyData = {};
@@ -136,12 +138,16 @@ class _MusicPageState extends State<MusicPage> {
 
     setState(() {
       suggestedMoodKeyword = keyword;
+
+      if (SmartMusicSuggestion.autoPlayKeyword.value == keyword) {
+        selectedCategory = 'track';
+      }
     });
 
     /// AUTO SEARCH
     _searchController.text = keyword;
 
-    searchMusic(keyword);
+    unawaited(searchMusic(keyword));
 
     /// RESET
     Future.delayed(const Duration(seconds: 2), () {
@@ -164,20 +170,54 @@ class _MusicPageState extends State<MusicPage> {
 
   Future<void> searchMusic(String query) async {
     try {
-      if (query.isEmpty) {
+      final normalizedQuery = query.trim();
+
+      if (normalizedQuery.isEmpty) {
         setState(() {
           spotifyData = {};
         });
         return;
       }
 
-      final result = await spotifySearchService.search(query, selectedCategory);
+      final result = await spotifySearchService.search(
+        normalizedQuery,
+        selectedCategory,
+      );
+
+      if (!mounted) return;
 
       setState(() {
         spotifyData = result;
       });
+
+      await _autoPlayFirstTrackIfRequested(normalizedQuery);
     } catch (e) {
       debugPrint(e.toString());
+    }
+  }
+
+  Future<void> _autoPlayFirstTrackIfRequested(String query) async {
+    final requestedKeyword = SmartMusicSuggestion.autoPlayKeyword.value?.trim();
+    if (requestedKeyword == null ||
+        requestedKeyword.isEmpty ||
+        requestedKeyword != query.trim() ||
+        selectedCategory != 'track' ||
+        _autoPlayingFromSuggestion) {
+      return;
+    }
+
+    final firstTrack = _spotifyItems.isEmpty ? null : _spotifyItems.first;
+    final uri = firstTrack?['uri']?.toString().trim() ?? '';
+    if (uri.isEmpty) {
+      return;
+    }
+
+    _autoPlayingFromSuggestion = true;
+    try {
+      await playSpotifySong(uri, context.read<MusicProvider>());
+      SmartMusicSuggestion.autoPlayKeyword.value = null;
+    } finally {
+      _autoPlayingFromSuggestion = false;
     }
   }
 
@@ -234,6 +274,10 @@ class _MusicPageState extends State<MusicPage> {
         moodKeyword.isNotEmpty &&
         moodKeyword != suggestedMoodKeyword) {
       suggestedMoodKeyword = moodKeyword;
+
+      if (SmartMusicSuggestion.autoPlayKeyword.value == moodKeyword) {
+        selectedCategory = 'track';
+      }
 
       _searchController.text = moodKeyword;
 
