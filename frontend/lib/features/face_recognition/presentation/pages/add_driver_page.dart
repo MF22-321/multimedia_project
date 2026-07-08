@@ -89,6 +89,9 @@ class _AddDriverPageState extends State<AddDriverPage2>
 
       setState(() {
         captureSecondsLeft = (8 - timer.tick).clamp(0, 8);
+        if (timer.tick >= 8) {
+          phaseText = "Processing face model...";
+        }
       });
 
       if (timer.tick >= 8) {

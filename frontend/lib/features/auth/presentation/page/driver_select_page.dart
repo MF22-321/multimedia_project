@@ -69,11 +69,21 @@ class _DriverSelectPageState extends State<DriverSelectPage> {
         final name = result["driver"];
 
         if (recognized && name != null && !isNavigated) {
+          final driverName = name.toString().trim();
+          final existsInBackend = drivers.any(
+            (driver) => driver.trim().toLowerCase() == driverName.toLowerCase(),
+          );
+
+          if (!existsInBackend) {
+            debugPrint("⚠️ Ignoring stale recognized driver: $driverName");
+            return;
+          }
+
           isNavigated = true;
 
-          debugPrint("🔥 AUTO LOGIN: $name");
+          debugPrint("🔥 AUTO LOGIN: $driverName");
 
-          DriverSession.setDriver(name);
+          DriverSession.setDriver(driverName);
 
           _stopFaceDetection();
 

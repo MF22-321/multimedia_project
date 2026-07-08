@@ -1,6 +1,87 @@
 # Frontend Quality Check
 
-Last reviewed: 2026-05-28
+Last reviewed: 2026-06-20
+
+## Hasil Eksekusi 20 Juni 2026
+
+- `flutter analyze --no-pub`: **lulus, 0 issue**.
+- `flutter test --no-pub`: **22 test lulus, 0 gagal**.
+- Test lama bawaan template counter diganti dengan test fitur aplikasi.
+- Test otomatis tidak menghubungi backend produksi, broker MQTT, atau Pothole API.
+
+Jalankan ulang dari folder `frontend`:
+
+```bash
+/home/multimedia/flutter/bin/flutter test --no-pub
+/home/multimedia/flutter/bin/flutter analyze --no-pub
+```
+
+## Skenario Automated
+
+| ID | Fitur | Skenario | Hasil |
+|---|---|---|---|
+| FE-001 | Face Recognition | URL WebSocket default | Menggunakan backend config dan `/ws/camera` |
+| FE-002 | Face Recognition | Parameter width/fps/quality opsional | Query string terbentuk benar |
+| FE-003 | Maps | Konfigurasi tile OpenStreetMap | HTTPS, User-Agent, zoom maksimum 19, atribusi tersedia |
+| FE-004 | Maps | GeoJSON route OSRM valid | Koordinat lon/lat dikonversi ke `LatLng` |
+| FE-005 | Maps | Response OSRM tanpa geometry | Menghasilkan exception terkontrol |
+| FE-006 | Pothole | Parsing serial GPS lengkap | GPS, heading, dan accelerometer terbaca |
+| FE-007 | Pothole | Prefix serial invalid | Ditolak dengan `FormatException` |
+| FE-008 | Pothole | Kategori dari backend | Mengoverride heuristic lokal |
+| FE-009 | Pothole | Threshold pothole/bumper/normal | Klasifikasi sesuai konfigurasi terbaru |
+| FE-010 | Pothole | Hazard di depan/belakang kendaraan | Hanya hazard di depan yang dipilih |
+| FE-011 | Pothole | Sudut melintasi 0/360 derajat | Selisih sudut dihitung benar |
+| FE-012 | Pothole API | Endpoint publik tanpa token | Data tetap dapat dimuat tanpa header Authorization |
+| FE-013 | Pothole API | Payload dan koordinat valid/invalid | Data valid diparsing, titik nol dibuang |
+| FE-014 | User | Casing nama driver | Nama asli backend dipertahankan |
+| FE-015 | User | Preference lama/minimal | Default aman dan bahasa fallback ke Indonesia |
+| FE-016 | Theme | Custom theme save/load | Nilai warna dapat dipulihkan |
+| FE-017 | Smart Fragrance | Shortcut coffee | Hanya motor coffee aktif |
+| FE-018 | Smart Fragrance | Shortcut kedua cartridge | Kedua motor aktif |
+| FE-019 | Smart Fragrance | Cartridge invalid | Menghasilkan payload power-off |
+| FE-020 | Smart Fragrance | Interval broker invalid | Fallback aman ke 10 detik |
+| FE-021 | Pothole serial | Format firmware lama tanpa kategori | Tetap terbaca sebagai `normal` |
+| FE-022 | Pothole serial | Format baru dengan kategori/severity | Nilai eksplisit dari ESP32 terbaca |
+| FE-023 | ESP32 status | Wi-Fi/GPS offline tetapi USB aktif | Heading/IMU dan status tetap diterima |
+
+## Skenario Integrasi Manual
+
+| ID | Fitur | Langkah | Expected |
+|---|---|---|---|
+| FE-101 | Face Recognition | Backend dan kamera aktif, buka pemilihan driver | Preview tampil dan driver valid login otomatis |
+| FE-102 | Face Recognition | Backend mengirim driver stale/tidak terdaftar | Login otomatis diabaikan |
+| FE-103 | Maps | Buka map card dan detail dengan internet | Tile tampil, atribusi OSM terlihat dan dapat dibuka |
+| FE-104 | Maps | Cari tujuan lalu mulai route | Polyline route OSRM tampil |
+| FE-105 | Maps | Zoom hingga maksimum | Berhenti di zoom 19 tanpa tile kosong |
+| FE-106 | Pothole | Kirim dua impact sample ESP32 valid | Marker sesuai kategori muncul setelah filter |
+| FE-107 | Pothole | Dekati lalu lewati hazard sesuai heading | Satu overlay bertahan dan hilang setelah kondisi aman 2 detik |
+| FE-108 | Pothole API | Jalankan dengan token aktif | Marker backend termuat tanpa error authorization |
+| FE-109 | Smart Fragrance | Broker dan device aktif, pilih coffee/lavender/both | State motor di device dan UI konsisten |
+| FE-110 | Smart Fragrance | Ubah speed dan auto interval | Payload dan state feedback sesuai pilihan |
+| FE-111 | User | Pilih driver, restart aplikasi | Preference driver yang sama termuat |
+| FE-112 | Theme | Preview lalu back tanpa save | Tema global tidak berubah |
+| FE-113 | Theme | Save custom theme lalu masuk Home | Warna/background tersimpan dan diterapkan |
+
+Perilaku overlay hazard terbaru:
+
+- Hanya satu overlay yang dapat aktif; telemetry berikutnya memperbarui overlay
+  yang sama dan tidak membuka popup baru.
+- Overlay tidak memiliki timeout tutup paksa selama pothole/bumper masih berada
+  di depan kendaraan.
+- Overlay ditutup setelah tidak ada hazard di depan selama 2 detik berturut-turut.
+- Hilangnya satu frame GPS tidak langsung menutup overlay, sehingga tampilan
+  tidak berkedip.
+
+Endpoint saat ini dapat dibaca tanpa token. Untuk deployment yang memakai
+autentikasi, token opsional dapat diberikan saat runtime:
+
+```bash
+flutter run -d linux --dart-define=POTHOLE_API_TOKEN=<token-aktif>
+```
+
+Token yang sebelumnya tertanam di source kedaluwarsa pada 16 April 2026 dan
+telah dihapus. Konfigurasi OpenStreetMap mengikuti URL, identifikasi client,
+atribusi, dan zoom tile standar yang didokumentasikan oleh OSM.
 
 Dokumen ini merangkum hasil pengecekan folder `frontend` dari sisi arsitektur, performa UI, navigasi, dan flow live theme.
 

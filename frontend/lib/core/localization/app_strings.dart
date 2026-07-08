@@ -33,10 +33,13 @@ class AppStrings {
   static String get online => choose(id: 'Online', en: 'Online');
   static String get info => choose(id: 'Info', en: 'Info');
   static String get fragrance => choose(id: 'Fragrance', en: 'Fragrance');
+  static String get ambientLight => choose(id: 'Ambient Light', en: 'Ambient Light');
+  static String get cabinLighting => choose(id: 'Pencahayaan kabin', en: 'Cabin lighting');
   static String get mToyota => 'M-Toyota';
 
   static String get back => choose(id: 'Kembali', en: 'Back');
   static String get profile => choose(id: 'Profil', en: 'Profile');
+  static String get switchDriver => choose(id: 'Ganti Driver', en: 'Switch Driver');
   static String get personalizeSettings => choose(id: 'Personalisasikan pengaturan Anda', en: 'Personalize your settings');
   static String get saveSettings => choose(id: 'Simpan Pengaturan', en: 'Save Settings');
   static String get language => choose(id: 'Bahasa', en: 'Language');
@@ -207,7 +210,7 @@ class AppStrings {
   }
 
   static String get tiredMoodDetected {
-    return choose(id: 'Mood Lelah Terdeteksi', en: 'Tired Mood Detected');
+    return choose(id: 'Mood Sedih Terdeteksi', en: 'Sad Mood Detected');
   }
 
   static String get happyMoodSubtitle {
@@ -219,8 +222,8 @@ class AppStrings {
 
   static String get calmMoodSubtitle {
     return choose(
-      id: 'Kami merekomendasikan musik santai agar perjalanan lebih nyaman.',
-      en: 'We recommend calm music to keep the drive comfortable.',
+      id: 'Kami merekomendasikan musik santai agar suasana lebih nyaman.',
+      en: 'We recommend calm music to make the mood more comfortable.',
     );
   }
 

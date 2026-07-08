@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_map/flutter_map.dart';
@@ -5,11 +7,25 @@ import 'package:frontend/core/model/pothole.dart';
 import 'package:frontend/core/navigation/pothole_detection_control.dart';
 import 'package:frontend/core/provider/gps_provider.dart';
 import 'package:frontend/core/provider/pothole_provider.dart';
+import 'package:frontend/core/services/map_tile_config.dart';
 import 'package:frontend/core/utils/pothole_detection_engine.dart';
 import 'package:frontend/features/home/presentation/page/map_detail_page.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:provider/provider.dart';
 import 'package:frontend/core/themes/car_theme.dart';
+import 'package:url_launcher/url_launcher.dart';
+
+class _RoadAlertData {
+  const _RoadAlertData({
+    required this.category,
+    required this.distance,
+    required this.severity,
+  });
+
+  final String category;
+  final double distance;
+  final double severity;
+}
 
 class MapCard extends StatefulWidget {
   const MapCard({super.key});
@@ -21,16 +37,22 @@ class MapCard extends StatefulWidget {
 class _MapCardState extends State<MapCard> {
   final MapController _mapController = MapController();
   PotholeProvider? _potholeProvider;
+  GPSProvider? _gpsProviderRef;
+  bool _prevEspWifi = false;
 
-  double _zoom = 20;
+  double _zoom = 18;
   bool firstLoad = true;
   bool _mapReady = false;
-  bool _hasCenteredFallback = false;
+  LatLng? _fallbackCenter;
 
-  DateTime lastAlertTime = DateTime.now();
   DateTime lastMoveTime = DateTime.now();
 
   bool isDialogShowing = false;
+  Timer? _safeClearTimer;
+  BuildContext? _alertDialogContext;
+  final ValueNotifier<_RoadAlertData> _alertData = ValueNotifier(
+    const _RoadAlertData(category: 'normal', distance: 0, severity: 0),
+  );
 
   LatLng? lastCameraPosition;
   LatLng? smoothCarPosition;
@@ -49,7 +71,13 @@ class _MapCardState extends State<MapCard> {
 
       final potholeProvider = context.read<PotholeProvider>();
       _potholeProvider = potholeProvider;
-      potholeProvider.bindGps(context.read<GPSProvider>());
+
+      final gpsProvider = context.read<GPSProvider>();
+      potholeProvider.bindGps(gpsProvider);
+
+      _gpsProviderRef = gpsProvider;
+      _prevEspWifi = gpsProvider.espWifiConnected;
+      gpsProvider.addListener(_onGpsChanged);
 
       if (PotholeDetectionControl.enabled.value) {
         potholeProvider.attachRealtime();
@@ -57,8 +85,20 @@ class _MapCardState extends State<MapCard> {
     });
   }
 
+  // Saat ESP32 baru dapat WiFi, langsung refresh pothole dari backend.
+  void _onGpsChanged() {
+    final espWifi = _gpsProviderRef?.espWifiConnected ?? false;
+    if (espWifi && !_prevEspWifi) {
+      _potholeProvider?.loadPotholes();
+    }
+    _prevEspWifi = espWifi;
+  }
+
   @override
   void dispose() {
+    _safeClearTimer?.cancel();
+    _alertData.dispose();
+    _gpsProviderRef?.removeListener(_onGpsChanged);
     _potholeProvider?.detachRealtime();
     super.dispose();
   }
@@ -108,23 +148,21 @@ class _MapCardState extends State<MapCard> {
     });
   }
 
-  // ================= ALERT =================
-  // ================= ALERT =================
-  // ================= ALERT MODERN =================
   void triggerAlert(String category, double distance, double severity) {
-    if (!mounted || isDialogShowing || !PotholeDetectionControl.enabled.value) {
+    if (!mounted || !PotholeDetectionControl.enabled.value) {
       return;
     }
 
+    _safeClearTimer?.cancel();
+    _safeClearTimer = null;
+    _alertData.value = _RoadAlertData(
+      category: category,
+      distance: distance,
+      severity: severity,
+    );
+
+    if (isDialogShowing) return;
     isDialogShowing = true;
-
-    final bool isPothole = category == "pothole";
-
-    final Color alertColor = isPothole ? Colors.red : Colors.orange;
-
-    final String title = isPothole
-        ? "POTHOLE IN ${(distance * 1000).toInt()} M !"
-        : "SPEED BUMP";
 
     showGeneralDialog(
       context: context,
@@ -133,16 +171,24 @@ class _MapCardState extends State<MapCard> {
       barrierColor: Colors.black.withValues(alpha: 0.55),
       transitionDuration: const Duration(milliseconds: 400),
 
-      pageBuilder: (_, __, ___) {
-        return StatefulBuilder(
-          builder: (context, setState) {
+      pageBuilder: (dialogContext, __, ___) {
+        _alertDialogContext = dialogContext;
+        return ValueListenableBuilder<_RoadAlertData>(
+          valueListenable: _alertData,
+          builder: (context, alert, _) {
+            final isPothole = alert.category == "pothole";
+            final alertColor = isPothole ? Colors.red : Colors.orange;
+            final title = isPothole
+                ? "POTHOLE IN ${(alert.distance * 1000).round()} M"
+                : "SPEED BUMP IN ${(alert.distance * 1000).round()} M";
+
             return Center(
               child: Container(
                 width: 500.w,
                 height: 390.h,
                 decoration: BoxDecoration(
                   borderRadius: BorderRadius.circular(28.r),
-                  color: Colors.black,
+                  color: Colors.white,
                   boxShadow: [
                     BoxShadow(
                       color: alertColor.withValues(alpha: 0.5),
@@ -154,26 +200,6 @@ class _MapCardState extends State<MapCard> {
 
                 child: Stack(
                   children: [
-                    // MAP BACKGROUND
-                    ClipRRect(
-                      borderRadius: BorderRadius.circular(28.r),
-                      child: Opacity(
-                        opacity: 0.45,
-                        child: FlutterMap(
-                          options: MapOptions(
-                            initialCenter: smoothCarPosition!,
-                            initialZoom: 16,
-                          ),
-                          children: [
-                            TileLayer(
-                              urlTemplate:
-                                  "https://tile.openstreetmap.org/{z}/{x}/{y}.png",
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-
                     // TOP BAR
                     Positioned(
                       top: 15.h,
@@ -185,7 +211,7 @@ class _MapCardState extends State<MapCard> {
                           vertical: 10.h,
                         ),
                         decoration: BoxDecoration(
-                          color: Colors.red.shade900,
+                          color: alertColor.shade900,
                           borderRadius: BorderRadius.circular(14.r),
                         ),
                         child: Text(
@@ -208,7 +234,7 @@ class _MapCardState extends State<MapCard> {
                         child: Text(
                           "WARNING !",
                           style: TextStyle(
-                            color: Colors.red,
+                            color: alertColor,
                             fontSize: 42.sp,
                             fontWeight: FontWeight.w900,
                           ),
@@ -234,7 +260,10 @@ class _MapCardState extends State<MapCard> {
                           decoration: BoxDecoration(
                             shape: BoxShape.circle,
                             gradient: RadialGradient(
-                              colors: [Colors.redAccent, Colors.red.shade900],
+                              colors: [
+                                alertColor.shade400,
+                                alertColor.shade900,
+                              ],
                             ),
                           ),
                           child: Center(
@@ -257,7 +286,7 @@ class _MapCardState extends State<MapCard> {
                         child: Text(
                           title,
                           style: TextStyle(
-                            color: Colors.red,
+                            color: alertColor,
                             fontSize: 28.sp,
                             fontWeight: FontWeight.bold,
                           ),
@@ -276,7 +305,7 @@ class _MapCardState extends State<MapCard> {
                           vertical: 14.h,
                         ),
                         decoration: BoxDecoration(
-                          color: Colors.red.shade900,
+                          color: alertColor.shade900,
                           borderRadius: BorderRadius.circular(14.r),
                         ),
                         child: Row(
@@ -284,10 +313,10 @@ class _MapCardState extends State<MapCard> {
                           children: [
                             Row(
                               children: [
-                                Icon(Icons.location_pin, color: Colors.white),
+                                Icon(Icons.analytics, color: Colors.white),
                                 SizedBox(width: 8.w),
                                 Text(
-                                  "Karawang",
+                                  "Severity ${alert.severity.toStringAsFixed(1)}",
                                   style: TextStyle(
                                     color: Colors.white,
                                     fontSize: 16.sp,
@@ -297,7 +326,7 @@ class _MapCardState extends State<MapCard> {
                             ),
 
                             Text(
-                              "ETA 12 min",
+                              isPothole ? "POTHOLE" : "SPEED BUMP",
                               style: TextStyle(
                                 color: Colors.white,
                                 fontSize: 16.sp,
@@ -305,7 +334,7 @@ class _MapCardState extends State<MapCard> {
                             ),
 
                             Text(
-                              "4.6 km",
+                              "DRIVE CAREFULLY",
                               style: TextStyle(
                                 color: Colors.white,
                                 fontSize: 16.sp,
@@ -324,12 +353,19 @@ class _MapCardState extends State<MapCard> {
       },
     ).then((_) {
       isDialogShowing = false;
+      _alertDialogContext = null;
+      _safeClearTimer?.cancel();
+      _safeClearTimer = null;
     });
+  }
 
-    Future.delayed(const Duration(seconds: 4), () {
-      if (mounted && Navigator.canPop(context)) {
-        Navigator.pop(context);
-      }
+  void _markRoadSafe() {
+    if (!isDialogShowing || _safeClearTimer != null) return;
+
+    _safeClearTimer = Timer(const Duration(seconds: 2), () {
+      final dialogContext = _alertDialogContext;
+      if (!mounted || !isDialogShowing || dialogContext == null) return;
+      Navigator.of(dialogContext).pop();
     });
   }
 
@@ -341,7 +377,10 @@ class _MapCardState extends State<MapCard> {
       hazards: potholes,
     );
 
-    if (hazard == null) return;
+    if (hazard == null) {
+      _markRoadSafe();
+      return;
+    }
 
     final distance = PotholeDetectionEngine.distanceKm(
       current.latitude,
@@ -350,25 +389,20 @@ class _MapCardState extends State<MapCard> {
       hazard.lng,
     );
 
-    if (DateTime.now().difference(lastAlertTime).inSeconds < 5) return;
-
-    lastAlertTime = DateTime.now();
-
-    triggerAlert(
-      hazard.category,
-      distance,
-      hazard.severity,
-    );
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      triggerAlert(hazard.category, distance, hazard.severity);
+    });
   }
 
   // ================= ZOOM =================
   void _zoomIn(LatLng pos) {
-    _zoom = (_zoom + 1).clamp(5.0, 23.0);
+    _zoom = (_zoom + 1).clamp(5.0, MapTileConfig.maxZoom);
     _mapController.move(pos, _zoom);
   }
 
   void _zoomOut(LatLng pos) {
-    _zoom = (_zoom - 1).clamp(5.0, 23.0);
+    _zoom = (_zoom - 1).clamp(5.0, MapTileConfig.maxZoom);
     _mapController.move(pos, _zoom);
   }
 
@@ -403,18 +437,21 @@ class _MapCardState extends State<MapCard> {
       builder: (context, potholeDetectionEnabled, _) {
         return Consumer2<GPSProvider, PotholeProvider>(
           builder: (context, gps, potholeProvider, _) {
-            final hasGPS = gps.current != null;
+            // hasPosition: ada koordinat walau satelit < 4 → tetap tampilkan marker
+            final hasPosition = gps.current?.hasPosition == true;
+            // hasGPS: fix penuh (≥4 satelit) → untuk pothole alert
+            final hasGPS = gps.current?.isValid == true;
             final hazards = potholeDetectionEnabled
                 ? potholeProvider.activeHazards
                 : <Pothole>[];
 
-            final rawPosition = hasGPS
+            final rawPosition = hasPosition
                 ? LatLng(gps.current!.lat, gps.current!.lng)
                 : hazards.isNotEmpty
                 ? LatLng(hazards.first.lat, hazards.first.lng)
                 : const LatLng(-6.3, 107.2);
 
-            if (hasGPS) {
+            if (hasPosition) {
               currentHeading = gps.current!.heading;
 
               smoothHeading = angleLerp(smoothHeading, currentHeading, 0.12);
@@ -442,18 +479,34 @@ class _MapCardState extends State<MapCard> {
                   smoothCarPosition!,
                   potholeProvider.activeHazards,
                 );
+              } else {
+                _markRoadSafe();
               }
+            } else {
+              _markRoadSafe();
             }
 
             final position = smoothCarPosition ?? rawPosition;
-            final mapZoom = hasGPS ? _zoom : hazards.isNotEmpty ? 15.5 : 13.0;
+            final mapZoom = hasPosition
+                ? _zoom
+                : hazards.isNotEmpty
+                ? 15.5
+                : 13.0;
 
-            if (!hasGPS && hazards.isNotEmpty && !_hasCenteredFallback) {
-              WidgetsBinding.instance.addPostFrameCallback((_) {
-                if (!mounted || !_mapReady) return;
-                _mapController.move(position, mapZoom);
-                _hasCenteredFallback = true;
-              });
+            // Saat belum ada GPS tapi ada hazards, center ke hazard pertama.
+            // Reset saat GPS datang supaya bisa re-center ke hazard lagi jika GPS hilang.
+            if (!hasPosition && hazards.isNotEmpty) {
+              final targetCenter = LatLng(hazards.first.lat, hazards.first.lng);
+              if (_fallbackCenter?.latitude != targetCenter.latitude ||
+                  _fallbackCenter?.longitude != targetCenter.longitude) {
+                _fallbackCenter = targetCenter;
+                WidgetsBinding.instance.addPostFrameCallback((_) {
+                  if (!mounted || !_mapReady) return;
+                  _mapController.move(targetCenter, 15.5);
+                });
+              }
+            } else if (hasPosition) {
+              _fallbackCenter = null;
             }
 
             return ValueListenableBuilder(
@@ -506,13 +559,23 @@ class _MapCardState extends State<MapCard> {
 
                         children: [
                           TileLayer(
-                            urlTemplate:
-                                "https://tile.openstreetmap.org/{z}/{x}/{y}.png",
-                            userAgentPackageName: "com.pothole.navigation.app",
-                            maxZoom: 25,
+                            urlTemplate: MapTileConfig.urlTemplate,
+                            subdomains: MapTileConfig.subdomains,
+                            userAgentPackageName:
+                                MapTileConfig.userAgentPackageName,
+                            maxZoom: MapTileConfig.maxZoom,
+                          ),
+                          RichAttributionWidget(
+                            attributions: [
+                              TextSourceAttribution(
+                                MapTileConfig.attribution,
+                                onTap: () =>
+                                    launchUrl(MapTileConfig.attributionUri),
+                              ),
+                            ],
                           ),
 
-                          if (hasGPS && smoothCarPosition != null)
+                          if (hasPosition && smoothCarPosition != null)
                             MarkerLayer(
                               markers: [
                                 Marker(
@@ -533,57 +596,57 @@ class _MapCardState extends State<MapCard> {
 
                           if (potholeDetectionEnabled)
                             MarkerLayer(
-                              markers: hazards
-                                  .map((p) {
-                                    Color color = Colors.orange;
-                                    IconData icon = Icons.warning_rounded;
+                              markers: hazards.map((p) {
+                                Color color = Colors.orange;
+                                IconData icon = Icons.warning_rounded;
 
-                                    if (p.category == "pothole") {
-                                      color = Colors.red;
-                                      icon = Icons.report_problem;
-                                    } else if (p.category == "bumper") {
-                                      color = Colors.yellow;
-                                      icon = Icons.speed;
-                                    }
+                                if (p.category == "pothole") {
+                                  color = Colors.red;
+                                  icon = Icons.report_problem;
+                                } else if (p.category == "bumper") {
+                                  color = Colors.yellow;
+                                  icon = Icons.speed;
+                                }
 
-                                    return Marker(
-                                      point: LatLng(p.lat, p.lng),
-                                      width: 65,
-                                      height: 65,
-                                      child: Column(
-                                        mainAxisSize: MainAxisSize.min,
-                                        children: [
-                                          Icon(icon, color: color, size: 28),
-                                          Container(
-                                            padding: const EdgeInsets.symmetric(
-                                              horizontal: 6,
-                                              vertical: 2,
-                                            ),
-                                            decoration: BoxDecoration(
-                                              color: Colors.black.withValues(
-                                                alpha: 0.75,
-                                              ),
-                                              borderRadius:
-                                                  BorderRadius.circular(6),
-                                            ),
-                                            child: Text(
-                                              "${p.category.toUpperCase()} ${p.severity.toStringAsFixed(1)}",
-                                              style: const TextStyle(
-                                                color: Colors.white,
-                                                fontSize: 9,
-                                              ),
-                                            ),
+                                return Marker(
+                                  point: LatLng(p.lat, p.lng),
+                                  width: 65,
+                                  height: 65,
+                                  child: Column(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Icon(icon, color: color, size: 28),
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 6,
+                                          vertical: 2,
+                                        ),
+                                        decoration: BoxDecoration(
+                                          color: Colors.black.withValues(
+                                            alpha: 0.75,
                                           ),
-                                        ],
+                                          borderRadius: BorderRadius.circular(
+                                            6,
+                                          ),
+                                        ),
+                                        child: Text(
+                                          "${p.category.toUpperCase()} ${p.severity.toStringAsFixed(1)}",
+                                          style: const TextStyle(
+                                            color: Colors.white,
+                                            fontSize: 9,
+                                          ),
+                                        ),
                                       ),
-                                    );
-                                  })
-                                  .toList(),
+                                    ],
+                                  ),
+                                );
+                              }).toList(),
                             ),
                         ],
                       ),
 
-                      if (!hasGPS)
+                      // Tampilkan overlay hanya saat benar-benar belum ada posisi sama sekali
+                      if (!hasPosition)
                         Positioned(
                           left: 15.w,
                           bottom: 15.h,
@@ -645,9 +708,9 @@ class _MapCardState extends State<MapCard> {
                               ),
                               SizedBox(width: 10.w),
                               Text(
-                                hasGPS
-                                    ? "Speed ${gps.current!.speed.toStringAsFixed(0)} km/h  •  Heading ${gps.current!.heading.toStringAsFixed(0)}°"
-                                    : gps.status,
+                                hasPosition
+                                    ? "Speed ${gps.current!.speed.toStringAsFixed(0)} km/h  •  Heading ${gps.current!.heading.toStringAsFixed(0)}°${!hasGPS ? '  •  Weak GPS (${gps.satellites} sat)' : ''}  •  ESP WiFi ${gps.espWifiConnected ? (gps.wifiSsid.isEmpty ? 'Connected' : gps.wifiSsid) : 'Offline'}"
+                                    : "${gps.status}  •  ESP WiFi ${gps.espWifiConnected ? (gps.wifiSsid.isEmpty ? 'Connected' : gps.wifiSsid) : 'Offline'}",
                                 style: TextStyle(
                                   color: Colors.white,
                                   fontSize: 16.sp,

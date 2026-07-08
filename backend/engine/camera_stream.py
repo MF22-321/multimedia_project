@@ -92,7 +92,7 @@ drowsiness_status = {
     "raw_mood": "unknown",
     "mood_candidate": "unknown",
     "mood_candidate_elapsed": 0.0,
-    "mood_required_sec": 7.0,
+    "mood_required_sec": MoodConfig.confirm_seconds,
     "smile_score": 0.0,
     "sadness_score": 0.0,
     "yawn_status": "NO",
@@ -127,10 +127,10 @@ class DrowsyConfig:
     yawn_alert_count = int(os.getenv("DROWSY_YAWN_ALERT_COUNT", "3"))
 
     use_score = True
-    eye_low_ratio = float(os.getenv("DROWSY_EYE_LOW_RATIO", "0.62"))
-    eye_full_close_ratio = float(os.getenv("DROWSY_EYE_FULL_CLOSE_RATIO", "0.45"))
-    closed_eye_ratio = float(os.getenv("DROWSY_CLOSED_EYE_RATIO", "0.55"))
-    closed_eye_ear = float(os.getenv("DROWSY_CLOSED_EYE_EAR", "0.16"))
+    eye_low_ratio = float(os.getenv("DROWSY_EYE_LOW_RATIO", "0.78"))
+    eye_full_close_ratio = float(os.getenv("DROWSY_EYE_FULL_CLOSE_RATIO", "0.58"))
+    closed_eye_ratio = float(os.getenv("DROWSY_CLOSED_EYE_RATIO", "0.70"))
+    closed_eye_ear = float(os.getenv("DROWSY_CLOSED_EYE_EAR", "0.22"))
     closed_eye_alert_sec = float(os.getenv("DROWSY_CLOSED_EYE_ALERT_SEC", "3.0"))
     yawn_points_max = 1.0
     yawn_points_per_event = 0.35
@@ -140,7 +140,8 @@ class DrowsyConfig:
     w_yawn = 0.45
     score_alpha = 0.20
     score_alert_th = 0.85
-    alert_hold_sec = 4.0
+    alert_hold_sec = float(os.getenv("DROWSY_ALERT_HOLD_SEC", "4.0"))
+    alert_cooldown_sec = float(os.getenv("DROWSY_ALERT_COOLDOWN_SEC", "5.0"))
 
 
 # =========================================================
@@ -311,7 +312,7 @@ def reset_drowsiness_status(driver_name=None):
         "alert_active": False,
         "alert_reason": None,
         "calibrating": is_active,
-        "calib_remaining": 3.0 if is_active else 0.0,
+        "calib_remaining": DrowsyConfig.calib_seconds if is_active else 0.0,
         "status": "calibrating" if is_active else "inactive",
         "face_position": "not_frontal",
     }
@@ -358,6 +359,18 @@ def get_drowsiness_status():
 
 def get_driver_status():
     return dict(driver_status)
+
+
+def clear_driver_status(driver_name=None):
+    if driver_name is not None:
+        current = driver_status.get("driver")
+        if current is not None and current.lower() != driver_name.lower():
+            return
+
+    driver_status["driver"] = None
+    driver_status["recognized"] = False
+    driver_status["confidence"] = 0.0
+    driver_status["bbox"] = None
 
 
 def set_enrollment_active(active: bool):
@@ -556,7 +569,7 @@ def extract_ear_mar(frame):
 
         left_ear = eye_aspect_ratio(left_eye)
         right_ear = eye_aspect_ratio(right_eye)
-        ear = (left_ear + right_ear) / 2.0
+        ear = min(left_ear, right_ear)
 
         mar = mouth_aspect_ratio(mouth)
 
@@ -564,7 +577,14 @@ def extract_ear_mar(frame):
             logger.warning("[EAR/MAR] nan detected")
             return None, None, pts, False
 
-        log_debug("[EAR/MAR] ear=%.4f, mar=%.4f, frontal=%s", ear, mar, frontal)
+        log_debug(
+            "[EAR/MAR] ear=%.4f left=%.4f right=%.4f mar=%.4f frontal=%s",
+            ear,
+            left_ear,
+            right_ear,
+            mar,
+            frontal,
+        )
         return float(ear), float(mar), pts, True
 
     except Exception as e:
@@ -846,12 +866,21 @@ def camera_loop():
                 elif frontal and ear is not None and mar is not None:
                     now = time.time()
                     update_drowsiness_from_metrics(ear, mar, now)
-                    update_mood_from_landmarks(pts, now)
+                    if (
+                        drowsiness_status.get("eye_closed_elapsed", 0.0) >= 0.8
+                        or drowsiness_status.get("alert_active") is True
+                    ):
+                        reset_mood_values()
+                        log_debug(
+                            "[MOOD] skipped while eyes are closed; using "
+                            "drowsiness alert path instead"
+                        )
+                    else:
+                        update_mood_from_landmarks(pts, now)
                 else:
-                    reset_mood_values()
                     log_debug(
-                        "[DROWSINESS] skipped update because face is not frontal "
-                        "or metrics invalid"
+                        "[DROWSINESS] skipped EAR/MAR/mood update because face "
+                        "is not frontal or metrics invalid"
                     )
             else:
                 drowsiness_status["face_position"] = "not_frontal"

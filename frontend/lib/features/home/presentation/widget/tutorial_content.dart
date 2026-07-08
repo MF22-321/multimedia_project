@@ -89,6 +89,18 @@ class _TutorialPageState extends State<TutorialPage> {
       image: 'https://source.unsplash.com/featured/900x520?roadside-assistance-car-accident',
       action: VehicleAction.helpAccident,
     ),
+    _TutorialItem(
+      title: AppStrings.choose(
+        id: 'Hindari Lubang Jalan',
+        en: 'Avoid Potholes',
+      ),
+      description: AppStrings.choose(
+        id: 'Panduan berkendara aman melewati jalan berlubang.',
+        en: 'Safe driving guide for navigating pothole-prone roads.',
+      ),
+      image: 'https://source.unsplash.com/featured/900x520?road-pothole-damage',
+      action: VehicleAction.potholes,
+    ),
   ];
 
   VehicleAction get _localizedOpenHoodAction {
@@ -584,6 +596,7 @@ class _TutorialImageFallback extends StatelessWidget {
       VehicleAction.changeTire => Icons.build_rounded,
       VehicleAction.useFireExtinguisher => Icons.local_fire_department_rounded,
       VehicleAction.helpAccident => Icons.health_and_safety_rounded,
+      VehicleAction.potholes => Icons.report_problem_rounded,
       VehicleAction.openTrunkEng ||
       VehicleAction.openTrunkInd ||
       VehicleAction.openTrunkJpn => Icons.local_gas_station_rounded,

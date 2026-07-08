@@ -15,6 +15,7 @@ import 'package:frontend/core/services/drive_pref_service.dart';
 import 'package:frontend/core/services/drowsiness_api.dart';
 import 'package:frontend/core/services/fragrance_ai_mqtt_service.dart';
 import 'package:frontend/core/services/music_mqtt_service.dart';
+import 'package:frontend/core/services/smart_fragrance_mqtt_service.dart';
 import 'package:frontend/services/mqtt_avatar_service.dart';
 import 'package:frontend/models/avatar_state.dart';
 import 'package:frontend/features/home/presentation/widget/music_page.dart'
@@ -60,12 +61,13 @@ class _HomePageState extends State<HomePage> {
   bool isReady = false;
 
   Timer? _drowsyTimer;
+  Timer? _fragranceOffTimer;
   bool _isMonitoring = false;
   bool _dialogShown = false;
   bool _moodSuggestionShown = false;
   _HomePopup _activePopup = _HomePopup.none;
-  String? _lastSuggestedMood;
-  DateTime? _lastMoodSuggestionAt;
+  DateTime? _lastSafetyPopupAt;
+  static const Duration _safetyPopupCooldown = Duration(seconds: 5);
   Timer? _fragranceFeedbackTimer;
   FragranceFeedback? _fragranceFeedback;
   bool _showFragranceFeedback = false;
@@ -96,6 +98,7 @@ class _HomePageState extends State<HomePage> {
     DriverSession.currentDriver.removeListener(_onDriverChanged);
     DrowsinessControl.enabled.removeListener(_onDrowsinessSettingChanged);
     _drowsyTimer?.cancel();
+    _fragranceOffTimer?.cancel();
     _fragranceFeedbackTimer?.cancel();
     _avatarService.dispose();
     _musicMqttService.dispose();
@@ -249,8 +252,10 @@ class _HomePageState extends State<HomePage> {
 
         if (status == "drowsy") {
           if (!_dialogShown) {
-            _dialogShown = true;
-            await _showDrowsyWarning();
+            final shown = await _showDrowsyWarning();
+            if (shown) {
+              _dialogShown = true;
+            }
           }
           return;
         }
@@ -266,33 +271,31 @@ class _HomePageState extends State<HomePage> {
     });
   }
 
+  bool _isSafetyPopupCoolingDown() {
+    final lastPopupAt = _lastSafetyPopupAt;
+    if (lastPopupAt == null) return false;
+
+    return DateTime.now().difference(lastPopupAt) < _safetyPopupCooldown;
+  }
+
+  void _markSafetyPopupShown() {
+    _lastSafetyPopupAt = DateTime.now();
+  }
+
   Future<void> _maybeShowMoodSuggestion(String mood) async {
     if (_moodSuggestionShown) return;
 
-    if (mood != "happy" && mood != "sad") {
-      _lastSuggestedMood = null;
+    if (mood != "happy") {
       return;
     }
 
-    final now = DateTime.now();
-
-    final sameMood = _lastSuggestedMood == mood;
-
-    final stillInCooldown =
-        _lastMoodSuggestionAt != null &&
-        now.difference(_lastMoodSuggestionAt!) < const Duration(minutes: 2);
-
-    if (sameMood && stillInCooldown) {
+    if (_isSafetyPopupCoolingDown()) {
       return;
     }
 
     if (!mounted || _activePopup != _HomePopup.none) return;
 
     _moodSuggestionShown = true;
-
-    _lastSuggestedMood = mood;
-
-    _lastMoodSuggestionAt = now;
 
     final isHappy = mood == "happy";
 
@@ -360,30 +363,31 @@ class _HomePageState extends State<HomePage> {
       if (_activePopup == _HomePopup.mood) {
         _activePopup = _HomePopup.none;
       }
+      _markSafetyPopupShown();
       _moodSuggestionShown = false;
     }
   }
 
-  Future<void> _showDrowsyWarning() async {
-    if (!mounted) return;
-    if (_activePopup == _HomePopup.drowsy) return;
+  Future<bool> _showDrowsyWarning() async {
+    if (!mounted) return false;
+    if (_activePopup == _HomePopup.drowsy) return false;
+    if (_isSafetyPopupCoolingDown()) return false;
 
-    if (_activePopup == _HomePopup.mood) {
-      Navigator.of(context, rootNavigator: true).pop();
-      await Future.delayed(const Duration(milliseconds: 180));
-      if (_activePopup == _HomePopup.mood) {
-        _activePopup = _HomePopup.none;
-      }
-    }
-
-    if (!mounted || _activePopup != _HomePopup.none) return;
+    if (!mounted || _activePopup != _HomePopup.none) return false;
 
     final currentTheme = CarThemes.currentTheme.value;
     final theme = CarThemes.getTheme(currentTheme);
     final actionColor = getMusicAccentColor(currentTheme, theme);
     const alertColor = Color(0xFFFF5A5F);
 
+    _markSafetyPopupShown();
     _activePopup = _HomePopup.drowsy;
+
+    final autoCloseTimer = Timer(const Duration(seconds: 5),() {
+      if (mounted && _activePopup == _HomePopup.drowsy) {
+        Navigator.of(context).pop();
+      }
+    });
 
     try {
       await showGeneralDialog(
@@ -406,7 +410,18 @@ class _HomePageState extends State<HomePage> {
             tertiaryText: AppStrings.disableDrowsiness,
             onSecondary: () => Navigator.of(context).pop(),
             onPrimary: () {
-              debugPrint("🌸 Fragrance ON");
+              debugPrint("🌸 Fragrance ON (15s)");
+              _fragranceOffTimer?.cancel();
+              unawaited(
+                SmartFragranceMqttService.instance.selectShortcutCartridge(1),
+              );
+              _fragranceOffTimer = Timer(const Duration(seconds: 15), () {
+                debugPrint("🌸 Fragrance OFF (auto)");
+                unawaited(
+                  SmartFragranceMqttService.instance
+                      .selectShortcutCartridge(0),
+                );
+              });
               Navigator.of(context).pop();
             },
             onTertiary: () {
@@ -418,10 +433,13 @@ class _HomePageState extends State<HomePage> {
         transitionBuilder: _premiumDialogTransition,
       );
     } finally {
+      autoCloseTimer.cancel();
       if (_activePopup == _HomePopup.drowsy) {
         _activePopup = _HomePopup.none;
       }
     }
+
+    return true;
   }
 
   /// ================= UI =================

@@ -12,16 +12,14 @@ from backend.engine.camera_stream import (
     stop_drowsiness_monitoring,
     get_drowsiness_status,
 )
+from backend.fastAPI.validation import validate_driver_name
 
 router = APIRouter(prefix="", tags=["Drowsiness"])
 
 
 @router.post("/start_drowsiness", response_model=StartDrowsinessResponse)
 def start_drowsiness(payload: StartDrowsinessRequest):
-    driver_name = payload.driver_name.strip()
-
-    if not driver_name:
-        raise HTTPException(status_code=400, detail="driver_name is required")
+    driver_name = validate_driver_name(payload.driver_name)
 
     try:
         start_drowsiness_monitoring(driver_name)

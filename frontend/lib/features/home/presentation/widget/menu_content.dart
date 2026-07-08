@@ -4,6 +4,7 @@ import 'package:frontend/core/localization/app_strings.dart';
 import 'package:frontend/core/navigation/app_language_control.dart';
 import 'package:frontend/core/navigation/app_navigation.dart';
 import 'package:frontend/core/themes/car_theme.dart';
+import 'package:frontend/features/home/presentation/widget/ambient_light_content.dart';
 import 'package:frontend/features/home/presentation/widget/bluetooth_content.dart';
 import 'package:frontend/features/home/presentation/widget/car_info_content.dart';
 import 'package:frontend/features/home/presentation/widget/info_content.dart';
@@ -150,6 +151,12 @@ class MenuContent extends StatelessWidget {
         subtitle: AppStrings.cabinScent,
         icon: Icons.air_rounded,
         onTap: () => _openPage(context, const SmartFragrancePage()),
+      ),
+      _LauncherApp(
+        title: AppStrings.ambientLight,
+        subtitle: AppStrings.cabinLighting,
+        icon: Icons.light_mode_rounded,
+        onTap: () => _openPage(context, const AmbientLightContent()),
       ),
     ];
   }

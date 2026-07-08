@@ -18,6 +18,17 @@ flutter pub get
 flutter run -d linux
 ```
 
+Pothole API publik dapat dijalankan tanpa token. Jika deployment tertentu
+membutuhkan autentikasi, berikan token runtime dan jangan simpan di source:
+
+```bash
+flutter run -d linux \
+  --dart-define=POTHOLE_API_TOKEN=<token-aktif>
+```
+
+Base URL dapat dioverride dengan
+`--dart-define=POTHOLE_API_BASE_URL=https://example/api/v1`.
+
 ## Useful Checks
 
 ```bash

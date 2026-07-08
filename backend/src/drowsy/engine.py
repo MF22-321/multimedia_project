@@ -47,6 +47,7 @@ class DrowsinessEngine:
         self.score_smoothed = 0.0
         self.yawn_points = 0.0
         self.alert_until = 0.0
+        self.last_alert_time = -999.0
         self.eye_closed_since = None
         self.eye_closed_elapsed = 0.0
         self.alert_reason = None
@@ -61,6 +62,7 @@ class DrowsinessEngine:
         self.score_smoothed = 0.0
         self.yawn_points = 0.0
         self.alert_until = 0.0
+        self.last_alert_time = -999.0
         self.eye_closed_since = None
         self.eye_closed_elapsed = 0.0
         self.alert_reason = None
@@ -200,8 +202,13 @@ class DrowsinessEngine:
         )
 
         alert_should = alert_from_score or alert_from_yawn_rule or alert_from_closed_eye
-        if alert_should:
-            self.alert_until = max(self.alert_until, now + c.alert_hold_sec)
+        cooldown_sec = max(0.0, getattr(c, "alert_cooldown_sec", 0.0))
+        cooldown_active = (now - self.last_alert_time) < cooldown_sec
+        trigger_alert = alert_should and not cooldown_active
+
+        if trigger_alert:
+            self.last_alert_time = now
+            self.alert_until = now + c.alert_hold_sec
 
             if alert_from_closed_eye:
                 self.alert_reason = "closed_eye"
@@ -210,7 +217,7 @@ class DrowsinessEngine:
             else:
                 self.alert_reason = "score"
 
-        alert_active = (now < self.alert_until) or alert_should
+        alert_active = now < self.alert_until
         if not alert_active:
             self.alert_reason = None
 

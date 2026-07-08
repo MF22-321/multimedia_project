@@ -75,15 +75,15 @@ class Pothole {
       return "normal";
     }
 
-    if (speed < 2) {
+    if (speed < 3) {
       return "normal";
     }
 
-    if (speed > 8 && severity >= 2.5) {
+    if (speed >= 8 && severity >= 4) {
       return "pothole";
     }
 
-    if (speed <= 12 && severity >= 1.2) {
+    if (speed <= 25 && severity >= 2) {
       return "bumper";
     }
 

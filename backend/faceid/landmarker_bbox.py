@@ -3,6 +3,7 @@ import time
 from typing import Optional, Tuple
 import mediapipe as mp
 from .config import LANDMARKER_PATH, FACE_SIZE
+from .lbph_model import preprocess_face
 
 
 def landmarks_to_bbox(face_lms, w, h, pad=0.20):
@@ -69,6 +70,20 @@ class LandmarkerFaceCropper:
         """
         Returns: (roi_gray_200x200 or None, bbox or None)
         """
+        crop_bgr, bbox = self.crop_color(frame_bgr, min_face_px=min_face_px)
+        if crop_bgr is None:
+            return None, bbox
+
+        gray = cv2.cvtColor(crop_bgr, cv2.COLOR_BGR2GRAY)
+        roi = preprocess_face(gray)
+
+        return roi, bbox
+
+    def crop_color(
+        self,
+        frame_bgr,
+        min_face_px: int = 120,
+    ) -> Tuple[Optional[any], Optional[Tuple[int, int, int, int]]]:
         h, w = frame_bgr.shape[:2]
         rgb = cv2.cvtColor(frame_bgr, cv2.COLOR_BGR2RGB)
         mp_image = mp.Image(image_format=mp.ImageFormat.SRGB, data=rgb)
@@ -87,8 +102,4 @@ class LandmarkerFaceCropper:
             return None, bbox
 
         crop = frame_bgr[y:y + bh, x:x + bw]
-        gray = cv2.cvtColor(crop, cv2.COLOR_BGR2GRAY)
-        roi = cv2.resize(gray, FACE_SIZE)
-        roi = cv2.equalizeHist(roi)
-
-        return roi, bbox
+        return crop, bbox

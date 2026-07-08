@@ -1,6 +1,7 @@
 from typing import Optional, Tuple
 
 from .config import CONF_THRESHOLD, MIN_FACE_PX
+from .embedding_model import EmbeddingRecognizer
 from .landmarker_bbox import LandmarkerFaceCropper
 from .lbph_model import load_lbph, lbph_conf_from_dist
 from .labels_store import load_labels
@@ -21,6 +22,11 @@ class FaceID:
             self.rec = load_lbph()
         except FileNotFoundError:
             self.rec = None
+
+        try:
+            self.embedding_rec = EmbeddingRecognizer()
+        except FileNotFoundError:
+            self.embedding_rec = None
 
         self.conf_threshold = conf_threshold
         self.min_face_px = min_face_px
@@ -45,16 +51,28 @@ class FaceID:
             stable, ratio, _ = self.voter.stable()
             return stable, ratio, bbox
 
-        if self.rec is None or not self.id_to_name:
+        if self.embedding_rec is None and (self.rec is None or not self.id_to_name):
             self.last_raw_name = None
             self.last_raw_conf = 0.0
             self.voter.push(None)
             stable, ratio, _ = self.voter.stable()
             return stable, ratio, bbox
 
-        label, dist = self.rec.predict(roi)
-        conf = lbph_conf_from_dist(dist)
-        name = self.id_to_name.get(int(label), None)
+        name = None
+        conf = 0.0
+
+        if self.embedding_rec is not None:
+            crop_bgr, _ = self.cropper.crop_color(
+                frame_bgr,
+                min_face_px=self.min_face_px,
+            )
+            if crop_bgr is not None:
+                name, conf = self.embedding_rec.predict(crop_bgr)
+
+        if name is None and self.rec is not None and self.id_to_name:
+            label, dist = self.rec.predict(roi)
+            conf = lbph_conf_from_dist(dist)
+            name = self.id_to_name.get(int(label), None)
 
         if name is None or conf < self.conf_threshold:
             name = None

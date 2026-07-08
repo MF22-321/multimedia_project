@@ -42,16 +42,17 @@ class DrowsyConfig:
     yawn_alert_count: int = 3
 
     use_score: bool = True
-    eye_low_ratio: float = float(os.getenv("DROWSY_EYE_LOW_RATIO", "0.62"))
-    eye_full_close_ratio: float = float(os.getenv("DROWSY_EYE_FULL_CLOSE_RATIO", "0.45"))
-    closed_eye_ratio: float = float(os.getenv("DROWSY_CLOSED_EYE_RATIO", "0.55"))
-    closed_eye_ear: float = float(os.getenv("DROWSY_CLOSED_EYE_EAR", "0.16"))
+    eye_low_ratio: float = float(os.getenv("DROWSY_EYE_LOW_RATIO", "0.78"))
+    eye_full_close_ratio: float = float(os.getenv("DROWSY_EYE_FULL_CLOSE_RATIO", "0.58"))
+    closed_eye_ratio: float = float(os.getenv("DROWSY_CLOSED_EYE_RATIO", "0.70"))
+    closed_eye_ear: float = float(os.getenv("DROWSY_CLOSED_EYE_EAR", "0.22"))
     closed_eye_alert_sec: float = float(os.getenv("DROWSY_CLOSED_EYE_ALERT_SEC", "3.0"))
     w_eye: float = 0.55
     w_yawn: float = 0.45
     score_alpha: float = 0.20
     score_alert_th: float = 0.85
-    alert_hold_sec: float = 4.0
+    alert_hold_sec: float = float(os.getenv("DROWSY_ALERT_HOLD_SEC", "4.0"))
+    alert_cooldown_sec: float = float(os.getenv("DROWSY_ALERT_COOLDOWN_SEC", "5.0"))
 
     yawn_points_per_event: float = 0.35
     yawn_points_max: float = 1.0

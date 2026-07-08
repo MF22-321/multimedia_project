@@ -3,6 +3,10 @@ import 'package:http/http.dart' as http;
 import 'package:latlong2/latlong.dart';
 
 class RouteService {
+  RouteService({http.Client? client}) : _client = client ?? http.Client();
+
+  final http.Client _client;
+
   Future<List<LatLng>> getRoute(LatLng start, LatLng end) async {
     final url =
         "https://router.project-osrm.org/route/v1/driving/"
@@ -10,7 +14,7 @@ class RouteService {
         "${end.longitude},${end.latitude}"
         "?overview=full&geometries=geojson";
 
-    final response = await http.get(Uri.parse(url));
+    final response = await _client.get(Uri.parse(url));
 
     if (response.statusCode != 200) {
       throw Exception("Route request failed: ${response.statusCode}");

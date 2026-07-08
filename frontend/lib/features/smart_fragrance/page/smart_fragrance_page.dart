@@ -409,8 +409,9 @@ class _HomeScreenState extends State<SmartFragrancePage> {
                                           Column(
                                             children: [
                                               FragranceCard(
-                                                title: 'Coffee',
-                                                icon: Icons.coffee,
+                                                title: 'Fragrance 1',
+                                                slotNumber: '01',
+                                                icon: Icons.air,
                                                 levelPercent: coffeeLevel,
                                                 fillPercent: coffeeLevel,
                                                 isEnabled: coffeeEnabled,
@@ -435,8 +436,9 @@ class _HomeScreenState extends State<SmartFragrancePage> {
                                           Column(
                                             children: [
                                               FragranceCard(
-                                                title: 'Lavender',
-                                                icon: Icons.local_florist,
+                                                title: 'Fragrance 2',
+                                                slotNumber: '02',
+                                                icon: Icons.spa,
                                                 levelPercent: lavenderLevel,
                                                 fillPercent: lavenderLevel,
                                                 isEnabled: lavenderEnabled,

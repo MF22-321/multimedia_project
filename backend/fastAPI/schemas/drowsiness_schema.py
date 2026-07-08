@@ -31,7 +31,7 @@ class DrowsinessStatusResponse(BaseModel):
     raw_mood: str = "unknown"
     mood_candidate: str = "unknown"
     mood_candidate_elapsed: float = 0.0
-    mood_required_sec: float = 7.0
+    mood_required_sec: float = 3.0
     smile_score: float = 0.0
     sadness_score: float = 0.0
     yawn_status: Optional[str] = None

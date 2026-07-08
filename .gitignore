@@ -1,0 +1,14 @@
+
+# Large/local model files
+backend/models/arcface.onnx
+backend/models/lbph_model.yml
+backend/models/*.onnx
+backend/models/*.yml
+
+# Local logs
+backend.log
+spotifyd.log
+
+# Large video assets
+frontend/assets/video_sdr/*.mp4
+frontend/assets/video_sdr_original/*.mp4

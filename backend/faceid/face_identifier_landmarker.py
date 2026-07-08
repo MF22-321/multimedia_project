@@ -6,6 +6,7 @@ from pathlib import Path
 from typing import Optional, Tuple, Deque, List
 from collections import deque, Counter
 import mediapipe as mp
+from .lbph_model import preprocess_face
 
 MODELS_DIR = Path("models")
 MODEL_PATH = MODELS_DIR / "lbph_model.yml"
@@ -114,7 +115,7 @@ class FaceIdentifierLandmarker:
 
         crop = frame_bgr[y:y+bh, x:x+bw]
         gray = cv2.cvtColor(crop, cv2.COLOR_BGR2GRAY)
-        roi = cv2.resize(gray, (200, 200))
+        roi = preprocess_face(gray)
 
         label, dist = self.recognizer.predict(roi)
 

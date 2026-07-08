@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:frontend/core/services/fragrance_control_payload.dart';
 import 'package:frontend/core/services/mqtt_service.dart';
 import 'package:frontend/core/utils/app_logger.dart';
 
@@ -31,43 +32,9 @@ class SmartFragranceMqttService {
       return;
     }
 
-    await _mqtt.publish(controlTopic, _shortcutPayload(cartridge));
-  }
-
-  Map<String, dynamic> _shortcutPayload(int cartridge) {
-    switch (cartridge) {
-      case 3:
-        return {
-          'selectedCartridge': 3,
-          'mainPower': true,
-          'autoMode': false,
-          'motor1': {'enabled': true, 'speedLevel': 3},
-          'motor2': {'enabled': true, 'speedLevel': 3},
-        };
-      case 1:
-        return {
-          'selectedCartridge': 1,
-          'mainPower': true,
-          'autoMode': false,
-          'motor1': {'enabled': true, 'speedLevel': 3},
-          'motor2': {'enabled': false, 'speedLevel': 1},
-        };
-      case 2:
-        return {
-          'selectedCartridge': 2,
-          'mainPower': true,
-          'autoMode': false,
-          'motor1': {'enabled': false, 'speedLevel': 1},
-          'motor2': {'enabled': true, 'speedLevel': 3},
-        };
-      default:
-        return {
-          'selectedCartridge': 0,
-          'mainPower': false,
-          'autoMode': false,
-          'motor1': {'enabled': false, 'speedLevel': 1},
-          'motor2': {'enabled': false, 'speedLevel': 1},
-        };
-    }
+    await _mqtt.publish(
+      controlTopic,
+      FragranceControlPayload.forCartridge(cartridge),
+    );
   }
 }

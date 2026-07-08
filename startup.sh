@@ -34,9 +34,23 @@ CAMERA_WS_FPS="${CAMERA_WS_FPS:-16}"
 CAMERA_WS_JPEG_QUALITY="${CAMERA_WS_JPEG_QUALITY:-80}"
 FACEID_EVERY_N_FRAMES="${FACEID_EVERY_N_FRAMES:-2}"
 DROWSY_EVERY_N_FRAMES="${DROWSY_EVERY_N_FRAMES:-2}"
+DROWSY_CLOSED_EYE_ALERT_SEC="${DROWSY_CLOSED_EYE_ALERT_SEC:-3.0}"
+DROWSY_CLOSED_EYE_RATIO="${DROWSY_CLOSED_EYE_RATIO:-0.70}"
+DROWSY_CLOSED_EYE_EAR="${DROWSY_CLOSED_EYE_EAR:-0.22}"
+DROWSY_EYE_LOW_RATIO="${DROWSY_EYE_LOW_RATIO:-0.78}"
+DROWSY_EYE_FULL_CLOSE_RATIO="${DROWSY_EYE_FULL_CLOSE_RATIO:-0.58}"
+DROWSY_ALERT_HOLD_SEC="${DROWSY_ALERT_HOLD_SEC:-4.0}"
+DROWSY_ALERT_COOLDOWN_SEC="${DROWSY_ALERT_COOLDOWN_SEC:-5.0}"
+MOOD_HAPPY_CONFIRM_SEC="${MOOD_HAPPY_CONFIRM_SEC:-3.0}"
+MOOD_SAD_CONFIRM_SEC="${MOOD_SAD_CONFIRM_SEC:-3.0}"
+MOOD_NEUTRAL_CONFIRM_SEC="${MOOD_NEUTRAL_CONFIRM_SEC:-3.0}"
+MOOD_HIGH_CONF_CONFIRM_SEC="${MOOD_HIGH_CONF_CONFIRM_SEC:-3.0}"
 DRAW_CAMERA_OVERLAY="${DRAW_CAMERA_OVERLAY:-0}"
 FACE_MESH_REFINE="${FACE_MESH_REFINE:-0}"
 CV2_THREADS="${CV2_THREADS:-2}"
+REBUILD_FACE_EMBEDDINGS="${REBUILD_FACE_EMBEDDINGS:-auto}"
+FACEID_EMBEDDING_MODEL_PATH="${FACEID_EMBEDDING_MODEL_PATH:-$ROOT_DIR/backend/models/arcface.onnx}"
+FACEID_EMBEDDINGS_PATH="$ROOT_DIR/backend/models/face_embeddings.json"
 SPOTIFYD_SCRIPT="$ROOT_DIR/scripts/start_spotifyd_jetson.sh"
 SPOTIFYD_CACHE_PATH="${SPOTIFYD_CACHE_PATH:-$HOME/.cache/spotifyd}"
 
@@ -78,9 +92,21 @@ export CAMERA_WS_FPS
 export CAMERA_WS_JPEG_QUALITY
 export FACEID_EVERY_N_FRAMES
 export DROWSY_EVERY_N_FRAMES
+export DROWSY_CLOSED_EYE_ALERT_SEC
+export DROWSY_CLOSED_EYE_RATIO
+export DROWSY_CLOSED_EYE_EAR
+export DROWSY_EYE_LOW_RATIO
+export DROWSY_EYE_FULL_CLOSE_RATIO
+export DROWSY_ALERT_HOLD_SEC
+export DROWSY_ALERT_COOLDOWN_SEC
+export MOOD_HAPPY_CONFIRM_SEC
+export MOOD_SAD_CONFIRM_SEC
+export MOOD_NEUTRAL_CONFIRM_SEC
+export MOOD_HIGH_CONF_CONFIRM_SEC
 export DRAW_CAMERA_OVERLAY
 export FACE_MESH_REFINE
 export CV2_THREADS
+export FACEID_EMBEDDING_MODEL_PATH
 
 cleanup() {
   if [[ -n "${SPOTIFYD_PID:-}" ]] && kill -0 "$SPOTIFYD_PID" 2>/dev/null; then
@@ -104,6 +130,41 @@ stop_existing_backend() {
 
   pkill -f "uvicorn backend.fastAPI.main:app" >/dev/null 2>&1 || true
   sleep 1
+}
+
+latest_dataset_mtime() {
+  find "$ROOT_DIR/backend/dataset" "$ROOT_DIR/backend/models/labels.json" \
+    -type f -printf '%T@\n' 2>/dev/null | sort -nr | head -n 1
+}
+
+should_rebuild_face_embeddings() {
+  if [[ "$REBUILD_FACE_EMBEDDINGS" == "0" ]]; then
+    return 1
+  fi
+
+  if [[ ! -f "$FACEID_EMBEDDING_MODEL_PATH" ]]; then
+    echo "[faceid] embedding model not found, LBPH fallback will be used: $FACEID_EMBEDDING_MODEL_PATH"
+    return 1
+  fi
+
+  if [[ "$REBUILD_FACE_EMBEDDINGS" == "1" || ! -f "$FACEID_EMBEDDINGS_PATH" ]]; then
+    return 0
+  fi
+
+  local latest_data
+  latest_data="$(latest_dataset_mtime)"
+  if [[ -z "$latest_data" ]]; then
+    return 1
+  fi
+
+  local embeddings_mtime
+  embeddings_mtime="$(stat -c '%Y' "$FACEID_EMBEDDINGS_PATH")"
+  python3 - "$latest_data" "$embeddings_mtime" <<'PY'
+import sys
+latest = float(sys.argv[1])
+embeddings = float(sys.argv[2])
+sys.exit(0 if latest > embeddings else 1)
+PY
 }
 
 if [[ "$START_SPOTIFYD" == "1" ]]; then
@@ -131,6 +192,13 @@ if [[ "$START_SPOTIFYD" == "1" ]]; then
 fi
 
 stop_existing_backend
+
+if should_rebuild_face_embeddings; then
+  echo "[faceid] rebuilding face embeddings"
+  "$PYTHON_BIN" "$ROOT_DIR/backend/src/rebuild_face_embeddings.py"
+else
+  echo "[faceid] embedding rebuild skipped"
+fi
 
 echo "[backend] starting http://${BACKEND_HOST}:${BACKEND_PORT}"
 echo "[backend] python: $PYTHON_BIN"

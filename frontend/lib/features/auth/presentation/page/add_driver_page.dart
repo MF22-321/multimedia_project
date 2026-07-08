@@ -86,6 +86,9 @@ class _AddDriverPageState extends State<AddDriverPage> {
     _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
       setState(() {
         captureSeconds = (8 - timer.tick).clamp(0, 8);
+        if (timer.tick >= 8) {
+          phaseText = "Processing face model...";
+        }
       });
 
       if (timer.tick >= 8) timer.cancel();

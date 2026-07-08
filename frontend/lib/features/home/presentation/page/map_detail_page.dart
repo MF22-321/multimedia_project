@@ -11,12 +11,14 @@ import 'package:frontend/core/navigation/app_language_control.dart';
 import 'package:frontend/core/provider/gps_provider.dart';
 import 'package:frontend/core/provider/pothole_provider.dart';
 import 'package:frontend/core/services/route_service.dart';
+import 'package:frontend/core/services/map_tile_config.dart';
 import 'package:frontend/core/themes/car_theme.dart';
 import 'package:frontend/core/utils/pothole_detection_engine.dart';
 import 'package:frontend/core/widgets/in_app_keyboard.dart';
 import 'package:http/http.dart' as http;
 import 'package:latlong2/latlong.dart';
 import 'package:provider/provider.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class MapDetailPage extends StatefulWidget {
   const MapDetailPage({super.key});
@@ -140,14 +142,14 @@ class _MapDetailPageState extends State<MapDetailPage> {
 
   void _zoomIn(LatLng position) {
     setState(() {
-      _zoom = (_zoom + 1).clamp(5.0, 23.0);
+      _zoom = (_zoom + 1).clamp(5.0, MapTileConfig.maxZoom);
     });
     _mapController.move(position, _zoom);
   }
 
   void _zoomOut(LatLng position) {
     setState(() {
-      _zoom = (_zoom - 1).clamp(5.0, 23.0);
+      _zoom = (_zoom - 1).clamp(5.0, MapTileConfig.maxZoom);
     });
     _mapController.move(position, _zoom);
   }
@@ -437,7 +439,7 @@ class _MapDetailPageState extends State<MapDetailPage> {
   Widget build(BuildContext context) {
     return Consumer2<GPSProvider, PotholeProvider>(
       builder: (context, gps, potholeProvider, _) {
-        final hasGps = gps.current != null;
+        final hasGps = gps.current?.isValid == true;
         final rawPosition = hasGps
             ? LatLng(gps.current!.lat, gps.current!.lng)
             : const LatLng(-6.3, 107.2);
@@ -504,10 +506,20 @@ class _MapDetailPageState extends State<MapDetailPage> {
                       ),
                       children: [
                         TileLayer(
-                          urlTemplate:
-                              "https://tile.openstreetmap.org/{z}/{x}/{y}.png",
-                          userAgentPackageName: "com.pothole.navigation.app",
-                          maxZoom: 25,
+                          urlTemplate: MapTileConfig.urlTemplate,
+                          subdomains: MapTileConfig.subdomains,
+                          userAgentPackageName:
+                              MapTileConfig.userAgentPackageName,
+                          maxZoom: MapTileConfig.maxZoom,
+                        ),
+                        RichAttributionWidget(
+                          attributions: [
+                            TextSourceAttribution(
+                              MapTileConfig.attribution,
+                              onTap: () =>
+                                  launchUrl(MapTileConfig.attributionUri),
+                            ),
+                          ],
                         ),
                         if (_trafficLayer)
                           CircleLayer(
@@ -744,6 +756,8 @@ class _MapDetailPageState extends State<MapDetailPage> {
                           _TopCommandBar(
                             accent: accent,
                             hasGps: hasGps,
+                            wifiConnected: gps.espWifiConnected,
+                            wifiSsid: gps.wifiSsid,
                             onBack: () => Navigator.pop(context),
                           ),
                           SizedBox(height: 12.h),
@@ -846,11 +860,15 @@ class _TopCommandBar extends StatelessWidget {
   const _TopCommandBar({
     required this.accent,
     required this.hasGps,
+    required this.wifiConnected,
+    required this.wifiSsid,
     required this.onBack,
   });
 
   final Color accent;
   final bool hasGps;
+  final bool wifiConnected;
+  final String wifiSsid;
   final VoidCallback onBack;
 
   @override
@@ -901,6 +919,14 @@ class _TopCommandBar extends StatelessWidget {
             ),
           ),
           const Spacer(),
+          _ChipStatus(
+            icon: wifiConnected ? Icons.wifi : Icons.wifi_off,
+            label: wifiConnected
+                ? (wifiSsid.isEmpty ? "ESP WiFi" : wifiSsid)
+                : "ESP WiFi Offline",
+            accent: wifiConnected ? Colors.greenAccent : Colors.orangeAccent,
+          ),
+          SizedBox(width: 10.w),
           _ChipStatus(
             icon: Icons.route,
             label: AppStrings.adaptiveRoute,

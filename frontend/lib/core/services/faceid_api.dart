@@ -161,7 +161,12 @@ class FaceIdApi {
         throw Exception("Delete failed: ${res.body}");
       }
 
-      return jsonDecode(res.body);
+      final data = jsonDecode(res.body);
+      if (data is Map<String, dynamic> && data["success"] == false) {
+        throw Exception(data["message"] ?? "Delete failed");
+      }
+
+      return data;
     } catch (e) {
       throw Exception("Delete driver error: $e");
     }

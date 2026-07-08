@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io';
 import 'dart:typed_data';
 import 'package:flutter_libserialport/flutter_libserialport.dart';
 import 'package:frontend/core/model/gps_data.dart';
@@ -12,6 +13,8 @@ class SerialService {
 
   final _controller = StreamController<GPSData>.broadcast();
   Stream<GPSData> get stream => _controller.stream;
+  final _statusController = StreamController<String>.broadcast();
+  Stream<String> get statusStream => _statusController.stream;
 
   String _buffer = "";
 
@@ -19,9 +22,17 @@ class SerialService {
   bool _disposed = false;
   String? _currentPort;
   List<String> _lastPorts = [];
+  String? _lastStatus;
+
+  void _emitStatus(String status) {
+    if (_disposed || status == _lastStatus) return;
+    _lastStatus = status;
+    _statusController.add(status);
+  }
 
   // ================= START =================
   void start() {
+    _emitStatus("Scanning USB device...");
     _startAutoScan();
   }
 
@@ -42,7 +53,7 @@ class SerialService {
     if (_connected) return;
 
     try {
-      final ports = SerialPort.availablePorts;
+      final ports = _availablePorts();
 
       // print hanya jika berubah
       if (ports.toString() != _lastPorts.toString()) {
@@ -50,16 +61,53 @@ class SerialService {
         _lastPorts = List.from(ports);
       }
 
-      if (ports.isEmpty) return;
+      if (ports.isEmpty) {
+        _emitStatus("ESP32 USB device not found");
+        return;
+      }
 
+      var connected = false;
       for (final portName in ports) {
         if (_tryConnect(portName)) {
+          connected = true;
           break;
         }
+      }
+
+      if (!connected) {
+        _emitStatus("ESP32 USB port busy or unavailable");
       }
     } catch (e) {
       AppLogger.error("SCAN ERROR: $e");
     }
+  }
+
+  List<String> _availablePorts() {
+    final ports = <String>{...SerialPort.availablePorts};
+
+    if (Platform.isLinux) {
+      try {
+        for (final entity in Directory('/dev').listSync()) {
+          final path = entity.path;
+          if (path.startsWith('/dev/ttyCH341USB') ||
+              path.startsWith('/dev/ttyUSB') ||
+              path.startsWith('/dev/ttyACM')) {
+            ports.add(path);
+          }
+        }
+      } catch (e) {
+        AppLogger.error("LINUX SERIAL SCAN ERROR: $e");
+      }
+    }
+
+    final result = ports.toList();
+    result.sort((a, b) {
+      final aPriority = a.startsWith('/dev/ttyCH341USB') ? 0 : 1;
+      final bPriority = b.startsWith('/dev/ttyCH341USB') ? 0 : 1;
+      final priority = aPriority.compareTo(bPriority);
+      return priority != 0 ? priority : a.compareTo(b);
+    });
+    return result;
   }
 
   // ================= CONNECT =================
@@ -85,6 +133,7 @@ class SerialService {
       _buffer = "";
 
       AppLogger.info("CONNECTED TO $portName");
+      _emitStatus("USB Connected - Waiting telemetry");
 
       _readerSub = _reader!.stream.listen(
         _onDataReceived,
@@ -136,6 +185,7 @@ class SerialService {
     if (!_connected) return;
 
     AppLogger.info("DISCONNECTED $_currentPort");
+    _emitStatus("ESP32 USB disconnected");
 
     try {
       _readerSub?.cancel();
@@ -174,5 +224,6 @@ class SerialService {
     _handleDisconnect();
 
     _controller.close();
+    _statusController.close();
   }
 }

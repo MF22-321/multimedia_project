@@ -3,6 +3,43 @@ import numpy as np
 from pathlib import Path
 from .config import LBPH_MODEL_PATH, FACE_SIZE, DATASET_DIR
 
+
+def preprocess_face(gray):
+    gray = cv2.resize(gray, FACE_SIZE)
+    gray = cv2.GaussianBlur(gray, (3, 3), 0)
+    clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8, 8))
+    return clahe.apply(gray)
+
+
+def _adjust_brightness_contrast(gray, alpha=1.0, beta=0):
+    return cv2.convertScaleAbs(gray, alpha=alpha, beta=beta)
+
+
+def _rotate(gray, angle):
+    h, w = gray.shape[:2]
+    matrix = cv2.getRotationMatrix2D((w / 2, h / 2), angle, 1.0)
+    return cv2.warpAffine(
+        gray,
+        matrix,
+        (w, h),
+        flags=cv2.INTER_LINEAR,
+        borderMode=cv2.BORDER_REPLICATE,
+    )
+
+
+def augment_face(gray):
+    base = preprocess_face(gray)
+    variants = [
+        base,
+        _adjust_brightness_contrast(base, alpha=0.82, beta=-12),
+        _adjust_brightness_contrast(base, alpha=1.18, beta=10),
+        _adjust_brightness_contrast(base, alpha=1.08, beta=-18),
+        _rotate(base, -5),
+        _rotate(base, 5),
+    ]
+    return variants
+
+
 def load_lbph():
     if not LBPH_MODEL_PATH.exists():
         raise FileNotFoundError(f"LBPH model not found: {LBPH_MODEL_PATH}")
@@ -34,10 +71,9 @@ def train_lbph(labels_map: dict):
             img = cv2.imread(str(img_path), cv2.IMREAD_GRAYSCALE)
             if img is None:
                 continue
-            img = cv2.resize(img, FACE_SIZE)
-            img = cv2.equalizeHist(img)
-            faces.append(img)
-            ids.append(int(label))
+            for face in augment_face(img):
+                faces.append(face)
+                ids.append(int(label))
 
     if len(faces) < 2:
         return None

@@ -3,6 +3,7 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 class FragranceCard extends StatelessWidget {
   final String title;
+  final String slotNumber;
   final IconData icon;
   final int levelPercent;
   final int fillPercent;
@@ -16,6 +17,7 @@ class FragranceCard extends StatelessWidget {
   const FragranceCard({
     super.key,
     required this.title,
+    this.slotNumber = '',
     required this.icon,
     required this.levelPercent,
     required this.fillPercent,
@@ -68,6 +70,22 @@ class FragranceCard extends StatelessWidget {
               ),
             ),
 
+            // Watermark nomor slot di pojok kanan atas
+            if (slotNumber.isNotEmpty)
+              Positioned(
+                right: 16.w,
+                top: 10.h,
+                child: Text(
+                  slotNumber,
+                  style: TextStyle(
+                    fontSize: 64.sp,
+                    fontWeight: FontWeight.w900,
+                    color: accentColor.withValues(alpha: 0.08),
+                    height: 1,
+                  ),
+                ),
+              ),
+
             Positioned.fill(
               child: Padding(
                 padding: EdgeInsets.only(
@@ -78,27 +96,88 @@ class FragranceCard extends StatelessWidget {
                 ),
                 child: Column(
                   children: [
-                    Align(
-                      alignment: Alignment.topLeft,
-                      child: Icon(
-                        Icons.water_drop_outlined,
-                        size: 28.sp,
-                        color: textColor.withValues(alpha: 0.9),
-                      ),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Icon(
+                          Icons.water_drop_outlined,
+                          size: 28.sp,
+                          color: textColor.withValues(alpha: 0.9),
+                        ),
+                        if (slotNumber.isNotEmpty)
+                          Container(
+                            padding: EdgeInsets.symmetric(
+                              horizontal: 8.w,
+                              vertical: 3.h,
+                            ),
+                            decoration: BoxDecoration(
+                              color: accentColor.withValues(alpha: 0.15),
+                              borderRadius: BorderRadius.circular(8.r),
+                              border: Border.all(
+                                color: accentColor.withValues(alpha: 0.3),
+                                width: 1,
+                              ),
+                            ),
+                            child: Text(
+                              'SLOT $slotNumber',
+                              style: TextStyle(
+                                fontSize: 10.sp,
+                                fontWeight: FontWeight.w800,
+                                color: accentColor,
+                                letterSpacing: 1.2,
+                              ),
+                            ),
+                          ),
+                      ],
                     ),
                     const Spacer(),
-                    Icon(icon, size: 62.sp, color: accentColor),
-                    SizedBox(height: 18.h),
+                    Container(
+                      width: 80.w,
+                      height: 80.w,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: accentColor.withValues(
+                          alpha: isEnabled ? 0.18 : 0.07,
+                        ),
+                        border: Border.all(
+                          color: accentColor.withValues(
+                            alpha: isEnabled ? 0.45 : 0.15,
+                          ),
+                          width: 1.5,
+                        ),
+                      ),
+                      child: Icon(
+                        icon,
+                        size: 40.sp,
+                        color: accentColor.withValues(
+                          alpha: isEnabled ? 1.0 : 0.4,
+                        ),
+                      ),
+                    ),
+                    SizedBox(height: 14.h),
                     Text(
                       title,
                       textAlign: TextAlign.center,
                       style: TextStyle(
                         color: textColor,
-                        fontSize: 30.sp,
+                        fontSize: 22.sp,
                         fontWeight: FontWeight.w700,
+                        letterSpacing: 0.4,
                       ),
                     ),
-                    SizedBox(height: 34.h),
+                    SizedBox(height: 4.h),
+                    Text(
+                      isEnabled ? 'ACTIVE' : 'STANDBY',
+                      style: TextStyle(
+                        fontSize: 10.sp,
+                        fontWeight: FontWeight.w600,
+                        color: isEnabled
+                            ? accentColor
+                            : textColor.withValues(alpha: 0.35),
+                        letterSpacing: 1.5,
+                      ),
+                    ),
+                    SizedBox(height: 18.h),
                     Transform.scale(
                       scale: 1.18,
                       child: Switch(

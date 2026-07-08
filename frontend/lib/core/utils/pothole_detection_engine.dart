@@ -5,15 +5,17 @@ import 'package:frontend/core/model/pothole.dart';
 import 'package:latlong2/latlong.dart';
 
 class PotholeDetectionEngine {
-  static const double livePotholeThreshold = 2.5;
-  static const double liveBumperThreshold = 1.2;
-  static const double minSpeedDetect = 2.0;
+  static const double livePotholeThreshold = 4.0;
+  static const double liveBumperThreshold = 2.0;
+  static const double minSpeedDetect = 3.0;
   static const double potholeMinSpeed = 8;
-  static const double bumperMaxSpeed = 12;
+  static const double bumperMaxSpeed = 25;
   static const double alertRadiusKm = 0.05;
   static const double routeHazardRadiusKm = 0.02;
   static const double aheadBearingWindow = 75;
   static double _previousLiveMagnitude = 0;
+  static int _consecutiveImpactSamples = 0;
+  static DateTime? _lastLiveDetection;
 
   static List<Pothole> activeHazards(List<Pothole> hazards) {
     return hazards.where((hazard) => hazard.category != "normal").toList()
@@ -24,20 +26,52 @@ class PotholeDetectionEngine {
     if (!gps.isValid) return null;
 
     final magnitude = gps.linearAccelMagnitude;
-    final severity = (magnitude + _previousLiveMagnitude) / 2.0;
+    final localSeverity = (magnitude + _previousLiveMagnitude) / 2.0;
     _previousLiveMagnitude = magnitude;
+    final severity = gps.roadSeverity ?? localSeverity;
 
     final speed = gps.speed;
 
-    if (speed < minSpeedDetect) return null;
+    if (speed < minSpeedDetect) {
+      _consecutiveImpactSamples = 0;
+      return null;
+    }
 
-    final isPothole = speed > potholeMinSpeed &&
-        severity >= livePotholeThreshold;
+    final hasDeviceCategory = gps.roadCategory != 'normal';
+    final isPothole =
+        gps.roadCategory == 'pothole' ||
+        (!hasDeviceCategory &&
+            speed >= potholeMinSpeed &&
+            severity >= livePotholeThreshold);
 
-    final isBumper = speed <= bumperMaxSpeed &&
-        severity >= liveBumperThreshold;
+    final isBumper =
+        !isPothole &&
+        (gps.roadCategory == 'bumper' ||
+            (!hasDeviceCategory &&
+                speed <= bumperMaxSpeed &&
+                severity >= liveBumperThreshold));
 
-    if (!isPothole && !isBumper) return null;
+    if (!isPothole && !isBumper) {
+      _consecutiveImpactSamples = 0;
+      return null;
+    }
+
+    if (hasDeviceCategory) {
+      // Firmware already validates peak, duration, speed, and release.
+      _consecutiveImpactSamples = 0;
+    } else {
+      _consecutiveImpactSamples++;
+      if (_consecutiveImpactSamples < 2) return null;
+      _consecutiveImpactSamples = 0;
+    }
+
+    final now = DateTime.now();
+    final lastDetection = _lastLiveDetection;
+    if (lastDetection != null &&
+        now.difference(lastDetection) < const Duration(milliseconds: 1500)) {
+      return null;
+    }
+    _lastLiveDetection = now;
 
     return Pothole(
       lat: gps.lat,
@@ -45,8 +79,15 @@ class PotholeDetectionEngine {
       severity: severity,
       speed: speed,
       source: "esp32",
-      detectedAt: DateTime.now(),
+      backendCategory: isPothole ? "pothole" : "bumper",
+      detectedAt: now,
     );
+  }
+
+  static void resetLiveDetectionState() {
+    _previousLiveMagnitude = 0;
+    _consecutiveImpactSamples = 0;
+    _lastLiveDetection = null;
   }
 
   static Pothole? findHazardAhead({
@@ -118,12 +159,7 @@ class PotholeDetectionEngine {
     return result;
   }
 
-  static double distanceKm(
-    double lat1,
-    double lon1,
-    double lat2,
-    double lon2,
-  ) {
+  static double distanceKm(double lat1, double lon1, double lat2, double lon2) {
     const p = 0.017453292519943295;
 
     final a =

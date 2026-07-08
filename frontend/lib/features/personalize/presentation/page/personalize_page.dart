@@ -181,8 +181,16 @@ class _PersonalizePageState extends State<PersonalizePage> {
     if (verified != true || !mounted) return;
 
     try {
-      await FaceIdApi.deleteDriver(activeDriver);
+      final result = await FaceIdApi.deleteDriver(activeDriver);
+      final deletedDriver =
+          result["driver_name"]?.toString().trim().isNotEmpty == true
+          ? result["driver_name"].toString()
+          : activeDriver;
       await DriverHiveService.delete(activeDriver);
+      if (deletedDriver.trim().toLowerCase() !=
+          activeDriver.trim().toLowerCase()) {
+        await DriverHiveService.delete(deletedDriver);
+      }
       DriverSession.clear();
 
       if (!mounted) return;

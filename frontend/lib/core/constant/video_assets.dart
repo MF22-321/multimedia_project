@@ -9,6 +9,7 @@ enum VehicleAction {
   changeTire,
   useFireExtinguisher,
   helpAccident,
+  potholes,
 }
 
 class VideoAssets {
@@ -32,6 +33,8 @@ class VideoAssets {
         'assets/video_sdr/CaraMenggunakanAPAR_sdr.mp4',
     VehicleAction.helpAccident:
         'assets/video_sdr/MenolongKecelakaan_sdr.mp4',
+    VehicleAction.potholes:
+        'assets/video_sdr/potholes.mp4',
   };
 
   static VehicleAction? fromString(String action) {
@@ -56,6 +59,8 @@ class VideoAssets {
         return VehicleAction.useFireExtinguisher;
       case 'HELP_ACCIDENT':
         return VehicleAction.helpAccident;
+      case 'POTHOLES':
+        return VehicleAction.potholes;
       default:
         return null;
     }

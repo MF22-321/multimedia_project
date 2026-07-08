@@ -49,90 +49,7 @@ class _TopBarState extends State<TopBar> {
         return Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            /// PROFILE BUTTON
-            InkWell(
-              borderRadius: BorderRadius.circular(40.r),
-              onTap: () {
-                Navigator.of(context).push(
-                  PageRouteBuilder(
-                    opaque: false,
-                    transitionDuration: const Duration(milliseconds: 450),
-                    pageBuilder: (context, animation, secondaryAnimation) {
-                      return const PersonalizePage();
-                    },
-                    transitionsBuilder:
-                        (context, animation, secondaryAnimation, child) {
-                          final fade = Tween(
-                            begin: 0.0,
-                            end: 1.0,
-                          ).animate(animation);
-
-                          final scale = Tween(begin: 0.95, end: 1.0).animate(
-                            CurvedAnimation(
-                              parent: animation,
-                              curve: Curves.easeOutCubic,
-                            ),
-                          );
-
-                          return FadeTransition(
-                            opacity: fade,
-                            child: ScaleTransition(scale: scale, child: child),
-                          );
-                        },
-                  ),
-                );
-              },
-              child: Container(
-                padding: EdgeInsets.symmetric(horizontal: 14.w, vertical: 8.h),
-                decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.08),
-                  borderRadius: BorderRadius.circular(40.r),
-                ),
-                child: Row(
-                  children: [
-                    ValueListenableBuilder<String?>(
-                      valueListenable: DriverSession.currentDriver,
-                      builder: (context, driver, _) {
-                        final displayName = _displayDriverName(driver);
-
-                        return Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            CircleAvatar(
-                              radius: 22.r,
-                              backgroundColor: Colors.grey.shade700,
-                              child: Text(
-                                displayName.substring(0, 1).toUpperCase(),
-                                style: TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 18.sp,
-                                  fontWeight: FontWeight.w800,
-                                ),
-                              ),
-                            ),
-
-                            SizedBox(width: 12.w),
-
-                            ConstrainedBox(
-                              constraints: BoxConstraints(maxWidth: 260.w),
-                              child: Text(
-                                "${AppStrings.hello}, $displayName",
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 22.sp,
-                                ),
-                              ),
-                            ),
-                          ],
-                        );
-                      },
-                    ),
-                  ],
-                ),
-              ),
-            ),
+            _profileButton(context),
 
             /// TIME + DATE
             Column(
@@ -156,6 +73,76 @@ class _TopBarState extends State<TopBar> {
           ],
         );
       },
+    );
+  }
+
+  Widget _profileButton(BuildContext context) {
+    return InkWell(
+      borderRadius: BorderRadius.circular(40.r),
+      onTap: () {
+        Navigator.of(context).push(
+          PageRouteBuilder(
+            opaque: false,
+            transitionDuration: const Duration(milliseconds: 450),
+            pageBuilder: (context, animation, secondaryAnimation) {
+              return const PersonalizePage();
+            },
+            transitionsBuilder: (context, animation, secondaryAnimation, child) {
+              final fade = Tween(begin: 0.0, end: 1.0).animate(animation);
+
+              final scale = Tween(begin: 0.95, end: 1.0).animate(
+                CurvedAnimation(parent: animation, curve: Curves.easeOutCubic),
+              );
+
+              return FadeTransition(
+                opacity: fade,
+                child: ScaleTransition(scale: scale, child: child),
+              );
+            },
+          ),
+        );
+      },
+      child: Container(
+        padding: EdgeInsets.symmetric(horizontal: 14.w, vertical: 8.h),
+        decoration: BoxDecoration(
+          color: Colors.white.withValues(alpha: 0.08),
+          borderRadius: BorderRadius.circular(40.r),
+        ),
+        child: ValueListenableBuilder<String?>(
+          valueListenable: DriverSession.currentDriver,
+          builder: (context, driver, _) {
+            final displayName = _displayDriverName(driver);
+
+            return Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                CircleAvatar(
+                  radius: 22.r,
+                  backgroundColor: Colors.grey.shade700,
+                  child: Text(
+                    displayName.substring(0, 1).toUpperCase(),
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 18.sp,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                ),
+                SizedBox(width: 12.w),
+                ConstrainedBox(
+                  constraints: BoxConstraints(maxWidth: 260.w),
+                  child: Text(
+                    "${AppStrings.hello}, $displayName",
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(color: Colors.white, fontSize: 22.sp),
+                  ),
+                ),
+              ],
+            );
+          },
+        ),
+      ),
     );
   }
 

@@ -63,6 +63,7 @@ Clean-code rule yang dipakai:
 - Dataset dan model tidak dicampur dengan logic aplikasi.
 
 Detail tambahan ada di [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
+Skenario dan hasil quality check ada di [docs/QUALITY_CHECK.md](docs/QUALITY_CHECK.md).
 
 ## Main Flow
 
@@ -162,15 +163,15 @@ Default:
 
 ```python
 MoodConfig(
-    confirm_seconds=7.0,
-    neutral_confirm_seconds=2.0,
+    confirm_seconds=3.0,
+    sad_confirm_seconds=3.0,
+    neutral_confirm_seconds=3.0,
 )
 ```
 
 Interpretasi:
 
-- `happy` atau `sad` harus stabil 7 detik sebelum confirmed.
-- `neutral` cukup stabil 2 detik.
+- `happy`, `sad`, atau `neutral` harus stabil 3 detik sebelum confirmed.
 - `raw_mood` tetap dikirim agar Flutter bisa menampilkan progres.
 
 ## Development Notes

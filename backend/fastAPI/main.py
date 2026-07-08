@@ -7,7 +7,7 @@ import time
 
 import cv2
 import numpy as np
-from fastapi import FastAPI, UploadFile, File, Form, WebSocket
+from fastapi import BackgroundTasks, FastAPI, UploadFile, File, Form, WebSocket
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse, Response
 
@@ -15,6 +15,7 @@ from backend.faceid import FaceID
 from backend.faceid.config import (
     CONF_THRESHOLD,
     DATASET_DIR,
+    EMBEDDINGS_PATH,
     LBPH_MODEL_PATH,
     PROFILES_DIR,
     VOTE_MIN_RATIO,
@@ -22,15 +23,19 @@ from backend.faceid.config import (
     VOTE_WINDOW_SEC,
 )
 from backend.faceid.labels_store import load_labels, ensure_label, remove_label
+from backend.faceid.embedding_model import build_embeddings
 from backend.faceid.lbph_model import train_lbph
 from backend.fastAPI.routes.drowsiness_routes import router as drowsiness_router
+from backend.fastAPI.validation import validate_driver_name
 
 from backend.engine.camera_stream import (
     camera_loop,
+    clear_driver_status,
     get_latest_frame,
     get_driver_status,
     reload_recognizer,
     set_enrollment_active,
+    stop_drowsiness_monitoring,
 )
 
 app = FastAPI(title="FaceID Backend")
@@ -48,6 +53,7 @@ app.add_middleware(
 DATASET_DIR.mkdir(parents=True, exist_ok=True)
 
 faceid = None
+embedding_rebuild_lock = threading.Lock()
 
 
 def get_faceid():
@@ -79,6 +85,30 @@ def reload_faceid():
         vote_min_samples=VOTE_MIN_SAMPLES,
     )
     logger.info("[API] recognizer reloaded")
+
+
+def rebuild_embeddings_background(labels: dict, reason: str) -> None:
+    if not embedding_rebuild_lock.acquire(blocking=False):
+        logger.info("[FaceEmbed] rebuild already running, skip request: %s", reason)
+        return
+
+    try:
+        started = time.time()
+        logger.info("[FaceEmbed] background rebuild start: %s", reason)
+        built = build_embeddings(dict(labels))
+        logger.info(
+            "[FaceEmbed] background rebuild done | built=%s elapsed=%.2fs",
+            built,
+            time.time() - started,
+        )
+
+        if built:
+            reload_faceid()
+            reload_recognizer()
+    except Exception:
+        logger.exception("[FaceEmbed] background rebuild failed: %s", reason)
+    finally:
+        embedding_rebuild_lock.release()
 
 
 def decode_image(file_bytes: bytes):
@@ -121,7 +151,7 @@ def save_face_samples_from_live_camera(
             time.sleep(0.01)
             continue
 
-        roi, bbox = recognizer.cropper.crop(frame)
+        roi, bbox = recognizer.cropper.crop_color(frame)
 
         if roi is None:
             time.sleep(0.01)
@@ -168,6 +198,10 @@ def generate_frames():
         frame_started = time.time()
         frame = get_latest_frame()
 
+        if frame is None:
+            time.sleep(min(frame_delay, 0.05))
+            continue
+
         if stream_width > 0 and frame.shape[1] > stream_width:
             scale = stream_width / frame.shape[1]
             stream_height = int(frame.shape[0] * scale)
@@ -210,36 +244,72 @@ def get_drivers():
     return {"drivers": drivers}
 
 @app.delete("/driver/{name}")
-def delete_driver(name: str):
-    driver_name = name.strip()
+def delete_driver(name: str, background_tasks: BackgroundTasks):
+    driver_name = validate_driver_name(name)
 
-    if not driver_name:
-        return {"success": False, "message": "Driver name is required"}
+    labels = load_labels()
+    resolved_name = next(
+        (key for key in labels.keys() if key.lower() == driver_name.lower()),
+        driver_name,
+    )
+    path = DATASET_DIR / resolved_name
 
-    path = DATASET_DIR / driver_name
     if not path.exists():
+        matching_dir = next(
+            (
+                item
+                for item in DATASET_DIR.iterdir()
+                if item.is_dir() and item.name.lower() == driver_name.lower()
+            ),
+            None,
+        )
+        if matching_dir is not None:
+            path = matching_dir
+            resolved_name = matching_dir.name
+
+    profile_path = PROFILES_DIR / f"{resolved_name}.json"
+    driver_exists = (
+        path.exists()
+        or resolved_name in labels
+        or driver_name in labels
+        or profile_path.exists()
+    )
+
+    if not driver_exists:
         return {"success": False, "message": "Driver not found"}
 
-    shutil.rmtree(path)
+    if path.exists():
+        shutil.rmtree(path)
 
-    profile_path = PROFILES_DIR / f"{driver_name}.json"
     if profile_path.exists():
         profile_path.unlink()
 
-    labels = load_labels()
-    remove_label(labels, driver_name)
+    if not remove_label(labels, resolved_name) and driver_name != resolved_name:
+        remove_label(labels, driver_name)
 
     trained = train_lbph(labels)
     if trained is None and LBPH_MODEL_PATH.exists():
         LBPH_MODEL_PATH.unlink()
 
+    if labels:
+        background_tasks.add_task(
+            rebuild_embeddings_background,
+            dict(labels),
+            f"delete driver {resolved_name}",
+        )
+    elif EMBEDDINGS_PATH.exists():
+        EMBEDDINGS_PATH.unlink()
+
     reload_faceid()
     reload_recognizer()
+    clear_driver_status(resolved_name)
+    stop_drowsiness_monitoring()
 
     return {
         "success": True,
         "message": "Driver deleted and recognizer reloaded",
-        "driver_name": driver_name,
+        "driver_name": resolved_name,
+        "embeddings_building": bool(labels),
     }
 
 
@@ -298,6 +368,13 @@ async def websocket_camera(websocket: WebSocket):
 def capture_face():
     frame = get_latest_frame()
 
+    if frame is None:
+        return Response(
+            content=b"Camera frame is not available",
+            status_code=503,
+            media_type="text/plain",
+        )
+
     ret, buffer = cv2.imencode(".jpg", frame)
     if not ret:
         return {"success": False, "message": "Failed to encode frame"}
@@ -350,13 +427,11 @@ async def recognize(image: UploadFile = File(...)):
 
 @app.post("/enroll")
 async def enroll(
+    background_tasks: BackgroundTasks,
     driver_name: str = Form(...),
     image: UploadFile = File(...),
 ):
-    driver_name = driver_name.strip()
-
-    if not driver_name:
-        return {"success": False, "message": "Driver name is required"}
+    driver_name = validate_driver_name(driver_name)
 
     contents = await image.read()
     frame = decode_image(contents)
@@ -366,20 +441,21 @@ async def enroll(
 
     recognizer = get_faceid()
 
-    roi, bbox = recognizer.cropper.crop(frame)
+    roi, bbox = recognizer.cropper.crop_color(frame)
 
     if roi is None:
         return {"success": False, "message": "No face detected"}
-
-    labels = load_labels()
-    label_id = ensure_label(labels, driver_name)
 
     out_dir = DATASET_DIR / driver_name
     out_dir.mkdir(parents=True, exist_ok=True)
 
     count = len(list(out_dir.glob("*.jpg")))
     out_path = out_dir / f"{count:04d}.jpg"
-    cv2.imwrite(str(out_path), roi)
+    if not cv2.imwrite(str(out_path), roi):
+        return {"success": False, "message": "Failed to save face sample"}
+
+    labels = load_labels()
+    label_id = ensure_label(labels, driver_name)
 
     rec = train_lbph(labels)
     if rec is None:
@@ -391,6 +467,11 @@ async def enroll(
 
     reload_faceid()
     reload_recognizer()
+    background_tasks.add_task(
+        rebuild_embeddings_background,
+        dict(labels),
+        f"single enroll {driver_name}",
+    )
 
     logger.info("[/enroll] success: %s -> %s", driver_name, out_path)
 
@@ -400,28 +481,22 @@ async def enroll(
         "driver_name": driver_name,
         "label_id": label_id,
         "saved_path": str(out_path),
+        "embeddings_building": True,
     }
 
 
 @app.post("/enroll_live_burst")
 async def enroll_live_burst(
+    background_tasks: BackgroundTasks,
     driver_name: str = Form(...),
-    duration_sec: float = Form(8.0),
-    target_samples: int = Form(40),
+    duration_sec: float = Form(8.0, gt=0.0, le=60.0),
+    target_samples: int = Form(40, ge=1, le=200),
 ):
+    driver_name = validate_driver_name(driver_name)
     set_enrollment_active(True)
 
     try:
-        driver_name = driver_name.strip()
-
-        if not driver_name:
-            return {
-                "success": False,
-                "message": "Driver name is required",
-            }
-
         labels = load_labels()
-        label_id = ensure_label(labels, driver_name)
 
         logger.info(
             "[/enroll_live_burst] start | name=%s, duration=%s, target=%s",
@@ -447,6 +522,7 @@ async def enroll_live_burst(
                 "saved_count": 0,
             }
 
+        label_id = ensure_label(labels, driver_name)
         rec = train_lbph(labels)
         logger.info("[/enroll_live_burst] train_lbph result = %s", rec)
 
@@ -461,6 +537,11 @@ async def enroll_live_burst(
 
         reload_faceid()
         reload_recognizer()
+        background_tasks.add_task(
+            rebuild_embeddings_background,
+            dict(labels),
+            f"live burst enroll {driver_name}",
+        )
 
         logger.info(
             "[/enroll_live_burst] success | name=%s, saved_count=%s",
@@ -475,6 +556,7 @@ async def enroll_live_burst(
             "label_id": label_id,
             "saved_count": len(saved_paths),
             "saved_paths": saved_paths,
+            "embeddings_building": True,
         }
 
     except Exception as e:
