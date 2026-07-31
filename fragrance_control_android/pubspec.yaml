@@ -1,0 +1,22 @@
+name: fragrance_control_android
+description: Standalone Android controller for the TMMIN Smart Fragrance prototype.
+publish_to: "none"
+version: 1.0.0+1
+
+environment:
+  sdk: ">=3.3.0 <4.0.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+  mqtt_client: ^10.11.10
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^5.0.0
+
+flutter:
+  uses-material-design: true
+  assets:
+    - assets/images/fragrance_background.png
