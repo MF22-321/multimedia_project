@@ -9,6 +9,7 @@ PROFILES_DIR = ROOT / "profiles"
 MODELS_DIR = ROOT / "models"
 LBPH_MODEL = MODELS_DIR / "lbph_model.yml"
 LABELS_JSON = MODELS_DIR / "labels.json"
+EMBEDDINGS_JSON = MODELS_DIR / "face_embeddings.json"
 
 def rm(path: Path):
     if path.is_dir():
@@ -24,6 +25,7 @@ def main():
     rm(PROFILES_DIR)
     rm(LBPH_MODEL)
     rm(LABELS_JSON)
+    rm(EMBEDDINGS_JSON)
 
     # recreate empty dirs
     DATASET_DIR.mkdir(exist_ok=True)

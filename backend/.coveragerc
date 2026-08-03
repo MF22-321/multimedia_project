@@ -1,0 +1,11 @@
+[run]
+source =
+    backend.faceid
+    backend.src.identity
+    backend.src.drowsy
+    backend.engine.mood
+
+[report]
+fail_under = 90
+precision = 1
+show_missing = True

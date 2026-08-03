@@ -8,6 +8,8 @@ backend/models/*.yml
 # Local logs
 backend.log
 spotifyd.log
+.coverage
+htmlcov/
 
 # Large video assets
 frontend/assets/video_sdr/*.mp4

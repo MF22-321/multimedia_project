@@ -8,9 +8,16 @@ membuka kamera dan tidak mengubah dataset, label, profile, atau model FaceID.
 Dari root repository:
 
 ```bash
-MPLCONFIGDIR=/tmp/matplotlib-qc \
-  /home/multimedia/miniconda3/envs/multimedia/bin/python \
-  -m unittest discover -s backend/tests -v
+./scripts/test_backend_quality.sh
+```
+
+Script menjalankan seluruh unit test dan mengukur statement coverage khusus
+untuk FaceID/identity, drowsiness, dan mood. Quality gate gagal jika coverage
+gabungan turun di bawah **90%**. Dependency pengembangan dapat dipasang dengan:
+
+```bash
+/home/multimedia/miniconda3/envs/multimedia/bin/python \
+  -m pip install -r backend/requirements-dev.txt
 ```
 
 ## Skenario Automated
@@ -34,7 +41,9 @@ MPLCONFIGDIR=/tmp/matplotlib-qc \
 
 ## Hasil Eksekusi
 
-Eksekusi automated test pada 20 Juni 2026: **13 test lulus, 0 gagal**.
+Eksekusi automated test pada 3 Agustus 2026: **45 test lulus, 0 gagal**.
+Coverage area FaceID/identity, drowsiness, dan mood: **100%** (1009 dari 1009
+statement). Target minimum yang dikunci oleh quality gate adalah **90%**.
 Pengujian kamera fisik tetap berstatus manual karena device kamera tidak tersedia
 di environment QC.
 
