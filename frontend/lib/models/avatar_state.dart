@@ -1,12 +1,10 @@
-enum AvatarState {
-  idle,
-  thinking,
-  answering,
-}
+enum AvatarState { idle, listening, thinking, answering }
 
 extension AvatarStateX on AvatarState {
   static AvatarState fromString(String? value) {
     switch (value?.toLowerCase().trim()) {
+      case 'listening':
+        return AvatarState.listening;
       case 'thinking':
         return AvatarState.thinking;
       case 'answering':
@@ -20,6 +18,8 @@ extension AvatarStateX on AvatarState {
   String get label {
     switch (this) {
       case AvatarState.idle:
+        return 'Idle';
+      case AvatarState.listening:
         return 'Listening';
       case AvatarState.thinking:
         return 'Thinking';

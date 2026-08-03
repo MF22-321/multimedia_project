@@ -1,5 +1,5 @@
-import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:frontend/core/services/multimedia_tcp_server.dart';
 import 'package:frontend/core/services/overlay_service.dart';
 import 'package:frontend/core/services/video_mqtt_service.dart';
 import '../../../core/utils/action_parser.dart';
@@ -7,32 +7,53 @@ import '../../../core/utils/action_parser.dart';
 class VideoProvider extends ChangeNotifier {
   final VideoMqttService _videoMqttService = VideoMqttService();
 
-  StreamSubscription? _subscription;
+  OverlayState? _overlayState;
 
   void init(BuildContext context) {
-    final overlayState = Overlay.of(context, rootOverlay: true);
+    _overlayState = Overlay.of(context, rootOverlay: true);
+    _videoMqttService.connect(commandHandler: _handleCommand);
+  }
 
-    _videoMqttService.connect();
+  Future<MultimediaCommandResult> _handleCommand(
+    Map<String, dynamic> command,
+  ) async {
+    final rawAction = (command['action'] ?? '').toString().trim().toLowerCase();
+    final normalizedAction = rawAction.replaceAll(RegExp(r'[ -]+'), '_');
+    final overlay = VideoOverlayService();
 
-    _subscription = _videoMqttService.stream.listen((message) {
-      final videoPath = ActionParser.parseToVideo(message);
-      if (videoPath == null) return;
+    if (normalizedAction == 'stop') {
+      overlay.hide();
+      return const MultimediaCommandResult.success('SOP video stopped');
+    }
 
-      final overlay = VideoOverlayService();
+    final videoPath = ActionParser.parseMapToVideo(command);
+    if (videoPath == null) {
+      final requested = command['video'] ?? command['action'] ?? '(empty)';
+      return MultimediaCommandResult.error('Unsupported SOP video: $requested');
+    }
 
-      /// 🔥 LOCK SYSTEM (INI KUNCI)
-      if (overlay.isShowing) {
-        debugPrint("⛔ Sedang play, command diabaikan");
-        return;
-      }
+    final overlayState = _overlayState;
+    if (overlayState == null) {
+      return const MultimediaCommandResult.error('SOP overlay is not ready');
+    }
+    if (overlay.isShowing) {
+      return const MultimediaCommandResult.error(
+        'Another SOP video is already playing',
+      );
+    }
 
-      overlay.showOnOverlay(overlayState: overlayState, videoAsset: videoPath);
-    });
+    overlay.showOnOverlay(overlayState: overlayState, videoAsset: videoPath);
+    if (!overlay.isShowing) {
+      return const MultimediaCommandResult.error(
+        'SOP overlay rejected the video',
+      );
+    }
+
+    return const MultimediaCommandResult.success('SOP video started');
   }
 
   @override
   void dispose() {
-    _subscription?.cancel();
     _videoMqttService.dispose();
     super.dispose();
   }

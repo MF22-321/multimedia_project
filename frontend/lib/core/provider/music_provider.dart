@@ -315,6 +315,73 @@ class MusicProvider extends ChangeNotifier {
     }
   }
 
+  /// Executes an RJ45 transport command and intentionally propagates backend
+  /// errors so the TCP layer can return a truthful ACK.
+  Future<void> executeTransportAction(String action) async {
+    switch (action) {
+      case 'play':
+      case 'resume':
+        try {
+          await _service.play();
+        } catch (error) {
+          AppLogger.error(
+            'DBus Play unavailable, using Spotify Connect: $error',
+          );
+          await _connectService.play();
+        }
+        _markCommandedPlayback(true);
+        break;
+      case 'pause':
+        try {
+          await _service.pause();
+        } catch (error) {
+          AppLogger.error(
+            'DBus Pause unavailable, using Spotify Connect: $error',
+          );
+          await _connectService.pause();
+        }
+        _markCommandedPlayback(false);
+        break;
+      case 'next':
+        try {
+          await _service.next();
+        } catch (error) {
+          AppLogger.error(
+            'DBus Next unavailable, using Spotify Connect: $error',
+          );
+          await _connectService.next();
+        }
+        _markCommandedPlayback(true);
+        break;
+      case 'previous':
+        try {
+          await _service.previous();
+        } catch (error) {
+          AppLogger.error(
+            'DBus Previous unavailable, using Spotify Connect: $error',
+          );
+          await _connectService.previous();
+        }
+        _markCommandedPlayback(true);
+        break;
+      case 'stop':
+        try {
+          await _service.stop();
+        } catch (error) {
+          AppLogger.error(
+            'DBus Stop unavailable, using Spotify Connect pause: $error',
+          );
+          await _connectService.pause();
+        }
+        _markCommandedPlayback(false);
+        break;
+      default:
+        throw ArgumentError.value(action, 'action', 'Unsupported action');
+    }
+
+    await _fetchMusic();
+  }
+
   Future<void> seekTo(double value) async {
     try {
       if (totalDuration.inMilliseconds <= 0) {

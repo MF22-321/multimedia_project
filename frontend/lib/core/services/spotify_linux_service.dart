@@ -116,6 +116,11 @@ class SpotifyDBusService {
     await playerObject.callMethod('org.mpris.MediaPlayer2.Player', 'Pause', []);
   }
 
+  Future<void> stop() async {
+    final playerObject = await _playerObject();
+    await playerObject.callMethod('org.mpris.MediaPlayer2.Player', 'Stop', []);
+  }
+
   Future<void> openUri(String uri) async {
     final playerObject = await _playerObject();
     await playerObject.callMethod('org.mpris.MediaPlayer2', 'OpenUri', [

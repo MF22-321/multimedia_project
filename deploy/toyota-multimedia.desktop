@@ -1,0 +1,7 @@
+[Desktop Entry]
+Type=Application
+Name=Toyota Multimedia
+Comment=Start the Jetson multimedia UI and RJ45 TCP server
+Exec=/home/multimedia/development/multimedia_project/scripts/start_multimedia_jetson.sh
+Terminal=false
+X-GNOME-Autostart-enabled=true

@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
@@ -6,6 +8,7 @@ import 'package:frontend/core/provider/gps_provider.dart';
 import 'package:frontend/core/provider/music_provider.dart';
 import 'package:frontend/core/provider/pothole_provider.dart';
 import 'package:frontend/features/personalize/presentation/page/personalize_page.dart';
+import 'package:frontend/core/services/multimedia_tcp_server.dart';
 import 'package:frontend/features/smart_fragrance/page/smart_fragrance_page.dart';
 import 'package:hive_flutter/adapters.dart';
 import 'package:media_kit/media_kit.dart';
@@ -24,6 +27,10 @@ import 'package:frontend/features/video/provider/video_provider.dart';
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   MediaKit.ensureInitialized();
+
+  final tcpPort =
+      int.tryParse(Platform.environment['MULTIMEDIA_TCP_PORT'] ?? '') ?? 5050;
+  await MultimediaTcpServer.instance.start(port: tcpPort);
 
   await Hive.initFlutter();
   await Hive.openBox('drivers');

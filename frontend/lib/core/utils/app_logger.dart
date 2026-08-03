@@ -4,14 +4,14 @@ class AppLogger {
   const AppLogger._();
 
   static void info(Object? message) {
-    if (kDebugMode) {
-      debugPrint(message?.toString());
-    }
+    debugPrint(
+      '${DateTime.now().toIso8601String()} level=INFO ${message?.toString()}',
+    );
   }
 
   static void error(Object? message) {
-    if (kDebugMode) {
-      debugPrint(message?.toString());
-    }
+    debugPrint(
+      '${DateTime.now().toIso8601String()} level=ERROR ${message?.toString()}',
+    );
   }
 }

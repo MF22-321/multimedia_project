@@ -239,10 +239,7 @@ class _AssistantCard extends StatelessWidget {
         gradient: LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
-          colors: [
-            const Color(0xFF07131A),
-            const Color(0xFF02070B),
-          ],
+          colors: [const Color(0xFF07131A), const Color(0xFF02070B)],
         ),
         border: Border.all(
           color: Colors.white.withValues(alpha: 0.14),
@@ -287,7 +284,7 @@ class _AssistantCard extends StatelessWidget {
                     Text(
                       isConnected
                           ? 'Voice command connected'
-                          : 'MQTT reconnecting',
+                          : 'Waiting for Raspberry over RJ45',
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: TextStyle(
@@ -375,7 +372,11 @@ class _AssistantCard extends StatelessWidget {
             ),
           ),
           Text(
-            state == AvatarState.thinking ? 'Thinking...' : 'Answering',
+            state == AvatarState.thinking
+                ? 'Thinking...'
+                : state == AvatarState.listening
+                ? 'Listening...'
+                : 'Answering',
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
             style: TextStyle(
@@ -388,7 +389,8 @@ class _AssistantCard extends StatelessWidget {
           SizedBox(height: 10.h),
           AnimatedSwitcher(
             duration: const Duration(milliseconds: 220),
-            child: state == AvatarState.thinking
+            child:
+                state == AvatarState.thinking || state == AvatarState.listening
                 ? _TypingIndicator(
                     key: const ValueKey('typing'),
                     typing: typing,

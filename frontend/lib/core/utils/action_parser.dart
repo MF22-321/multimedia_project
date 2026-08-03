@@ -14,21 +14,34 @@ class ActionParser {
       final jsonData = jsonDecode(message);
       if (jsonData is! Map<String, dynamic>) return null;
 
-      final actionString = _extractAction(jsonData);
-      if (actionString == null) return null;
-
-      final vehicleAction = VideoAssets.fromString(actionString);
-      if (vehicleAction == null) return null;
-
-      return VideoAssets.actionVideoMap[vehicleAction];
+      return parseMapToVideo(jsonData);
     } catch (e) {
       return null;
     }
   }
 
+  static String? parseMapToVideo(Map<String, dynamic> command) {
+    final actionString = _extractAction(command);
+    if (actionString == null) return null;
+
+    final vehicleAction = VideoAssets.fromString(actionString);
+    if (vehicleAction == null) return null;
+
+    return VideoAssets.actionVideoMap[vehicleAction];
+  }
+
   static String? _extractAction(Map<String, dynamic> jsonData) {
+    final action = jsonData['action']?.toString().trim() ?? '';
+    final normalizedAction = action.toLowerCase().replaceAll(
+      RegExp(r'[ -]+'),
+      '_',
+    );
+    if (normalizedAction == 'stop') return null;
+
     final rawAction =
-        jsonData['action'] ??
+        (normalizedAction == 'play' || normalizedAction == 'start'
+            ? jsonData['video']
+            : jsonData['action']) ??
         jsonData['video'] ??
         jsonData['command'] ??
         jsonData['sop'] ??
@@ -90,7 +103,8 @@ class ActionParser {
       return 'OPEN_TRUNK_$suffix';
     }
 
-    if (text == 'check_oil_level' ||
+    if (text == 'check_oil' ||
+        text == 'check_oil_level' ||
         text == 'cek_oil_level' ||
         text == 'cek_oli' ||
         text == 'cek_level_oli' ||
@@ -118,7 +132,8 @@ class ActionParser {
       return 'USE_FIRE_EXTINGUISHER';
     }
 
-    if (text == 'help_accident' ||
+    if (text == 'accident' ||
+        text == 'help_accident' ||
         text == 'accident_help' ||
         text == 'menolong_kecelakaan' ||
         text == 'tolong_kecelakaan' ||

@@ -1,15 +1,17 @@
 import 'dart:async';
-import 'dart:convert';
 
 import 'package:frontend/core/navigation/app_navigation.dart';
 import 'package:frontend/core/navigation/smart_music_navigation.dart';
 import 'package:frontend/core/provider/music_provider.dart';
+import 'package:frontend/core/services/multimedia_tcp_server.dart';
 import 'package:frontend/core/services/spotify_search_service.dart';
 import 'package:frontend/core/utils/app_logger.dart';
-import 'package:mqtt_client/mqtt_client.dart';
-import 'package:mqtt_client/mqtt_server_client.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+/// Music command handler for the RJ45 TCP transport.
+///
+/// The historical class name is retained for source compatibility. Commands
+/// now come exclusively from [MultimediaTcpServer], not an MQTT broker.
 class MusicMqttService {
   MusicMqttService._internal();
 
@@ -17,168 +19,77 @@ class MusicMqttService {
 
   factory MusicMqttService() => _instance;
 
-  static const String broker = 'broker.hivemq.com';
-  static const int port = 1883;
-  static const String commandTopic = 'toyota/music/command';
-
+  final MultimediaTcpServer _server = MultimediaTcpServer.instance;
   final SpotifySearchService _spotifySearchService = SpotifySearchService();
-  final String _clientId =
-      'flutter_music_client_${DateTime.now().millisecondsSinceEpoch}';
 
-  MqttServerClient? _client;
-  StreamSubscription? _updatesSubscription;
-  Timer? _reconnectTimer;
-  Future<bool>? _connectTask;
   MusicProvider? _musicProvider;
-  bool _manualDisconnect = false;
+  bool _registered = false;
   bool _busy = false;
 
-  bool get isConnected {
-    return _client?.connectionStatus?.state == MqttConnectionState.connected;
-  }
+  bool get isConnected => _server.hasClients;
 
-  Future<bool> connect({required MusicProvider musicProvider}) {
+  Future<bool> connect({required MusicProvider musicProvider}) async {
     _musicProvider = musicProvider;
-
-    if (isConnected) return Future.value(true);
-    if (_connectTask != null) return _connectTask!;
-
-    _connectTask = _connectInternal().whenComplete(() {
-      _connectTask = null;
-    });
-
-    return _connectTask!;
-  }
-
-  Future<bool> _connectInternal() async {
-    _manualDisconnect = false;
-
-    final client = MqttServerClient(broker, _clientId);
-    _client = client;
-
-    client.port = port;
-    client.keepAlivePeriod = 20;
-    client.connectTimeoutPeriod = 3000;
-    client.logging(on: false);
-
-    client.onConnected = () {
-      AppLogger.info('Music MQTT connected');
-      client.subscribe(commandTopic, MqttQos.atLeastOnce);
-    };
-
-    client.onDisconnected = () {
-      AppLogger.info('Music MQTT disconnected');
-      if (!_manualDisconnect) _scheduleReconnect();
-    };
-
-    try {
-      await client.connect();
-    } catch (e) {
-      AppLogger.error('Music MQTT connect failed: $e');
-      client.disconnect();
-      _scheduleReconnect();
-      return false;
+    if (!_registered) {
+      _server.registerHandler('music_command', _handleCommand);
+      _registered = true;
+      AppLogger.info('music_tcp_handler_registered');
     }
-
-    await _updatesSubscription?.cancel();
-    _updatesSubscription = client.updates?.listen(_handleMessages);
-
-    if (!isConnected) _scheduleReconnect();
-    return isConnected;
+    return _server.isListening;
   }
 
-  void _handleMessages(List<MqttReceivedMessage<MqttMessage>> events) {
-    if (events.isEmpty) return;
-
-    for (final event in events) {
-      final message = event.payload as MqttPublishMessage;
-      if (message.header?.retain == true) {
-        AppLogger.info('Music MQTT retained command ignored');
-        continue;
-      }
-
-      final payload = MqttPublishPayload.bytesToStringAsString(
-        message.payload.message,
-      ).trim();
-
-      if (payload.isEmpty) continue;
-
-      AppLogger.info('Music MQTT payload: $payload');
-      unawaited(_handlePayload(payload));
-    }
-  }
-
-  Future<void> _handlePayload(String payload) async {
+  Future<MultimediaCommandResult> _handleCommand(
+    Map<String, dynamic> command,
+  ) async {
     if (_busy) {
-      AppLogger.info('Music MQTT command skipped: another command is running');
-      return;
+      return const MultimediaCommandResult.error(
+        'Another music command is still running',
+      );
     }
 
     final provider = _musicProvider;
     if (provider == null) {
-      AppLogger.error('Music MQTT skipped: MusicProvider is not ready');
-      return;
+      return const MultimediaCommandResult.error(
+        'Music playback backend is not ready',
+      );
+    }
+
+    final action = (command['action'] ?? command['command'] ?? '')
+        .toString()
+        .trim()
+        .toLowerCase();
+    const supported = {'play', 'pause', 'resume', 'next', 'previous', 'stop'};
+    if (!supported.contains(action)) {
+      return MultimediaCommandResult.error(
+        'Unsupported music action: ${action.isEmpty ? '(empty)' : action}',
+      );
     }
 
     try {
       _busy = true;
-      final command = _parseCommand(payload);
-      if (command == null) return;
+      final hasTarget = [
+        command['query'],
+        command['keyword'],
+        command['q'],
+        command['uri'],
+        command['url'],
+      ].any((value) => value?.toString().trim().isNotEmpty == true);
 
-      final action = (command['action'] ?? command['command'] ?? '')
-          .toString()
-          .trim()
-          .toLowerCase();
-
-      switch (action) {
-        case 'play':
-        case 'search':
-        case 'play_spotify':
-        case 'setel':
-        case 'putar':
-          await _playSearchResult(command, provider);
-          break;
-        case 'resume':
-          await provider.play();
-          provider.startProgressListener();
-          break;
-        case 'pause':
-          await provider.pause();
-          break;
-        case 'toggle':
-        case 'play_pause':
-          await provider.togglePlay();
-          break;
-        case 'next':
-        case 'skip':
-          await provider.next();
-          break;
-        case 'previous':
-        case 'prev':
-          await provider.previous();
-          break;
-        default:
-          AppLogger.info('Music MQTT unknown action: $action');
+      if (action == 'play' && hasTarget) {
+        await _playSearchResult(command, provider);
+      } else {
+        await provider.executeTransportAction(action);
       }
-    } catch (e) {
-      AppLogger.error('Music MQTT command failed: $e');
+
+      return MultimediaCommandResult.success('Music action accepted: $action');
+    } catch (error) {
+      AppLogger.error('music_tcp_command_failed action=$action error=$error');
+      return MultimediaCommandResult.error(
+        'Music backend rejected $action: $error',
+      );
     } finally {
       _busy = false;
     }
-  }
-
-  Map<String, dynamic>? _parseCommand(String payload) {
-    try {
-      final data = jsonDecode(payload);
-      if (data is Map<String, dynamic>) return data;
-    } catch (_) {
-      final text = payload.trim();
-      if (text.isNotEmpty) {
-        return {'action': 'play', 'query': text, 'type': 'track'};
-      }
-    }
-
-    return null;
   }
 
   Future<void> _playSearchResult(
@@ -188,7 +99,10 @@ class MusicMqttService {
     final query = (command['query'] ?? command['keyword'] ?? command['q'] ?? '')
         .toString()
         .trim();
-    final type = (command['type'] ?? 'track').toString().trim().toLowerCase();
+    final type = (command['search_type'] ?? command['type'] ?? 'track')
+        .toString()
+        .trim()
+        .toLowerCase();
     final uri = (command['uri'] ?? '').toString().trim();
     final url = (command['url'] ?? '').toString().trim();
 
@@ -199,24 +113,16 @@ class MusicMqttService {
     }
 
     if (query.isEmpty) {
-      _showMusicPageForQuery(null);
-      await provider.play();
-      provider.startProgressListener();
+      await provider.executeTransportAction('play');
       return;
     }
 
-    _showMusicPageForQuery(
-      query,
-      autoPlay: true,
-    );
-
+    _showMusicPageForQuery(query, autoPlay: true);
     final safeType = _safeSpotifySearchType(type);
     final result = await _spotifySearchService.search(query, safeType);
     final target = _firstSpotifyItem(result, safeType);
-
     if (target == null) {
-      AppLogger.info('Music MQTT no Spotify result for: $query');
-      return;
+      throw StateError('No Spotify result for: $query');
     }
 
     final targetUri = target['uri']?.toString() ?? '';
@@ -224,145 +130,91 @@ class MusicMqttService {
     final externalUrl = externalUrls is Map
         ? externalUrls['spotify']?.toString() ?? ''
         : '';
-
     await _launchSpotify(
       targetUri.isNotEmpty ? targetUri : externalUrl,
       provider,
     );
   }
 
-  void _showMusicPageForQuery(
-    String? query, {
-    bool autoPlay = false,
-  }) {
+  void _showMusicPageForQuery(String? query, {bool autoPlay = false}) {
     final keyword = query?.trim();
-
     scheduleMicrotask(() {
       AppNavigation.currentIndex.value = 0;
+      if (keyword == null || keyword.isEmpty) return;
 
-      if (keyword != null && keyword.isNotEmpty) {
-        if (autoPlay) {
-          if (SmartMusicSuggestion.autoPlayKeyword.value == keyword) {
-            SmartMusicSuggestion.autoPlayKeyword.value = null;
-          }
-          SmartMusicSuggestion.autoPlayKeyword.value = keyword;
+      if (autoPlay) {
+        if (SmartMusicSuggestion.autoPlayKeyword.value == keyword) {
+          SmartMusicSuggestion.autoPlayKeyword.value = null;
         }
-
-        if (SmartMusicSuggestion.suggestedKeyword.value == keyword) {
-          SmartMusicSuggestion.suggestedKeyword.value = null;
-        }
-        SmartMusicSuggestion.suggestedKeyword.value = keyword;
+        SmartMusicSuggestion.autoPlayKeyword.value = keyword;
       }
+      if (SmartMusicSuggestion.suggestedKeyword.value == keyword) {
+        SmartMusicSuggestion.suggestedKeyword.value = null;
+      }
+      SmartMusicSuggestion.suggestedKeyword.value = keyword;
     });
   }
 
   String _safeSpotifySearchType(String type) {
-    switch (type) {
-      case 'artist':
-      case 'album':
-      case 'playlist':
-      case 'track':
-        return type;
-      default:
-        return 'track';
-    }
+    return const {'artist', 'album', 'playlist', 'track'}.contains(type)
+        ? type
+        : 'track';
   }
 
   Map<String, dynamic>? _firstSpotifyItem(
     Map<String, dynamic> result,
     String type,
   ) {
-    final key = '${type}s';
-    final container = result[key];
+    final container = result['${type}s'];
     if (container is! Map<String, dynamic>) return null;
-
     final items = container['items'];
     if (items is! List || items.isEmpty) return null;
-
     final first = items.first;
-    if (first is Map<String, dynamic>) return first;
-    return null;
+    return first is Map<String, dynamic> ? first : null;
   }
 
   Future<void> _launchSpotify(String target, MusicProvider provider) async {
-    if (target.trim().isEmpty) return;
-
     final trimmedTarget = target.trim();
+    if (trimmedTarget.isEmpty) {
+      throw ArgumentError('Spotify target is empty');
+    }
+
     final spotifyTarget = trimmedTarget.startsWith('spotify:')
         ? trimmedTarget
         : _spotifyUriFromWebUrl(trimmedTarget);
-
     if (spotifyTarget != null) {
-      try {
-        AppLogger.info('Music MQTT opening Spotify URI: $spotifyTarget');
-        await provider.playUri(spotifyTarget);
-        provider.startProgressListener();
-      } catch (e) {
-        AppLogger.error(
-          'Music MQTT OpenUri failed. Spotifyd/MPRIS is not ready: $e',
-        );
-      }
-
+      await provider.playUri(spotifyTarget);
+      provider.startProgressListener();
       return;
     }
 
     final uri = Uri.parse(trimmedTarget);
     final launched = await launchUrl(uri, mode: LaunchMode.externalApplication);
     if (!launched) {
-      AppLogger.error(
-        'Music MQTT failed to launch external target: $trimmedTarget',
-      );
-      return;
+      throw StateError('Could not launch music URL');
     }
   }
 
   String? _spotifyUriFromWebUrl(String target) {
     final uri = Uri.tryParse(target);
-    if (uri == null || uri.host != 'open.spotify.com') {
-      return null;
-    }
-
+    if (uri == null || uri.host != 'open.spotify.com') return null;
     final segments = uri.pathSegments
         .where((segment) => segment.trim().isNotEmpty)
         .toList();
-    if (segments.length < 2) {
-      return null;
-    }
+    if (segments.length < 2) return null;
 
     final typeIndex = segments[0].startsWith('intl-') ? 1 : 0;
-    if (segments.length <= typeIndex + 1) {
-      return null;
-    }
-
+    if (segments.length <= typeIndex + 1) return null;
     final type = segments[typeIndex];
     final id = segments[typeIndex + 1];
-    switch (type) {
-      case 'album':
-      case 'artist':
-      case 'playlist':
-      case 'track':
-        return 'spotify:$type:$id';
-      default:
-        return null;
-    }
-  }
-
-  void _scheduleReconnect() {
-    if (_manualDisconnect || isConnected || _reconnectTimer?.isActive == true) {
-      return;
-    }
-
-    _reconnectTimer = Timer(const Duration(seconds: 2), () {
-      final provider = _musicProvider;
-      if (_manualDisconnect || isConnected || provider == null) return;
-      connect(musicProvider: provider);
-    });
+    return const {'album', 'artist', 'playlist', 'track'}.contains(type)
+        ? 'spotify:$type:$id'
+        : null;
   }
 
   void dispose() {
-    _manualDisconnect = true;
-    _reconnectTimer?.cancel();
-    _updatesSubscription?.cancel();
-    _client?.disconnect();
+    _server.unregisterHandler('music_command');
+    _musicProvider = null;
+    _registered = false;
   }
 }

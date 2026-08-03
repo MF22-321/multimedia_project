@@ -29,6 +29,14 @@ class SpotifyConnectService {
     await _playerCommand('previous');
   }
 
+  Future<void> play() async {
+    await _playerPutCommand('play');
+  }
+
+  Future<void> pause() async {
+    await _playerPutCommand('pause');
+  }
+
   Future<String> _getUserAccessToken() async {
     final envAccessToken = Platform.environment['SPOTIFY_ACCESS_TOKEN'];
     if (envAccessToken != null && envAccessToken.trim().isNotEmpty) {
@@ -62,10 +70,7 @@ class SpotifyConnectService {
         'Authorization': 'Basic $credentials',
         'Content-Type': 'application/x-www-form-urlencoded',
       },
-      body: {
-        'grant_type': 'refresh_token',
-        'refresh_token': refreshToken,
-      },
+      body: {'grant_type': 'refresh_token', 'refresh_token': refreshToken},
     );
 
     if (response.statusCode < 200 || response.statusCode >= 300) {
@@ -93,14 +98,16 @@ class SpotifyConnectService {
 
   String? _readRefreshToken() {
     final env = Platform.environment;
-    final direct = env['SPOTIFY_REFRESH_TOKEN'] ??
+    final direct =
+        env['SPOTIFY_REFRESH_TOKEN'] ??
         env['SPOTIFY_USER_REFRESH_TOKEN'] ??
         env['SPOTIFY_WEB_API_REFRESH_TOKEN'];
     if (direct != null && direct.trim().isNotEmpty) {
       return direct.trim();
     }
 
-    final tokenPath = env['SPOTIFY_REFRESH_TOKEN_FILE'] ??
+    final tokenPath =
+        env['SPOTIFY_REFRESH_TOKEN_FILE'] ??
         '${env['HOME'] ?? ''}/.config/multimedia_project/spotify_token.json';
 
     try {
@@ -145,7 +152,9 @@ class SpotifyConnectService {
     final data = jsonDecode(response.body);
     final devices = data['devices'];
     if (devices is! List || devices.isEmpty) {
-      throw Exception('No Spotify Connect devices found. Start spotifyd first.');
+      throw Exception(
+        'No Spotify Connect devices found. Start spotifyd first.',
+      );
     }
 
     final preferredName =
@@ -195,9 +204,7 @@ class SpotifyConnectService {
         ? {
             'uris': [uri],
           }
-        : {
-            'context_uri': uri,
-          };
+        : {'context_uri': uri};
 
     for (var attempt = 1; attempt <= 4; attempt++) {
       final response = await http.put(
@@ -215,7 +222,8 @@ class SpotifyConnectService {
         return;
       }
 
-      final retryable = response.statusCode == 404 ||
+      final retryable =
+          response.statusCode == 404 ||
           response.statusCode == 502 ||
           response.statusCode == 503 ||
           response.statusCode == 504;
@@ -264,6 +272,20 @@ class SpotifyConnectService {
   Future<void> _playerCommand(String command) async {
     final token = await _getUserAccessToken();
     final response = await http.post(
+      Uri.parse('https://api.spotify.com/v1/me/player/$command'),
+      headers: {'Authorization': 'Bearer $token'},
+    );
+
+    if (response.statusCode != 204) {
+      throw Exception(
+        'Spotify $command failed: ${response.statusCode} ${response.body}',
+      );
+    }
+  }
+
+  Future<void> _playerPutCommand(String command) async {
+    final token = await _getUserAccessToken();
+    final response = await http.put(
       Uri.parse('https://api.spotify.com/v1/me/player/$command'),
       headers: {'Authorization': 'Bearer $token'},
     );
