@@ -77,7 +77,24 @@ Feature aktif:
 - `personalize`: theme customization.
 - `smart_fragrance`: fragrance settings.
 - `video`: video playback.
+- `projection`: one-HMI Android Auto/CarPlay surface, lifecycle controller,
+  and Linux native bridge boundary.
 - `face_recognition`: sebagian screen debug/legacy untuk FaceID.
+
+## Phone Projection Boundary
+
+`ProjectionPage` owns presentation and normalized touch coordinates. Dart sends
+only lifecycle commands, status requests, and input events through a platform
+channel. Decoded video never crosses Dart; the Linux receiver adapter registers
+an `FlTexture` and returns its texture ID to Flutter.
+
+The project-local C++ bridge lives in `linux/projection_plugin/`. The receiver
+in `projection_receiver/` supports both Tahap 1 USB AOAP and Tahap 3 wireless
+Bluetooth WPP + Wi-Fi TCP transport. Protocol processing stays outside Dart,
+while both transports share the same GStreamer decoder/audio pipeline and
+registered Flutter texture. The optional `PROJECTION_SDK_LIBRARY` ABI remains
+available for another receiver adapter. See `docs/PROJECTION_INTEGRATION.md`
+for setup, runtime flow, and diagnostics.
 
 ## Runtime Flow
 

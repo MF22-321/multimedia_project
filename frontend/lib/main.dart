@@ -8,6 +8,8 @@ import 'package:frontend/core/provider/gps_provider.dart';
 import 'package:frontend/core/provider/music_provider.dart';
 import 'package:frontend/core/provider/pothole_provider.dart';
 import 'package:frontend/features/personalize/presentation/page/personalize_page.dart';
+import 'package:frontend/features/projection/domain/projection_models.dart';
+import 'package:frontend/features/projection/presentation/projection_page.dart';
 import 'package:frontend/core/services/multimedia_tcp_server.dart';
 import 'package:frontend/features/smart_fragrance/page/smart_fragrance_page.dart';
 import 'package:hive_flutter/adapters.dart';
@@ -66,11 +68,18 @@ Future<void> main() async {
     await windowManager.setResizable(false);
   });
 
-  runApp(const MyApp());
+  runApp(
+    MyApp(
+      projectionAutostart:
+          Platform.environment['PROJECTION_AUTOSTART_ANDROID_AUTO'] == '1',
+    ),
+  );
 }
 
 class MyApp extends StatelessWidget {
-  const MyApp({super.key});
+  const MyApp({super.key, this.projectionAutostart = false});
+
+  final bool projectionAutostart;
 
   @override
   Widget build(BuildContext context) {
@@ -115,7 +124,9 @@ class MyApp extends StatelessWidget {
               useMaterial3: true,
             ),
 
-            initialRoute: AppRoutes.boot,
+            initialRoute: projectionAutostart
+                ? AppRoutes.projection
+                : AppRoutes.boot,
 
             routes: {
               AppRoutes.boot: (context) => const BootPage(),
@@ -127,6 +138,10 @@ class MyApp extends StatelessWidget {
               AppRoutes.home: (context) => const HomePage(),
               AppRoutes.fragranceSettings: (context) =>
                   const SmartFragrancePage(),
+              AppRoutes.projection: (context) => ProjectionPage(
+                autoStartAndroidAuto: projectionAutostart,
+                initialTarget: ProjectionTarget.androidAuto,
+              ),
             },
           );
         },

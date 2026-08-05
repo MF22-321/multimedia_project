@@ -9,9 +9,9 @@ import 'package:frontend/features/home/presentation/widget/bluetooth_content.dar
 import 'package:frontend/features/home/presentation/widget/car_info_content.dart';
 import 'package:frontend/features/home/presentation/widget/info_content.dart';
 import 'package:frontend/features/home/presentation/widget/radio_content.dart';
-import 'package:frontend/features/home/presentation/widget/screen_cast_content.dart';
 import 'package:frontend/features/home/presentation/widget/tutorial_content.dart';
-import 'package:frontend/features/home/presentation/widget/usb_connect_content.dart';
+import 'package:frontend/features/projection/domain/projection_models.dart';
+import 'package:frontend/features/projection/presentation/projection_page.dart';
 import 'package:frontend/features/smart_fragrance/page/smart_fragrance_page.dart';
 
 class MenuContent extends StatelessWidget {
@@ -117,16 +117,22 @@ class MenuContent extends StatelessWidget {
         onTap: () => _openPage(context, const BluetoothContent()),
       ),
       _LauncherApp(
-        title: AppStrings.screenCast,
-        subtitle: AppStrings.mirrorDevice,
-        icon: Icons.cast_rounded,
-        onTap: () => _openPage(context, const ScreenCastContent()),
+        title: AppStrings.androidAuto,
+        subtitle: AppStrings.androidAutoSubtitle,
+        icon: Icons.android_rounded,
+        onTap: () => _openPage(
+          context,
+          const ProjectionPage(initialTarget: ProjectionTarget.androidAuto),
+        ),
       ),
       _LauncherApp(
-        title: AppStrings.usb,
-        subtitle: AppStrings.mediaSource,
-        icon: Icons.usb_rounded,
-        onTap: () => _openPage(context, const UsbConnectContent()),
+        title: AppStrings.appleCarPlay,
+        subtitle: AppStrings.carPlaySubtitle,
+        icon: Icons.apple,
+        onTap: () => _openPage(
+          context,
+          const ProjectionPage(initialTarget: ProjectionTarget.carPlay),
+        ),
       ),
       _LauncherApp(
         title: AppStrings.vehicle,

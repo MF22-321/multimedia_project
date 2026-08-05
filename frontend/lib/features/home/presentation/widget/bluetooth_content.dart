@@ -4,6 +4,7 @@ import 'package:dbus/dbus.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:frontend/core/localization/app_strings.dart';
+import 'package:frontend/core/services/bluetooth_discovery_control.dart';
 import 'package:frontend/core/utils/app_logger.dart';
 
 import '../../../../core/themes/car_theme.dart';
@@ -21,6 +22,7 @@ class _BluetoothPageState extends State<BluetoothContent>
   /// DBUS
   /// =========================
   final DBusClient client = DBusClient.system();
+  final Object _discoveryOwner = Object();
 
   /// =========================
   /// DEVICE LIST
@@ -37,6 +39,8 @@ class _BluetoothPageState extends State<BluetoothContent>
   void initState() {
     super.initState();
 
+    BluetoothDiscoveryControl.register(_discoveryOwner, stopScan);
+
     pulseController = AnimationController(
       vsync: this,
 
@@ -44,6 +48,29 @@ class _BluetoothPageState extends State<BluetoothContent>
     )..repeat();
 
     startScan();
+  }
+
+  Future<void> stopScan() async {
+    scanTimer?.cancel();
+    scanTimer = null;
+    try {
+      final adapter = DBusRemoteObject(
+        client,
+        name: 'org.bluez',
+        path: DBusObjectPath('/org/bluez/hci0'),
+      );
+      await adapter.callMethod('org.bluez.Adapter1', 'StopDiscovery', []);
+      AppLogger.info('BLUETOOTH DISCOVERY STOPPED');
+    } catch (error) {
+      // BlueZ returns an error when the scan has already ended. The desired
+      // state is still reached, so this is diagnostic-only.
+      AppLogger.info('BLUETOOTH DISCOVERY ALREADY STOPPED: $error');
+    }
+    if (mounted) {
+      setState(() {
+        isScanning = false;
+      });
+    }
   }
 
   /// =========================
@@ -195,9 +222,8 @@ class _BluetoothPageState extends State<BluetoothContent>
   void dispose() {
     pulseController.dispose();
 
-    scanTimer?.cancel();
-
-    client.close();
+    BluetoothDiscoveryControl.unregister(_discoveryOwner);
+    unawaited(stopScan().whenComplete(client.close));
 
     super.dispose();
   }
@@ -552,9 +578,9 @@ class _BluetoothPageState extends State<BluetoothContent>
                                         ),
 
                                         child: Text(
-                                            connected
-                                                ? AppStrings.disconnect
-                                                : AppStrings.connect,
+                                          connected
+                                              ? AppStrings.disconnect
+                                              : AppStrings.connect,
                                           style: TextStyle(
                                             color: Colors.white,
 

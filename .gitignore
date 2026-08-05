@@ -14,3 +14,9 @@ htmlcov/
 # Large video assets
 frontend/assets/video_sdr/*.mp4
 frontend/assets/video_sdr_original/*.mp4
+
+# Local Android Auto receiver runtime/build products
+.tools/
+frontend/projection_receiver/node_modules/
+frontend/projection_receiver/dist/
+frontend/projection_receiver/*.log

@@ -1,0 +1,25 @@
+{
+  "name": "multimedia-android-auto-receiver",
+  "version": "0.1.0",
+  "private": true,
+  "license": "GPL-3.0-or-later",
+  "type": "commonjs",
+  "scripts": {
+    "build": "tsc -p tsconfig.json && node scripts/copy-protos.cjs",
+    "start": "node dist/receiver.js",
+    "check": "tsc -p tsconfig.json --noEmit"
+  },
+  "dependencies": {
+    "protobufjs": "8.7.1",
+    "usb": "3.0.1"
+  },
+  "optionalDependencies": {
+    "@node-usb/usb-linux-arm64-gnu": "3.0.1",
+    "@node-usb/usb-linux-x64-gnu": "3.0.1"
+  },
+  "devDependencies": {
+    "@types/node": "^24.0.0",
+    "@types/w3c-web-usb": "^1.0.14",
+    "typescript": "^5.9.0"
+  }
+}

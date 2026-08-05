@@ -7,4 +7,5 @@ class AppRoutes {
   static const personalize = "/personalize";
   static const home = "/home";
   static const fragranceSettings = "/fragrance_settings";
+  static const projection = "/projection";
 }

@@ -8,9 +8,9 @@ import 'package:frontend/features/home/presentation/widget/bluetooth_content.dar
 import 'package:frontend/features/home/presentation/widget/car_info_content.dart';
 import 'package:frontend/features/home/presentation/widget/info_content.dart';
 import 'package:frontend/features/home/presentation/widget/radio_content.dart';
-import 'package:frontend/features/home/presentation/widget/screen_cast_content.dart';
 import 'package:frontend/features/home/presentation/widget/tutorial_content.dart';
-import 'package:frontend/features/home/presentation/widget/usb_connect_content.dart';
+import 'package:frontend/features/projection/domain/projection_models.dart';
+import 'package:frontend/features/projection/presentation/projection_page.dart';
 
 class QuickActionGrid extends StatelessWidget {
   const QuickActionGrid({super.key});
@@ -26,8 +26,12 @@ class QuickActionGrid extends StatelessWidget {
           _ActionItem("radio", AppStrings.radio, Icons.radio),
           _ActionItem("bluetooth", AppStrings.bluetooth, Icons.bluetooth),
           _ActionItem("car_status", AppStrings.carStatus, Icons.directions_car),
-          _ActionItem("screen_cast", AppStrings.screenCast, Icons.cast),
-          _ActionItem("usb", AppStrings.usb, Icons.usb),
+          _ActionItem(
+            "android_auto",
+            AppStrings.androidAuto,
+            Icons.android_rounded,
+          ),
+          _ActionItem("carplay", AppStrings.appleCarPlay, Icons.apple),
           _ActionItem("info", AppStrings.info, Icons.info),
         ];
 
@@ -43,346 +47,415 @@ class QuickActionGrid extends StatelessWidget {
                   child: GridView.builder(
                     itemCount: actions.length,
 
-            gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-              crossAxisCount: 4,
-              mainAxisSpacing: 20.h,
-              crossAxisSpacing: 20.w,
-              childAspectRatio: 1,
-            ),
-
-            itemBuilder: (context, index) {
-              final item = actions[index];
-
-              return GestureDetector(
-                onTap: () {
-                  /// OPEN TUTORIAL PAGE
-                  if (item.key == "tutorial") {
-                    Navigator.push(
-                      context,
-
-                      PageRouteBuilder(
-                        transitionDuration: const Duration(milliseconds: 450),
-
-                        reverseTransitionDuration: const Duration(
-                          milliseconds: 350,
-                        ),
-
-                        pageBuilder: (context, animation, secondaryAnimation) {
-                          return const TutorialPage();
-                        },
-
-                        transitionsBuilder:
-                            (context, animation, secondaryAnimation, child) {
-                              final curved = CurvedAnimation(
-                                parent: animation,
-
-                                curve: Curves.easeInOutCubic,
-                              );
-
-                              return FadeTransition(
-                                opacity: curved,
-
-                                child: SlideTransition(
-                                  position: Tween<Offset>(
-                                    begin: const Offset(0.08, 0),
-
-                                    end: Offset.zero,
-                                  ).animate(curved),
-
-                                  child: child,
-                                ),
-                              );
-                            },
-                      ),
-                    );
-                  } else if (item.key == "music") {
-                    AppNavigation.currentIndex.value = 0;
-                  } else if (item.key == "radio") {
-                    Navigator.push(
-                      context,
-
-                      PageRouteBuilder(
-                        transitionDuration: const Duration(milliseconds: 450),
-
-                        reverseTransitionDuration: const Duration(
-                          milliseconds: 350,
-                        ),
-
-                        pageBuilder: (context, animation, secondaryAnimation) {
-                          return const RadioContent();
-                        },
-
-                        transitionsBuilder:
-                            (context, animation, secondaryAnimation, child) {
-                              final curved = CurvedAnimation(
-                                parent: animation,
-
-                                curve: Curves.easeInOutCubic,
-                              );
-
-                              return FadeTransition(
-                                opacity: curved,
-
-                                child: SlideTransition(
-                                  position: Tween<Offset>(
-                                    begin: const Offset(0.08, 0),
-
-                                    end: Offset.zero,
-                                  ).animate(curved),
-
-                                  child: child,
-                                ),
-                              );
-                            },
-                      ),
-                    );
-                  } else if (item.key == "bluetooth") {
-                    Navigator.push(
-                      context,
-
-                      PageRouteBuilder(
-                        transitionDuration: const Duration(milliseconds: 450),
-
-                        reverseTransitionDuration: const Duration(
-                          milliseconds: 350,
-                        ),
-
-                        pageBuilder: (context, animation, secondaryAnimation) {
-                          return const BluetoothContent();
-                        },
-
-                        transitionsBuilder:
-                            (context, animation, secondaryAnimation, child) {
-                              final curved = CurvedAnimation(
-                                parent: animation,
-
-                                curve: Curves.easeInOutCubic,
-                              );
-
-                              return FadeTransition(
-                                opacity: curved,
-
-                                child: SlideTransition(
-                                  position: Tween<Offset>(
-                                    begin: const Offset(0.08, 0),
-
-                                    end: Offset.zero,
-                                  ).animate(curved),
-
-                                  child: child,
-                                ),
-                              );
-                            },
-                      ),
-                    );
-                  } else if (item.key == "screen_cast") {
-                    Navigator.push(
-                      context,
-
-                      PageRouteBuilder(
-                        transitionDuration: const Duration(milliseconds: 450),
-
-                        reverseTransitionDuration: const Duration(
-                          milliseconds: 350,
-                        ),
-
-                        pageBuilder: (context, animation, secondaryAnimation) {
-                          return const ScreenCastContent();
-                        },
-
-                        transitionsBuilder:
-                            (context, animation, secondaryAnimation, child) {
-                              final curved = CurvedAnimation(
-                                parent: animation,
-
-                                curve: Curves.easeInOutCubic,
-                              );
-
-                              return FadeTransition(
-                                opacity: curved,
-
-                                child: SlideTransition(
-                                  position: Tween<Offset>(
-                                    begin: const Offset(0.08, 0),
-
-                                    end: Offset.zero,
-                                  ).animate(curved),
-
-                                  child: child,
-                                ),
-                              );
-                            },
-                      ),
-                    );
-                  } else if (item.key == "car_status") {
-                    Navigator.push(
-                      context,
-
-                      PageRouteBuilder(
-                        transitionDuration: const Duration(milliseconds: 450),
-
-                        reverseTransitionDuration: const Duration(
-                          milliseconds: 350,
-                        ),
-
-                        pageBuilder: (context, animation, secondaryAnimation) {
-                          return const CarInfoContent();
-                        },
-
-                        transitionsBuilder:
-                            (context, animation, secondaryAnimation, child) {
-                              final curved = CurvedAnimation(
-                                parent: animation,
-
-                                curve: Curves.easeInOutCubic,
-                              );
-
-                              return FadeTransition(
-                                opacity: curved,
-
-                                child: SlideTransition(
-                                  position: Tween<Offset>(
-                                    begin: const Offset(0.08, 0),
-
-                                    end: Offset.zero,
-                                  ).animate(curved),
-
-                                  child: child,
-                                ),
-                              );
-                            },
-                      ),
-                    );
-                  } else if (item.key == "info") {
-                    Navigator.push(
-                      context,
-
-                      PageRouteBuilder(
-                        transitionDuration: const Duration(milliseconds: 450),
-
-                        reverseTransitionDuration: const Duration(
-                          milliseconds: 350,
-                        ),
-
-                        pageBuilder: (context, animation, secondaryAnimation) {
-                          return const InfoContent();
-                        },
-
-                        transitionsBuilder:
-                            (context, animation, secondaryAnimation, child) {
-                              final curved = CurvedAnimation(
-                                parent: animation,
-
-                                curve: Curves.easeInOutCubic,
-                              );
-
-                              return FadeTransition(
-                                opacity: curved,
-
-                                child: SlideTransition(
-                                  position: Tween<Offset>(
-                                    begin: const Offset(0.08, 0),
-
-                                    end: Offset.zero,
-                                  ).animate(curved),
-
-                                  child: child,
-                                ),
-                              );
-                            },
-                      ),
-                    );
-                  } else if (item.key == "usb") {
-                    Navigator.push(
-                      context,
-
-                      PageRouteBuilder(
-                        transitionDuration: const Duration(milliseconds: 450),
-
-                        reverseTransitionDuration: const Duration(
-                          milliseconds: 350,
-                        ),
-
-                        pageBuilder: (context, animation, secondaryAnimation) {
-                          return const UsbConnectContent();
-                        },
-
-                        transitionsBuilder:
-                            (context, animation, secondaryAnimation, child) {
-                              final curved = CurvedAnimation(
-                                parent: animation,
-
-                                curve: Curves.easeInOutCubic,
-                              );
-
-                              return FadeTransition(
-                                opacity: curved,
-
-                                child: SlideTransition(
-                                  position: Tween<Offset>(
-                                    begin: const Offset(0.08, 0),
-
-                                    end: Offset.zero,
-                                  ).animate(curved),
-
-                                  child: child,
-                                ),
-                              );
-                            },
-                      ),
-                    );
-                  }
-                },
-
-                child: AnimatedContainer(
-                  duration: const Duration(milliseconds: 400),
-
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(22.r),
-
-                    gradient: LinearGradient(
-                      colors: [
-                        theme.backgroundGradient.last.withValues(alpha: 0.85),
-                        Colors.black.withValues(alpha: 0.35),
-                      ],
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
+                    gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                      crossAxisCount: 4,
+                      mainAxisSpacing: 20.h,
+                      crossAxisSpacing: 20.w,
+                      childAspectRatio: 1,
                     ),
 
-                    border: Border.all(
-                      color: theme.accentColor.withValues(alpha: 0.4),
-                      width: 1.5,
-                    ),
+                    itemBuilder: (context, index) {
+                      final item = actions[index];
 
-                    boxShadow: [
-                      BoxShadow(
-                        color: theme.accentColor.withValues(alpha: 0.25),
-                        blurRadius: 12,
-                        offset: const Offset(0, 5),
-                      ),
-                    ],
-                  ),
+                      return GestureDetector(
+                        onTap: () {
+                          /// OPEN TUTORIAL PAGE
+                          if (item.key == "tutorial") {
+                            Navigator.push(
+                              context,
 
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(item.icon, size: 40.sp, color: theme.accentColor),
+                              PageRouteBuilder(
+                                transitionDuration: const Duration(
+                                  milliseconds: 450,
+                                ),
 
-                      SizedBox(height: 8.h),
+                                reverseTransitionDuration: const Duration(
+                                  milliseconds: 350,
+                                ),
 
-                      Text(
-                        item.label,
-                        style: TextStyle(
-                          fontSize: 12.sp,
-                          color: theme.textColor,
-                          fontWeight: FontWeight.w500,
+                                pageBuilder:
+                                    (context, animation, secondaryAnimation) {
+                                      return const TutorialPage();
+                                    },
+
+                                transitionsBuilder:
+                                    (
+                                      context,
+                                      animation,
+                                      secondaryAnimation,
+                                      child,
+                                    ) {
+                                      final curved = CurvedAnimation(
+                                        parent: animation,
+
+                                        curve: Curves.easeInOutCubic,
+                                      );
+
+                                      return FadeTransition(
+                                        opacity: curved,
+
+                                        child: SlideTransition(
+                                          position: Tween<Offset>(
+                                            begin: const Offset(0.08, 0),
+
+                                            end: Offset.zero,
+                                          ).animate(curved),
+
+                                          child: child,
+                                        ),
+                                      );
+                                    },
+                              ),
+                            );
+                          } else if (item.key == "music") {
+                            AppNavigation.currentIndex.value = 0;
+                          } else if (item.key == "radio") {
+                            Navigator.push(
+                              context,
+
+                              PageRouteBuilder(
+                                transitionDuration: const Duration(
+                                  milliseconds: 450,
+                                ),
+
+                                reverseTransitionDuration: const Duration(
+                                  milliseconds: 350,
+                                ),
+
+                                pageBuilder:
+                                    (context, animation, secondaryAnimation) {
+                                      return const RadioContent();
+                                    },
+
+                                transitionsBuilder:
+                                    (
+                                      context,
+                                      animation,
+                                      secondaryAnimation,
+                                      child,
+                                    ) {
+                                      final curved = CurvedAnimation(
+                                        parent: animation,
+
+                                        curve: Curves.easeInOutCubic,
+                                      );
+
+                                      return FadeTransition(
+                                        opacity: curved,
+
+                                        child: SlideTransition(
+                                          position: Tween<Offset>(
+                                            begin: const Offset(0.08, 0),
+
+                                            end: Offset.zero,
+                                          ).animate(curved),
+
+                                          child: child,
+                                        ),
+                                      );
+                                    },
+                              ),
+                            );
+                          } else if (item.key == "bluetooth") {
+                            Navigator.push(
+                              context,
+
+                              PageRouteBuilder(
+                                transitionDuration: const Duration(
+                                  milliseconds: 450,
+                                ),
+
+                                reverseTransitionDuration: const Duration(
+                                  milliseconds: 350,
+                                ),
+
+                                pageBuilder:
+                                    (context, animation, secondaryAnimation) {
+                                      return const BluetoothContent();
+                                    },
+
+                                transitionsBuilder:
+                                    (
+                                      context,
+                                      animation,
+                                      secondaryAnimation,
+                                      child,
+                                    ) {
+                                      final curved = CurvedAnimation(
+                                        parent: animation,
+
+                                        curve: Curves.easeInOutCubic,
+                                      );
+
+                                      return FadeTransition(
+                                        opacity: curved,
+
+                                        child: SlideTransition(
+                                          position: Tween<Offset>(
+                                            begin: const Offset(0.08, 0),
+
+                                            end: Offset.zero,
+                                          ).animate(curved),
+
+                                          child: child,
+                                        ),
+                                      );
+                                    },
+                              ),
+                            );
+                          } else if (item.key == "android_auto") {
+                            Navigator.push(
+                              context,
+
+                              PageRouteBuilder(
+                                transitionDuration: const Duration(
+                                  milliseconds: 450,
+                                ),
+
+                                reverseTransitionDuration: const Duration(
+                                  milliseconds: 350,
+                                ),
+
+                                pageBuilder:
+                                    (context, animation, secondaryAnimation) {
+                                      return const ProjectionPage(
+                                        initialTarget:
+                                            ProjectionTarget.androidAuto,
+                                      );
+                                    },
+
+                                transitionsBuilder:
+                                    (
+                                      context,
+                                      animation,
+                                      secondaryAnimation,
+                                      child,
+                                    ) {
+                                      final curved = CurvedAnimation(
+                                        parent: animation,
+
+                                        curve: Curves.easeInOutCubic,
+                                      );
+
+                                      return FadeTransition(
+                                        opacity: curved,
+
+                                        child: SlideTransition(
+                                          position: Tween<Offset>(
+                                            begin: const Offset(0.08, 0),
+
+                                            end: Offset.zero,
+                                          ).animate(curved),
+
+                                          child: child,
+                                        ),
+                                      );
+                                    },
+                              ),
+                            );
+                          } else if (item.key == "car_status") {
+                            Navigator.push(
+                              context,
+
+                              PageRouteBuilder(
+                                transitionDuration: const Duration(
+                                  milliseconds: 450,
+                                ),
+
+                                reverseTransitionDuration: const Duration(
+                                  milliseconds: 350,
+                                ),
+
+                                pageBuilder:
+                                    (context, animation, secondaryAnimation) {
+                                      return const CarInfoContent();
+                                    },
+
+                                transitionsBuilder:
+                                    (
+                                      context,
+                                      animation,
+                                      secondaryAnimation,
+                                      child,
+                                    ) {
+                                      final curved = CurvedAnimation(
+                                        parent: animation,
+
+                                        curve: Curves.easeInOutCubic,
+                                      );
+
+                                      return FadeTransition(
+                                        opacity: curved,
+
+                                        child: SlideTransition(
+                                          position: Tween<Offset>(
+                                            begin: const Offset(0.08, 0),
+
+                                            end: Offset.zero,
+                                          ).animate(curved),
+
+                                          child: child,
+                                        ),
+                                      );
+                                    },
+                              ),
+                            );
+                          } else if (item.key == "info") {
+                            Navigator.push(
+                              context,
+
+                              PageRouteBuilder(
+                                transitionDuration: const Duration(
+                                  milliseconds: 450,
+                                ),
+
+                                reverseTransitionDuration: const Duration(
+                                  milliseconds: 350,
+                                ),
+
+                                pageBuilder:
+                                    (context, animation, secondaryAnimation) {
+                                      return const InfoContent();
+                                    },
+
+                                transitionsBuilder:
+                                    (
+                                      context,
+                                      animation,
+                                      secondaryAnimation,
+                                      child,
+                                    ) {
+                                      final curved = CurvedAnimation(
+                                        parent: animation,
+
+                                        curve: Curves.easeInOutCubic,
+                                      );
+
+                                      return FadeTransition(
+                                        opacity: curved,
+
+                                        child: SlideTransition(
+                                          position: Tween<Offset>(
+                                            begin: const Offset(0.08, 0),
+
+                                            end: Offset.zero,
+                                          ).animate(curved),
+
+                                          child: child,
+                                        ),
+                                      );
+                                    },
+                              ),
+                            );
+                          } else if (item.key == "carplay") {
+                            Navigator.push(
+                              context,
+
+                              PageRouteBuilder(
+                                transitionDuration: const Duration(
+                                  milliseconds: 450,
+                                ),
+
+                                reverseTransitionDuration: const Duration(
+                                  milliseconds: 350,
+                                ),
+
+                                pageBuilder:
+                                    (context, animation, secondaryAnimation) {
+                                      return const ProjectionPage(
+                                        initialTarget: ProjectionTarget.carPlay,
+                                      );
+                                    },
+
+                                transitionsBuilder:
+                                    (
+                                      context,
+                                      animation,
+                                      secondaryAnimation,
+                                      child,
+                                    ) {
+                                      final curved = CurvedAnimation(
+                                        parent: animation,
+
+                                        curve: Curves.easeInOutCubic,
+                                      );
+
+                                      return FadeTransition(
+                                        opacity: curved,
+
+                                        child: SlideTransition(
+                                          position: Tween<Offset>(
+                                            begin: const Offset(0.08, 0),
+
+                                            end: Offset.zero,
+                                          ).animate(curved),
+
+                                          child: child,
+                                        ),
+                                      );
+                                    },
+                              ),
+                            );
+                          }
+                        },
+
+                        child: AnimatedContainer(
+                          duration: const Duration(milliseconds: 400),
+
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(22.r),
+
+                            gradient: LinearGradient(
+                              colors: [
+                                theme.backgroundGradient.last.withValues(
+                                  alpha: 0.85,
+                                ),
+                                Colors.black.withValues(alpha: 0.35),
+                              ],
+                              begin: Alignment.topLeft,
+                              end: Alignment.bottomRight,
+                            ),
+
+                            border: Border.all(
+                              color: theme.accentColor.withValues(alpha: 0.4),
+                              width: 1.5,
+                            ),
+
+                            boxShadow: [
+                              BoxShadow(
+                                color: theme.accentColor.withValues(
+                                  alpha: 0.25,
+                                ),
+                                blurRadius: 12,
+                                offset: const Offset(0, 5),
+                              ),
+                            ],
+                          ),
+
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(
+                                item.icon,
+                                size: 40.sp,
+                                color: theme.accentColor,
+                              ),
+
+                              SizedBox(height: 8.h),
+
+                              Text(
+                                item.label,
+                                style: TextStyle(
+                                  fontSize: 12.sp,
+                                  color: theme.textColor,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
-                      ),
-                    ],
-                  ),
-                ),
-              );
-            },
+                      );
+                    },
                   ),
                 );
               },
