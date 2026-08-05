@@ -8,15 +8,17 @@ import 'package:http/testing.dart';
 import 'package:latlong2/latlong.dart';
 
 void main() {
-  group('OpenStreetMap configuration', () {
-    test('uses official HTTPS tile URL and supported zoom', () {
+  group('CartoDB/OpenStreetMap configuration', () {
+    test('uses Voyager HTTPS tiles and supported zoom', () {
       expect(
         MapTileConfig.urlTemplate,
-        'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+        'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}.png',
       );
+      expect(MapTileConfig.subdomains, ['a', 'b', 'c', 'd']);
       expect(MapTileConfig.maxZoom, 19);
       expect(MapTileConfig.userAgentPackageName, isNotEmpty);
       expect(MapTileConfig.attribution, contains('OpenStreetMap'));
+      expect(MapTileConfig.attributionUri.host, 'www.openstreetmap.org');
     });
   });
 
@@ -54,6 +56,33 @@ void main() {
     test('rejects response without route geometry', () async {
       final client = MockClient(
         (_) async => http.Response('{"routes":[]}', 200),
+      );
+
+      expect(
+        RouteService(
+          client: client,
+        ).getRoute(const LatLng(-6.3, 107.1), const LatLng(-6.4, 107.2)),
+        throwsA(isA<Exception>()),
+      );
+    });
+
+    test('rejects non-success response', () async {
+      final client = MockClient((_) async => http.Response('error', 503));
+
+      expect(
+        RouteService(
+          client: client,
+        ).getRoute(const LatLng(-6.3, 107.1), const LatLng(-6.4, 107.2)),
+        throwsA(isA<Exception>()),
+      );
+    });
+
+    test('rejects route with fewer than two coordinates', () async {
+      final client = MockClient(
+        (_) async => http.Response(
+          '{"routes":[{"geometry":{"coordinates":[[107.1,-6.3]]}}]}',
+          200,
+        ),
       );
 
       expect(

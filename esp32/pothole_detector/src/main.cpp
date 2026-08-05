@@ -11,6 +11,14 @@
 #include <Adafruit_Sensor.h>
 #include <Adafruit_BNO055.h>
 #include <utility/imumaths.h>
+#include "road_detection.h"
+
+using pothole::DetectionResult;
+using pothole::RoadCategory;
+using pothole::categoryName;
+using pothole::categoryPriority;
+using pothole::normalizeHeading;
+using pothole::smoothHeading;
 
 // =====================================================
 // SERVER BACKEND
@@ -86,39 +94,15 @@ bool wifiWasConnected = false;
 // =====================================================
 // DETECTION CONFIG
 // =====================================================
-const float EVENT_START_THRESHOLD = 1.5;
-const float EVENT_RELEASE_THRESHOLD = 0.7;
-const float POTHOLE_THRESHOLD = 4.0;
-const float SEVERE_POTHOLE_THRESHOLD = 5.0;
-const float BUMPER_THRESHOLD = 2.0;
-
 const float MIN_SPEED_DETECT = 3.0;
-const float POTHOLE_MIN_SPEED = 8.0;
-const float BUMPER_MAX_SPEED = 25.0;
-
-const unsigned long EVENT_RELEASE_MS = 120;
-const unsigned long EVENT_MAX_MS = 700;
-const unsigned long POTHOLE_MAX_DURATION_MS = 400;
-const unsigned long BUMPER_MIN_DURATION_MS = 100;
-
-bool roadEventActive = false;
-float roadEventPeak = 0;
-float roadEventSpeed = 0;
-unsigned long roadEventStartedAt = 0;
-unsigned long roadEventLastImpactAt = 0;
+pothole::RoadEventDetector roadEventDetector;
 
 float lastNavigationHeading = 0;
 bool hasNavigationHeading = false;
 
 // =====================================================
-// STRUCT
+// TELEMETRY STATE
 // =====================================================
-struct DetectionResult {
-  bool detected;
-  String category;
-  float severity;
-};
-
 DetectionResult pendingTelemetry;
 DetectionResult serialTelemetry;
 unsigned long serialEventUntil = 0;
@@ -126,15 +110,9 @@ float pendingAx = 0;
 float pendingAy = 0;
 float pendingAz = 0;
 
-int categoryPriority(const String& category) {
-  if (category == "pothole") return 2;
-  if (category == "bumper") return 1;
-  return 0;
-}
-
 void resetPendingTelemetry() {
   pendingTelemetry.detected = false;
-  pendingTelemetry.category = "normal";
+  pendingTelemetry.category = RoadCategory::normal;
   pendingTelemetry.severity = 0;
   pendingAx = 0;
   pendingAy = 0;
@@ -143,7 +121,7 @@ void resetPendingTelemetry() {
 
 void resetSerialTelemetry() {
   serialTelemetry.detected = false;
-  serialTelemetry.category = "normal";
+  serialTelemetry.category = RoadCategory::normal;
   serialTelemetry.severity = 0;
   serialEventUntil = 0;
 }
@@ -545,22 +523,11 @@ void updateLedGPS() {
 // =====================================================
 // IMU DATA
 // =====================================================
-float normalizeHeading(float heading) {
-  while (heading < 0) heading += 360;
-  while (heading >= 360) heading -= 360;
-  return heading;
-}
-
 float getImuHeading() {
   imu::Vector<3> euler =
       bno.getVector(Adafruit_BNO055::VECTOR_EULER);
 
   return normalizeHeading(euler.x());
-}
-
-float smoothHeading(float from, float to, float factor) {
-  float diff = fmod((to - from + 540.0), 360.0) - 180.0;
-  return normalizeHeading(from + diff * factor);
 }
 
 float getNavigationHeading() {
@@ -685,7 +652,7 @@ void sendSerialTelemetry(
   Serial.print(",");
   Serial.print(az, 2);
   Serial.print(",");
-  Serial.print(detection.category);
+  Serial.print(categoryName(detection.category));
   Serial.print(",");
   Serial.print(detection.severity, 2);
   Serial.print(",");
@@ -702,75 +669,20 @@ void sendSerialTelemetry(
 // DETECTION LOGIC
 // =====================================================
 DetectionResult detectRoadEvent(float ax, float ay, float az) {
-  DetectionResult result = {false, "normal", 0};
-
-  const unsigned long now = millis();
-  const float speed = gps.speed.kmph();
-  const float magnitude = sqrt(ax * ax + ay * ay + az * az);
-
-  if (!roadEventActive) {
-    result.severity = magnitude;
-
-    if (speed >= MIN_SPEED_DETECT && magnitude >= EVENT_START_THRESHOLD) {
-      roadEventActive = true;
-      roadEventPeak = magnitude;
-      roadEventSpeed = speed;
-      roadEventStartedAt = now;
-      roadEventLastImpactAt = now;
-    }
-    return result;
-  }
-
-  if (magnitude > roadEventPeak) {
-    roadEventPeak = magnitude;
-  }
-
-  if (magnitude >= EVENT_RELEASE_THRESHOLD) {
-    roadEventLastImpactAt = now;
-  }
-
-  const unsigned long duration = now - roadEventStartedAt;
-  const bool released = now - roadEventLastImpactAt >= EVENT_RELEASE_MS;
-  const bool timedOut = duration >= EVENT_MAX_MS;
-
-  result.severity = roadEventPeak;
-
-  if (!released && !timedOut) {
-    return result;
-  }
-
-  const float peak = roadEventPeak;
-  const float eventSpeed = roadEventSpeed;
-  roadEventActive = false;
-  roadEventPeak = 0;
-
-  result.severity = peak;
-
-  const bool sharpPothole = duration <= POTHOLE_MAX_DURATION_MS &&
-                            peak >= POTHOLE_THRESHOLD;
-  const bool severePothole = peak >= SEVERE_POTHOLE_THRESHOLD;
-
-  if (eventSpeed >= POTHOLE_MIN_SPEED && (sharpPothole || severePothole)) {
-    result.detected = true;
-    result.category = "pothole";
-    return result;
-  }
-
-  if (eventSpeed <= BUMPER_MAX_SPEED &&
-      duration >= BUMPER_MIN_DURATION_MS &&
-      peak >= BUMPER_THRESHOLD) {
-    result.detected = true;
-    result.category = "bumper";
-  }
-
-  return result;
+  return roadEventDetector.update(
+    ax,
+    ay,
+    az,
+    gps.speed.kmph(),
+    millis()
+  );
 }
 
 // =====================================================
 // SEND TO BACKEND
 // =====================================================
 void sendRoadTelemetry(
-  String category,
+  RoadCategory category,
   float severity,
   float ax,
   float ay,
@@ -796,7 +708,7 @@ void sendRoadTelemetry(
   JsonDocument doc;
 
   doc["device_id"] = "Veloz_Hybrid_001";
-  doc["category"] = category;
+  doc["category"] = categoryName(category);
   doc["severity"] = severity;
 
   struct tm timeinfo;
@@ -885,7 +797,7 @@ void sendRoadTelemetry(
   Serial.print("DEBUG:POST ");
   Serial.print(code);
   Serial.print(" CATEGORY:");
-  Serial.print(category);
+  Serial.print(categoryName(category));
   Serial.print(" SEVERITY:");
   Serial.println(severity, 2);
 
@@ -998,7 +910,7 @@ void loop() {
 
   if (millis() - lastPostTime >= POST_INTERVAL) {
     Serial.print("DEBUG:TELEMETRY ");
-    Serial.print(pendingTelemetry.category);
+    Serial.print(categoryName(pendingTelemetry.category));
     Serial.print(" ");
     Serial.println(pendingTelemetry.severity, 2);
 

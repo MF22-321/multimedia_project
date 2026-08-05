@@ -3,6 +3,7 @@ import 'dart:io';
 import 'dart:typed_data';
 import 'package:flutter_libserialport/flutter_libserialport.dart';
 import 'package:frontend/core/model/gps_data.dart';
+import 'package:frontend/core/services/serial_telemetry_decoder.dart';
 import 'package:frontend/core/utils/app_logger.dart';
 
 class SerialService {
@@ -16,7 +17,7 @@ class SerialService {
   final _statusController = StreamController<String>.broadcast();
   Stream<String> get statusStream => _statusController.stream;
 
-  String _buffer = "";
+  final SerialTelemetryDecoder _decoder = SerialTelemetryDecoder();
 
   bool _connected = false;
   bool _disposed = false;
@@ -130,7 +131,7 @@ class SerialService {
       _reader = SerialPortReader(port);
       _currentPort = portName;
       _connected = true;
-      _buffer = "";
+      _decoder.reset();
 
       AppLogger.info("CONNECTED TO $portName");
       _emitStatus("USB Connected - Waiting telemetry");
@@ -152,27 +153,15 @@ class SerialService {
   // ================= DATA =================
   void _onDataReceived(Uint8List data) {
     try {
-      final incoming = String.fromCharCodes(data);
-      _buffer += incoming;
-
-      while (_buffer.contains('\n')) {
-        final index = _buffer.indexOf('\n');
-
-        final line = _buffer.substring(0, index).trim();
-        _buffer = _buffer.substring(index + 1);
-
-        if (line.isEmpty) continue;
-
-        AppLogger.info("SERIAL: $line");
-
-        if (line.startsWith("GPS")) {
-          try {
-            final gps = GPSData.fromSerial(line);
-            _controller.add(gps);
-          } catch (e) {
-            AppLogger.error("PARSE ERROR: $e");
-          }
+      try {
+        for (final gps in _decoder.add(data)) {
+          AppLogger.info(
+            "SERIAL GPS: ${gps.lat},${gps.lng},${gps.roadCategory}",
+          );
+          _controller.add(gps);
         }
+      } catch (e) {
+        AppLogger.error("PARSE ERROR: $e");
       }
     } catch (e) {
       AppLogger.error("READ ERROR: $e");
@@ -207,7 +196,7 @@ class SerialService {
 
     _connected = false;
     _currentPort = null;
-    _buffer = "";
+    _decoder.reset();
   }
 
   // ================= STATUS =================

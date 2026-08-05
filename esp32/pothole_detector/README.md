@@ -55,3 +55,19 @@ di atas secara manual. ESP32 hanya mendukung jaringan 2.4 GHz.
 ```bash
 pio run
 ```
+
+## Automated Quality Test
+
+Algoritma klasifikasi event dipisahkan dari driver Arduino sehingga dapat
+diuji di host tanpa board. Quality gate juga menguji parser serial Flutter,
+model/API pothole, routing, dan kalkulasi maps. Coverage minimum adalah 90%.
+
+```bash
+cd /home/multimedia/development/multimedia_project
+./scripts/test_pothole_quality.sh
+```
+
+Test native memverifikasi threshold kecepatan dan impact, durasi event,
+klasifikasi `normal`/`bumper`/`pothole`, timeout, reset state, prioritas kategori,
+serta normalisasi dan smoothing heading. Langkah terakhir membangun firmware
+ESP32 produksi dengan PlatformIO.

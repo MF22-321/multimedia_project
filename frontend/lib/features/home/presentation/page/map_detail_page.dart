@@ -1,6 +1,5 @@
 import 'dart:async';
 import 'dart:convert';
-import 'dart:math';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
@@ -14,6 +13,7 @@ import 'package:frontend/core/services/route_service.dart';
 import 'package:frontend/core/services/map_tile_config.dart';
 import 'package:frontend/core/themes/car_theme.dart';
 import 'package:frontend/core/utils/pothole_detection_engine.dart';
+import 'package:frontend/core/utils/map_navigation_engine.dart';
 import 'package:frontend/core/widgets/in_app_keyboard.dart';
 import 'package:http/http.dart' as http;
 import 'package:latlong2/latlong.dart';
@@ -98,30 +98,15 @@ class _MapDetailPageState extends State<MapDetailPage> {
   }
 
   double _distanceKm(LatLng a, LatLng b) {
-    const p = 0.017453292519943295;
-    final lat1 = a.latitude;
-    final lon1 = a.longitude;
-    final lat2 = b.latitude;
-    final lon2 = b.longitude;
-
-    final value =
-        0.5 -
-        cos((lat2 - lat1) * p) / 2 +
-        cos(lat1 * p) * cos(lat2 * p) * (1 - cos((lon2 - lon1) * p)) / 2;
-
-    return 12742 * asin(sqrt(value));
+    return MapNavigationEngine.distanceKm(a, b);
   }
 
   double _angleLerp(double from, double to, double t) {
-    final diff = (to - from + 540) % 360 - 180;
-    return (from + diff * t + 360) % 360;
+    return MapNavigationEngine.angleLerp(from, to, t);
   }
 
   LatLng _lerpLatLng(LatLng from, LatLng to, double t) {
-    return LatLng(
-      from.latitude + (to.latitude - from.latitude) * t,
-      from.longitude + (to.longitude - from.longitude) * t,
-    );
+    return MapNavigationEngine.lerpLatLng(from, to, t);
   }
 
   void _updateCamera(LatLng position) {
@@ -155,14 +140,7 @@ class _MapDetailPageState extends State<MapDetailPage> {
   }
 
   double _routeLengthKm(List<LatLng> points) {
-    if (points.length < 2) return 0;
-
-    double total = 0;
-    for (var i = 1; i < points.length; i++) {
-      total += _distanceKm(points[i - 1], points[i]);
-    }
-
-    return total;
+    return MapNavigationEngine.routeLengthKm(points);
   }
 
   Future<void> _searchPlaces(String query) async {
@@ -303,29 +281,11 @@ class _MapDetailPageState extends State<MapDetailPage> {
   }
 
   int _nearestRouteIndex(LatLng current, List<LatLng> route) {
-    int nearestIndex = 0;
-    double nearestDistance = double.infinity;
-
-    for (int i = 0; i < route.length; i++) {
-      final distance = _distanceKm(current, route[i]);
-      if (distance < nearestDistance) {
-        nearestDistance = distance;
-        nearestIndex = i;
-      }
-    }
-
-    return nearestIndex;
+    return MapNavigationEngine.nearestRouteIndex(current, route);
   }
 
   double _bearingBetween(LatLng from, LatLng to) {
-    final lat1 = from.latitude * pi / 180;
-    final lat2 = to.latitude * pi / 180;
-    final dLon = (to.longitude - from.longitude) * pi / 180;
-
-    final y = sin(dLon) * cos(lat2);
-    final x = cos(lat1) * sin(lat2) - sin(lat1) * cos(lat2) * cos(dLon);
-
-    return (atan2(y, x) * 180 / pi + 360) % 360;
+    return MapNavigationEngine.bearingBetween(from, to);
   }
 
   void _updateNavigationInstruction(LatLng current) {
