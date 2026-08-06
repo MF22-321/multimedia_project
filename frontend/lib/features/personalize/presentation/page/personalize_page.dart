@@ -35,6 +35,7 @@ class _PersonalizePageState extends State<PersonalizePage> {
   CarThemeData? _draftCustomTheme;
 
   String? driverName;
+  Map<String, dynamic>? _adaptiveCandidate;
 
   @override
   void initState() {
@@ -44,6 +45,7 @@ class _PersonalizePageState extends State<PersonalizePage> {
     AppLanguageControl.languageCode.addListener(_onLanguageChanged);
 
     _initDriver();
+    _loadAdaptiveCandidate();
   }
 
   @override
@@ -74,8 +76,7 @@ class _PersonalizePageState extends State<PersonalizePage> {
     if (name == null) {
       setState(() {
         selectedTheme = CarThemes.currentTheme.value.index;
-        _draftCustomTheme =
-            CarThemes.currentTheme.value == CarThemeType.custom
+        _draftCustomTheme = CarThemes.currentTheme.value == CarThemeType.custom
             ? CarThemes.customTheme.value
             : null;
       });
@@ -109,6 +110,47 @@ class _PersonalizePageState extends State<PersonalizePage> {
         }
         CarThemes.currentTheme.value = CarThemeType.values[pref.themeIndex];
       });
+    }
+  }
+
+  Future<void> _loadAdaptiveCandidate() async {
+    try {
+      final result = await FaceIdApi.getAdaptiveCandidate();
+      if (!mounted) return;
+      final activeDriver = DriverSession.currentDriver.value;
+      final candidateDriver = result["driver_name"]?.toString();
+      setState(() {
+        _adaptiveCandidate =
+            result["available"] == true &&
+                activeDriver != null &&
+                candidateDriver?.toLowerCase() == activeDriver.toLowerCase()
+            ? result
+            : null;
+      });
+    } catch (_) {
+      // Optional improvement must never block personalization.
+    }
+  }
+
+  Future<void> _approveAdaptiveCandidate() async {
+    try {
+      final result = await FaceIdApi.approveAdaptiveCandidate();
+      if (!mounted) return;
+      setState(() => _adaptiveCandidate = null);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            result["success"] == true
+                ? "Face ID improved for this condition"
+                : result["message"]?.toString() ?? "Face ID was not changed",
+          ),
+        ),
+      );
+    } catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text("Face ID update failed: $error")));
     }
   }
 
@@ -225,8 +267,7 @@ class _PersonalizePageState extends State<PersonalizePage> {
         ? previewAccent
         : previewTheme.buttonColor;
     final saveButtonTextColor =
-        ThemeData.estimateBrightnessForColor(saveButtonColor) ==
-            Brightness.dark
+        ThemeData.estimateBrightnessForColor(saveButtonColor) == Brightness.dark
         ? Colors.white
         : Colors.black;
 
@@ -408,8 +449,9 @@ class _PersonalizePageState extends State<PersonalizePage> {
                                         return Container(
                                           padding: EdgeInsets.all(20.w),
                                           decoration: BoxDecoration(
-                                            borderRadius:
-                                                BorderRadius.circular(24.r),
+                                            borderRadius: BorderRadius.circular(
+                                              24.r,
+                                            ),
                                             color: Colors.white.withValues(
                                               alpha: 0.06,
                                             ),
@@ -451,41 +493,42 @@ class _PersonalizePageState extends State<PersonalizePage> {
                                                 decoration: BoxDecoration(
                                                   borderRadius:
                                                       BorderRadius.circular(
-                                                    20.r,
-                                                  ),
-                                                  color: Colors.white.withValues(
-                                                    alpha: 0.06,
-                                                  ),
+                                                        20.r,
+                                                      ),
+                                                  color: Colors.white
+                                                      .withValues(alpha: 0.06),
                                                 ),
                                                 child: Row(
                                                   children: [
                                                     GestureDetector(
                                                       onTap: () {
-                                                        AppLanguageControl
-                                                            .setLanguageForCurrentDriver(
+                                                        AppLanguageControl.setLanguageForCurrentDriver(
                                                           AppLanguageControl
                                                               .defaultLanguageCode,
                                                         );
                                                       },
                                                       child: Container(
-                                                        padding: EdgeInsets
-                                                            .symmetric(
-                                                          horizontal: 16.w,
-                                                          vertical: 10.h,
-                                                        ),
+                                                        padding:
+                                                            EdgeInsets.symmetric(
+                                                              horizontal: 16.w,
+                                                              vertical: 10.h,
+                                                            ),
                                                         decoration: BoxDecoration(
                                                           borderRadius:
                                                               BorderRadius.circular(
-                                                            16.r,
-                                                          ),
-                                                          color: languageCode ==
+                                                                16.r,
+                                                              ),
+                                                          color:
+                                                              languageCode ==
                                                                   AppLanguageControl
                                                                       .defaultLanguageCode
                                                               ? Colors.white
-                                                                  .withValues(
-                                                                    alpha: 0.14,
-                                                                  )
-                                                              : Colors.transparent,
+                                                                    .withValues(
+                                                                      alpha:
+                                                                          0.14,
+                                                                    )
+                                                              : Colors
+                                                                    .transparent,
                                                         ),
                                                         child: Text(
                                                           'Bahasa',
@@ -494,10 +537,12 @@ class _PersonalizePageState extends State<PersonalizePage> {
                                                                 .textColor,
                                                             fontWeight:
                                                                 languageCode ==
-                                                                        AppLanguageControl
-                                                                            .defaultLanguageCode
-                                                                    ? FontWeight.bold
-                                                                    : FontWeight.w500,
+                                                                    AppLanguageControl
+                                                                        .defaultLanguageCode
+                                                                ? FontWeight
+                                                                      .bold
+                                                                : FontWeight
+                                                                      .w500,
                                                           ),
                                                         ),
                                                       ),
@@ -505,31 +550,33 @@ class _PersonalizePageState extends State<PersonalizePage> {
                                                     SizedBox(width: 10.w),
                                                     GestureDetector(
                                                       onTap: () {
-                                                        AppLanguageControl
-                                                            .setLanguageForCurrentDriver(
+                                                        AppLanguageControl.setLanguageForCurrentDriver(
                                                           AppLanguageControl
                                                               .englishCode,
                                                         );
                                                       },
                                                       child: Container(
-                                                        padding: EdgeInsets
-                                                            .symmetric(
-                                                          horizontal: 16.w,
-                                                          vertical: 10.h,
-                                                        ),
+                                                        padding:
+                                                            EdgeInsets.symmetric(
+                                                              horizontal: 16.w,
+                                                              vertical: 10.h,
+                                                            ),
                                                         decoration: BoxDecoration(
                                                           borderRadius:
                                                               BorderRadius.circular(
-                                                            16.r,
-                                                          ),
-                                                          color: languageCode ==
+                                                                16.r,
+                                                              ),
+                                                          color:
+                                                              languageCode ==
                                                                   AppLanguageControl
                                                                       .englishCode
                                                               ? Colors.white
-                                                                  .withValues(
-                                                                    alpha: 0.14,
-                                                                  )
-                                                              : Colors.transparent,
+                                                                    .withValues(
+                                                                      alpha:
+                                                                          0.14,
+                                                                    )
+                                                              : Colors
+                                                                    .transparent,
                                                         ),
                                                         child: Text(
                                                           'English',
@@ -538,10 +585,12 @@ class _PersonalizePageState extends State<PersonalizePage> {
                                                                 .textColor,
                                                             fontWeight:
                                                                 languageCode ==
-                                                                        AppLanguageControl
-                                                                            .englishCode
-                                                                    ? FontWeight.bold
-                                                                    : FontWeight.w500,
+                                                                    AppLanguageControl
+                                                                        .englishCode
+                                                                ? FontWeight
+                                                                      .bold
+                                                                : FontWeight
+                                                                      .w500,
                                                           ),
                                                         ),
                                                       ),
@@ -598,6 +647,54 @@ class _PersonalizePageState extends State<PersonalizePage> {
                                             ),
                                           ),
                                         ),
+                                        if (activeDriver != null)
+                                          GestureDetector(
+                                            onTap: _adaptiveCandidate == null
+                                                ? _loadAdaptiveCandidate
+                                                : _approveAdaptiveCandidate,
+                                            child: AnimatedContainer(
+                                              duration: const Duration(
+                                                milliseconds: 250,
+                                              ),
+                                              padding: EdgeInsets.symmetric(
+                                                horizontal: 28.w,
+                                                vertical: 16.h,
+                                              ),
+                                              decoration: BoxDecoration(
+                                                color: Colors.greenAccent
+                                                    .withValues(alpha: 0.12),
+                                                borderRadius:
+                                                    BorderRadius.circular(30.r),
+                                                border: Border.all(
+                                                  color: Colors.greenAccent
+                                                      .withValues(alpha: 0.62),
+                                                ),
+                                              ),
+                                              child: Row(
+                                                mainAxisSize: MainAxisSize.min,
+                                                children: [
+                                                  Icon(
+                                                    Icons
+                                                        .face_retouching_natural,
+                                                    color: Colors.greenAccent,
+                                                    size: 20.sp,
+                                                  ),
+                                                  SizedBox(width: 8.w),
+                                                  Text(
+                                                    _adaptiveCandidate == null
+                                                        ? "Check Face ID Update"
+                                                        : "Improve Face ID",
+                                                    style: TextStyle(
+                                                      color: Colors.greenAccent,
+                                                      fontSize: 18.sp,
+                                                      fontWeight:
+                                                          FontWeight.bold,
+                                                    ),
+                                                  ),
+                                                ],
+                                              ),
+                                            ),
+                                          ),
                                         if (activeDriver != null)
                                           GestureDetector(
                                             onTap: _openDeleteAccountFlow,
@@ -791,11 +888,7 @@ class _DeleteDriverFaceDialogState extends State<_DeleteDriverFaceDialog> {
         ),
         child: Row(
           children: [
-            LiveCameraWS(
-              url: FaceIdApi.cameraWs,
-              width: 330.w,
-              height: 330.h,
-            ),
+            LiveCameraWS(url: FaceIdApi.cameraWs, width: 330.w, height: 330.h),
             SizedBox(width: 28.w),
             Expanded(
               child: Column(
@@ -892,8 +985,9 @@ class _DeleteDriverFaceDialogState extends State<_DeleteDriverFaceDialog> {
                         style: FilledButton.styleFrom(
                           backgroundColor: Colors.redAccent,
                           foregroundColor: Colors.white,
-                          disabledBackgroundColor:
-                              Colors.white.withValues(alpha: 0.12),
+                          disabledBackgroundColor: Colors.white.withValues(
+                            alpha: 0.12,
+                          ),
                           disabledForegroundColor: Colors.white38,
                         ),
                         icon: const Icon(Icons.delete_outline),

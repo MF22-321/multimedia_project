@@ -28,8 +28,8 @@ vi.mock('../../crypto/TlsBridge', () => ({
 
 vi.mock('../../crypto/cert', () => ({ HU_CERT_PEM: 'CERT', HU_KEY_PEM: 'KEY' }))
 
-const ORIG_DEBUG = process.env.DEBUG
-const ORIG_TRACE = process.env.TRACE
+const ORIG_DEBUG = process.env.AA_RECEIVER_DEBUG
+const ORIG_TRACE = process.env.AA_RECEIVER_TRACE
 
 type TlsModule = typeof import('../SessionTls')
 type ConstModule = typeof import('../../constants')
@@ -38,18 +38,18 @@ let SessionTls: TlsModule['SessionTls']
 let C: ConstModule
 
 beforeAll(async () => {
-  process.env.DEBUG = '1'
-  delete process.env.TRACE
+  process.env.AA_RECEIVER_DEBUG = '1'
+  delete process.env.AA_RECEIVER_TRACE
   vi.resetModules()
   ;({ SessionTls } = await import('../SessionTls'))
   C = await import('../../constants')
 })
 
 afterAll(() => {
-  if (ORIG_DEBUG === undefined) delete process.env.DEBUG
-  else process.env.DEBUG = ORIG_DEBUG
-  if (ORIG_TRACE === undefined) delete process.env.TRACE
-  else process.env.TRACE = ORIG_TRACE
+  if (ORIG_DEBUG === undefined) delete process.env.AA_RECEIVER_DEBUG
+  else process.env.AA_RECEIVER_DEBUG = ORIG_DEBUG
+  if (ORIG_TRACE === undefined) delete process.env.AA_RECEIVER_TRACE
+  else process.env.AA_RECEIVER_TRACE = ORIG_TRACE
   vi.resetModules()
 })
 

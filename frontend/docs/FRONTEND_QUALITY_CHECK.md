@@ -1,19 +1,19 @@
 # Frontend Quality Check
 
-Last reviewed: 2026-06-20
+Last reviewed: 2026-08-06
 
-## Hasil Eksekusi 20 Juni 2026
+## Hasil Eksekusi 6 Agustus 2026
 
-- `flutter analyze --no-pub`: **lulus, 0 issue**.
-- `flutter test --no-pub`: **22 test lulus, 0 gagal**.
+- `flutter analyze`: **lulus, 0 issue**.
+- `flutter test --no-pub`: **91 test lulus, 0 gagal**.
 - Test lama bawaan template counter diganti dengan test fitur aplikasi.
 - Test otomatis tidak menghubungi backend produksi, broker MQTT, atau Pothole API.
 
 Jalankan ulang dari folder `frontend`:
 
 ```bash
-/home/multimedia/flutter/bin/flutter test --no-pub
-/home/multimedia/flutter/bin/flutter analyze --no-pub
+/home/multimedia/flutter/flutter/bin/flutter test --no-pub
+/home/multimedia/flutter/flutter/bin/flutter analyze
 ```
 
 ## Skenario Automated
@@ -43,6 +43,9 @@ Jalankan ulang dari folder `frontend`:
 | FE-021 | Pothole serial | Format firmware lama tanpa kategori | Tetap terbaca sebagai `normal` |
 | FE-022 | Pothole serial | Format baru dengan kategori/severity | Nilai eksplisit dari ESP32 terbaca |
 | FE-023 | ESP32 status | Wi-Fi/GPS offline tetapi USB aktif | Heading/IMU dan status tetap diterima |
+| FE-024 | Face enrollment | Poll status fase dan sampel | Arahan dan jumlah sampel terbaca |
+| FE-025 | Adaptive Face ID | Check, approve, dan reject kandidat | Method dan endpoint sesuai kontrak |
+| FE-026 | Face ID error | Backend quality endpoint gagal | Error diteruskan, tidak dianggap sukses |
 
 ## Skenario Integrasi Manual
 

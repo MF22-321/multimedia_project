@@ -3,7 +3,8 @@ import type { Mock } from 'vitest'
 vi.mock('node:fs', () => {
   const __m = {
     readFileSync: vi.fn(),
-    readdirSync: vi.fn()
+    readdirSync: vi.fn(),
+    existsSync: vi.fn(() => false)
   }
   return { ...__m, default: __m }
 })

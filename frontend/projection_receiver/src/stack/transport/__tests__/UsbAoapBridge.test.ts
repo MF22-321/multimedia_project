@@ -304,7 +304,8 @@ describe('UsbAoapBridge — loopback server + pump', () => {
     connect()(sock as never)
     sock.emit('data', Buffer.from([0xaa]))
     await flush()
-    expect(dev.transferOut).toHaveBeenCalledWith(2, Buffer.from([0xaa]))
+    expect(dev.transferOut).toHaveBeenCalledWith(2, expect.any(Uint8Array))
+    expect(Buffer.from(dev.transferOut.mock.calls[0]![1])).toEqual(Buffer.from([0xaa]))
   })
 
   test('USB IN disconnect error → emit error + destroy socket', async () => {

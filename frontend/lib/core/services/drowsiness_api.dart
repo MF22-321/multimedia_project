@@ -8,13 +8,22 @@ class DrowsinessApi {
   /// ==============================
   static Future<Map<String, dynamic>> startDrowsiness({
     required String driverName,
+    http.Client? client,
+    String baseUrl = BackendConfig.httpBase,
   }) async {
     try {
-      final response = await http.post(
-        Uri.parse("${BackendConfig.httpBase}/start_drowsiness"),
-        headers: {"Content-Type": "application/json"},
-        body: jsonEncode({"driver_name": driverName}),
-      );
+      final uri = Uri.parse("$baseUrl/start_drowsiness");
+      final response =
+          await (client?.post(
+                uri,
+                headers: {"Content-Type": "application/json"},
+                body: jsonEncode({"driver_name": driverName}),
+              ) ??
+              http.post(
+                uri,
+                headers: {"Content-Type": "application/json"},
+                body: jsonEncode({"driver_name": driverName}),
+              ));
 
       if (response.statusCode != 200) {
         throw Exception("Start failed: ${response.body}");
@@ -29,11 +38,15 @@ class DrowsinessApi {
   /// ==============================
   /// 🛑 STOP DROWSINESS DETECTION
   /// ==============================
-  static Future<Map<String, dynamic>> stopDrowsiness() async {
+  static Future<Map<String, dynamic>> stopDrowsiness({
+    http.Client? client,
+    String baseUrl = BackendConfig.httpBase,
+  }) async {
     try {
-      final response = await http.post(
-        Uri.parse("${BackendConfig.httpBase}/stop_drowsiness"),
-      );
+      final uri = Uri.parse("$baseUrl/stop_drowsiness");
+      final response = client == null
+          ? await http.post(uri)
+          : await client.post(uri);
 
       if (response.statusCode != 200) {
         throw Exception("Stop failed: ${response.body}");
@@ -48,11 +61,15 @@ class DrowsinessApi {
   /// ==============================
   /// 📊 GET STATUS
   /// ==============================
-  static Future<Map<String, dynamic>> getDrowsinessStatus() async {
+  static Future<Map<String, dynamic>> getDrowsinessStatus({
+    http.Client? client,
+    String baseUrl = BackendConfig.httpBase,
+  }) async {
     try {
-      final response = await http.get(
-        Uri.parse("${BackendConfig.httpBase}/drowsiness_status"),
-      );
+      final uri = Uri.parse("$baseUrl/drowsiness_status");
+      final response = client == null
+          ? await http.get(uri)
+          : await client.get(uri);
 
       if (response.statusCode != 200) {
         throw Exception("Status failed: ${response.body}");

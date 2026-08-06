@@ -12,6 +12,18 @@ PROFILES_DIR = BASE_DIR / "profiles"
 
 LABELS_PATH = MODELS_DIR / "labels.json"
 LBPH_MODEL_PATH = MODELS_DIR / "lbph_model.yml"
+YUNET_MODEL_PATH = Path(
+    os.getenv(
+        "FACEID_YUNET_MODEL_PATH",
+        str(MODELS_DIR / "face_detection_yunet_2023mar.onnx"),
+    )
+)
+SFACE_MODEL_PATH = Path(
+    os.getenv(
+        "FACEID_SFACE_MODEL_PATH",
+        str(MODELS_DIR / "face_recognition_sface_2021dec.onnx"),
+    )
+)
 EMBEDDING_MODEL_PATH = Path(
     os.getenv("FACEID_EMBEDDING_MODEL_PATH", str(MODELS_DIR / "arcface.onnx"))
 )
@@ -25,6 +37,41 @@ FACE_SIZE = (200, 200)
 AUTO_CAPTURE_SEC = 8.0
 CAPTURE_INTERVAL_SEC = 0.25
 MIN_FACE_PX = 120
+ENROLL_MIN_SAMPLES = int(os.getenv("FACEID_ENROLL_MIN_SAMPLES", "12"))
+ENROLL_TEMPLATE_LIMIT_PER_CONDITION = int(
+    os.getenv("FACEID_TEMPLATE_LIMIT_PER_CONDITION", "8")
+)
+
+# Primary recognizer. `lbph` is retained only as an explicit rollback mode.
+RECOGNIZER_MODE = os.getenv("FACEID_RECOGNIZER", "sface").strip().lower()
+SFACE_THRESHOLD = float(os.getenv("FACEID_SFACE_THRESHOLD", "0.40"))
+SFACE_MARGIN = float(os.getenv("FACEID_SFACE_MARGIN", "0.06"))
+SFACE_TOP_K = max(1, int(os.getenv("FACEID_SFACE_TOP_K", "3")))
+SFACE_DETECT_THRESHOLD = float(os.getenv("FACEID_DETECT_THRESHOLD", "0.75"))
+SFACE_DNN_TARGET = os.getenv("FACEID_DNN_TARGET", "cpu").strip().lower()
+
+# Capture quality. Values are intentionally configurable because cabin cameras
+# differ in exposure, focus and installation distance.
+QUALITY_MIN_BRIGHTNESS = float(os.getenv("FACEID_MIN_BRIGHTNESS", "35"))
+QUALITY_MAX_BRIGHTNESS = float(os.getenv("FACEID_MAX_BRIGHTNESS", "225"))
+QUALITY_MIN_SHARPNESS = float(os.getenv("FACEID_MIN_SHARPNESS", "35"))
+QUALITY_MAX_ABS_YAW = float(os.getenv("FACEID_MAX_ABS_YAW", "0.65"))
+TEMPLATE_DUPLICATE_SIMILARITY = float(
+    os.getenv("FACEID_TEMPLATE_DUPLICATE_SIMILARITY", "0.995")
+)
+
+# Lightweight temporal motion liveness. This blocks fully static images but is
+# not presented as certified presentation-attack detection.
+REQUIRE_LIVENESS = os.getenv("FACEID_REQUIRE_LIVENESS", "1").lower() in {
+    "1",
+    "true",
+    "yes",
+    "on",
+}
+LIVENESS_WINDOW_SEC = float(os.getenv("FACEID_LIVENESS_WINDOW_SEC", "2.0"))
+LIVENESS_MIN_SAMPLES = int(os.getenv("FACEID_LIVENESS_MIN_SAMPLES", "3"))
+LIVENESS_MIN_MOTION = float(os.getenv("FACEID_LIVENESS_MIN_MOTION", "0.003"))
+ADAPTIVE_MIN_CONFIDENCE = float(os.getenv("FACEID_ADAPTIVE_MIN_CONFIDENCE", "0.58"))
 
 # identify defaults
 #

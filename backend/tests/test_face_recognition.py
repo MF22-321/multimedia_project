@@ -298,7 +298,12 @@ class FaceIdentifierTests(unittest.TestCase):
         ), patch("backend.faceid.identifier.load_lbph", return_value=rec), patch(
             "backend.faceid.identifier.EmbeddingRecognizer", return_value=embed
         ):
-            faceid = FaceID(conf_threshold=0.6, vote_min_samples=1)
+            faceid = FaceID(
+                conf_threshold=0.6,
+                vote_min_samples=1,
+                recognizer_mode="arcface",
+                require_liveness=False,
+            )
         return faceid, cropper
 
     def test_constructor_handles_missing_models_and_close(self):

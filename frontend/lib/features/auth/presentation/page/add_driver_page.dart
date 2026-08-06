@@ -35,9 +35,12 @@ class _AddDriverPageState extends State<AddDriverPage> {
 
   Timer? _timer;
   Timer? _recognitionTimer;
+  Timer? _enrollmentStatusTimer;
   double? confidence;
 
-  int captureSeconds = 8;
+  int captureSeconds = 12;
+  int acceptedSamples = 0;
+  int rejectedSamples = 0;
   String phaseText = "Fill name and scan";
 
   int fanLevel = 3;
@@ -52,6 +55,7 @@ class _AddDriverPageState extends State<AddDriverPage> {
     _timer?.cancel();
     nameController.dispose();
     _recognitionTimer?.cancel(); // 🔥 tambah ini
+    _enrollmentStatusTimer?.cancel();
     detectedDriverName = null; // 🔥 reset
     super.dispose();
   }
@@ -78,27 +82,50 @@ class _AddDriverPageState extends State<AddDriverPage> {
 
     setState(() {
       isCapturing = true;
-      captureSeconds = 8;
-      phaseText = "Capturing...";
+      captureSeconds = 12;
+      acceptedSamples = 0;
+      rejectedSamples = 0;
+      phaseText = "Look straight at the camera";
     });
 
     _timer?.cancel();
     _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
       setState(() {
-        captureSeconds = (8 - timer.tick).clamp(0, 8);
-        if (timer.tick >= 8) {
+        captureSeconds = (12 - timer.tick).clamp(0, 12);
+        if (timer.tick >= 12) {
           phaseText = "Processing face model...";
         }
       });
 
-      if (timer.tick >= 8) timer.cancel();
+      if (timer.tick >= 12) timer.cancel();
+    });
+
+    _enrollmentStatusTimer?.cancel();
+    _enrollmentStatusTimer = Timer.periodic(const Duration(milliseconds: 300), (
+      _,
+    ) async {
+      try {
+        final status = await FaceIdApi.getEnrollmentStatus();
+        if (!mounted || !isCapturing) return;
+        final saved = status["saved_count"];
+        final rejected = status["rejected_count"];
+        setState(() {
+          acceptedSamples = saved is num ? saved.toInt() : acceptedSamples;
+          rejectedSamples = rejected is num
+              ? rejected.toInt()
+              : rejectedSamples;
+          phaseText = status["guidance"]?.toString() ?? phaseText;
+        });
+      } catch (_) {
+        // Capture itself remains authoritative if a status poll is missed.
+      }
     });
 
     try {
       final result = await FaceIdApi.enrollLiveBurst(
         driverName: name,
-        durationSec: 8,
-        targetSamples: 40,
+        durationSec: 12,
+        targetSamples: 30,
       );
 
       if (!mounted) return;
@@ -123,6 +150,7 @@ class _AddDriverPageState extends State<AddDriverPage> {
       debugPrint("Enroll error: $e");
     } finally {
       _timer?.cancel();
+      _enrollmentStatusTimer?.cancel();
 
       if (mounted) {
         setState(() {
@@ -408,17 +436,12 @@ class _AddDriverPageState extends State<AddDriverPage> {
                                       children: [
                                         /// 🎥 CAMERA
                                         Positioned.fill(
-                                          child: isCapturing
-                                              ? Container(
-                                                  color: Colors.black,
-                                                  alignment: Alignment.center,
-                                                )
-                                              : LiveCameraWS(
-                                                  url: FaceIdApi.cameraScanWs,
-                                                  width: 400.w,
-                                                  height: 300.h,
-                                                  maxFps: 12,
-                                                ),
+                                          child: LiveCameraWS(
+                                            url: FaceIdApi.cameraScanWs,
+                                            width: 400.w,
+                                            height: 300.h,
+                                            maxFps: 12,
+                                          ),
                                         ),
 
                                         if (isCapturing)
@@ -525,6 +548,14 @@ class _AddDriverPageState extends State<AddDriverPage> {
                                     phaseText,
                                     style: const TextStyle(color: Colors.white),
                                   ),
+                                  if (isCapturing)
+                                    Text(
+                                      "Accepted $acceptedSamples · Rejected $rejectedSamples",
+                                      style: const TextStyle(
+                                        color: Colors.white54,
+                                        fontSize: 11,
+                                      ),
+                                    ),
                                 ],
                               )
                             : ScanFaceButton(

@@ -50,6 +50,10 @@ FACE_MESH_REFINE="${FACE_MESH_REFINE:-0}"
 CV2_THREADS="${CV2_THREADS:-2}"
 REBUILD_FACE_EMBEDDINGS="${REBUILD_FACE_EMBEDDINGS:-auto}"
 FACEID_EMBEDDING_MODEL_PATH="${FACEID_EMBEDDING_MODEL_PATH:-$ROOT_DIR/backend/models/arcface.onnx}"
+FACEID_RECOGNIZER="${FACEID_RECOGNIZER:-sface}"
+FACEID_YUNET_MODEL_PATH="${FACEID_YUNET_MODEL_PATH:-$ROOT_DIR/backend/models/face_detection_yunet_2023mar.onnx}"
+FACEID_SFACE_MODEL_PATH="${FACEID_SFACE_MODEL_PATH:-$ROOT_DIR/backend/models/face_recognition_sface_2021dec.onnx}"
+FACEID_REQUIRE_LIVENESS="${FACEID_REQUIRE_LIVENESS:-1}"
 FACEID_EMBEDDINGS_PATH="$ROOT_DIR/backend/models/face_embeddings.json"
 SPOTIFYD_SCRIPT="$ROOT_DIR/scripts/start_spotifyd_jetson.sh"
 SPOTIFYD_CACHE_PATH="${SPOTIFYD_CACHE_PATH:-$HOME/.cache/spotifyd}"
@@ -107,6 +111,10 @@ export DRAW_CAMERA_OVERLAY
 export FACE_MESH_REFINE
 export CV2_THREADS
 export FACEID_EMBEDDING_MODEL_PATH
+export FACEID_RECOGNIZER
+export FACEID_YUNET_MODEL_PATH
+export FACEID_SFACE_MODEL_PATH
+export FACEID_REQUIRE_LIVENESS
 
 cleanup() {
   if [[ -n "${SPOTIFYD_PID:-}" ]] && kill -0 "$SPOTIFYD_PID" 2>/dev/null; then
@@ -142,8 +150,13 @@ should_rebuild_face_embeddings() {
     return 1
   fi
 
-  if [[ ! -f "$FACEID_EMBEDDING_MODEL_PATH" ]]; then
-    echo "[faceid] embedding model not found, LBPH fallback will be used: $FACEID_EMBEDDING_MODEL_PATH"
+  if [[ "$FACEID_RECOGNIZER" == "sface" ]]; then
+    if [[ ! -f "$FACEID_YUNET_MODEL_PATH" || ! -f "$FACEID_SFACE_MODEL_PATH" ]]; then
+      echo "[faceid] YuNet/SFace model missing; run scripts/setup_faceid_sface.sh" >&2
+      return 1
+    fi
+  elif [[ ! -f "$FACEID_EMBEDDING_MODEL_PATH" ]]; then
+    echo "[faceid] legacy embedding model not found: $FACEID_EMBEDDING_MODEL_PATH"
     return 1
   fi
 

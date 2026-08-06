@@ -16,15 +16,17 @@ from backend.faceid.config import (
     CONF_THRESHOLD,
     DATASET_DIR,
     EMBEDDINGS_PATH,
+    ENROLL_MIN_SAMPLES,
     LBPH_MODEL_PATH,
     PROFILES_DIR,
+    RECOGNIZER_MODE,
     VOTE_MIN_RATIO,
     VOTE_MIN_SAMPLES,
     VOTE_WINDOW_SEC,
 )
 from backend.faceid.labels_store import load_labels, ensure_label, remove_label
-from backend.faceid.embedding_model import build_embeddings
 from backend.faceid.lbph_model import train_lbph
+from backend.faceid.sface_model import build_sface_templates
 from backend.fastAPI.routes.drowsiness_routes import router as drowsiness_router
 from backend.fastAPI.validation import validate_driver_name
 
@@ -54,6 +56,25 @@ DATASET_DIR.mkdir(parents=True, exist_ok=True)
 
 faceid = None
 embedding_rebuild_lock = threading.Lock()
+enrollment_status_state = {
+    "active": False,
+    "driver_name": None,
+    "phase": "idle",
+    "guidance": "Ready",
+    "saved_count": 0,
+    "target_samples": 0,
+    "rejected_count": 0,
+    "last_quality": None,
+}
+
+ENROLLMENT_PHASES = (
+    ("frontal", "Look straight at the camera"),
+    ("left", "Turn your head slowly to the left"),
+    ("right", "Turn your head slowly to the right"),
+    ("up", "Raise your chin slightly"),
+    ("down", "Lower your chin slightly"),
+    ("natural", "Move naturally and change your distance"),
+)
 
 
 def get_faceid():
@@ -95,7 +116,7 @@ def rebuild_embeddings_background(labels: dict, reason: str) -> None:
     try:
         started = time.time()
         logger.info("[FaceEmbed] background rebuild start: %s", reason)
-        built = build_embeddings(dict(labels))
+        built = build_sface_templates(dict(labels))
         logger.info(
             "[FaceEmbed] background rebuild done | built=%s elapsed=%.2fs",
             built,
@@ -138,9 +159,28 @@ def save_face_samples_from_live_camera(
     start_time = time.time()
     last_save_time = 0.0
     sample_idx = start_idx
+    rejected_count = 0
+
+    enrollment_status_state.update(
+        active=True,
+        driver_name=driver_name,
+        phase="frontal",
+        guidance=ENROLLMENT_PHASES[0][1],
+        saved_count=0,
+        target_samples=target_samples,
+        rejected_count=0,
+        last_quality=None,
+    )
 
     while (time.time() - start_time) < duration_sec and len(saved_paths) < target_samples:
         now = time.time()
+        progress = min(0.999, (now - start_time) / max(duration_sec, 0.001))
+        phase_index = min(
+            len(ENROLLMENT_PHASES) - 1,
+            int(progress * len(ENROLLMENT_PHASES)),
+        )
+        phase, guidance = ENROLLMENT_PHASES[phase_index]
+        enrollment_status_state.update(phase=phase, guidance=guidance)
 
         if now - last_save_time < interval_sec:
             time.sleep(0.01)
@@ -151,28 +191,56 @@ def save_face_samples_from_live_camera(
             time.sleep(0.01)
             continue
 
-        roi, bbox = recognizer.cropper.crop_color(frame)
+        observation = recognizer.capture_observation(frame)
+        if observation is not None:
+            roi = observation.aligned_face
+            enrollment_status_state["last_quality"] = observation.quality.to_dict()
+            if not observation.quality.accepted:
+                rejected_count += 1
+                enrollment_status_state.update(
+                    rejected_count=rejected_count,
+                    guidance=observation.quality.reason,
+                )
+                time.sleep(0.01)
+                continue
+        else:
+            roi, _ = recognizer.cropper.crop_color(frame)
 
         if roi is None:
+            rejected_count += 1
+            enrollment_status_state.update(
+                rejected_count=rejected_count,
+                guidance="Move closer and keep your face inside the frame",
+            )
             time.sleep(0.01)
             continue
 
         h, w = roi.shape[:2]
         if h < 80 or w < 80:
+            rejected_count += 1
+            enrollment_status_state["rejected_count"] = rejected_count
             time.sleep(0.01)
             continue
 
-        out_path = out_dir / f"{sample_idx:04d}.jpg"
+        # Alignment normalizes the visible pose, so preserve the guided capture
+        # condition in the filename for balanced per-condition templates.
+        out_path = out_dir / f"{sample_idx:04d}_{phase}.jpg"
         ok = cv2.imwrite(str(out_path), roi)
 
         if ok:
             saved_paths.append(str(out_path))
             sample_idx += 1
             last_save_time = now
+            enrollment_status_state["saved_count"] = len(saved_paths)
             logger.info("[BURST] saved %s", out_path)
 
         time.sleep(0.01)
 
+    enrollment_status_state.update(
+        active=False,
+        phase="processing",
+        guidance="Building aligned face templates",
+    )
     return saved_paths
 
 
@@ -387,6 +455,29 @@ def driver_status():
     return get_driver_status()
 
 
+@app.get("/enrollment_status")
+def enrollment_status():
+    return dict(enrollment_status_state)
+
+
+@app.get("/faceid/adaptive_candidate")
+def adaptive_candidate_status():
+    return get_faceid().adaptive_status()
+
+
+@app.post("/faceid/adaptive_candidate/approve")
+def approve_adaptive_candidate():
+    result = get_faceid().approve_adaptive_update()
+    if result.get("success"):
+        reload_recognizer()
+    return result
+
+
+@app.post("/faceid/adaptive_candidate/reject")
+def reject_adaptive_candidate():
+    return get_faceid().reject_adaptive_update()
+
+
 @app.post("/recognize")
 async def recognize(image: UploadFile = File(...)):
     contents = await image.read()
@@ -402,6 +493,7 @@ async def recognize(image: UploadFile = File(...)):
     raw_name = recognizer.last_raw_name
     raw_conf = recognizer.last_raw_conf
     last_bbox = recognizer.last_bbox
+    diagnostics = dict(recognizer.last_diagnostics)
 
     if raw_name is not None:
         logger.info("[/recognize] registered: %s (%s)", raw_name, raw_conf)
@@ -412,6 +504,7 @@ async def recognize(image: UploadFile = File(...)):
             "confidence": raw_conf,
             "stable_ratio": stable_ratio,
             "bbox": last_bbox,
+            "diagnostics": diagnostics,
         }
 
     logger.info("[/recognize] unknown")
@@ -422,6 +515,7 @@ async def recognize(image: UploadFile = File(...)):
         "confidence": raw_conf,
         "stable_ratio": stable_ratio,
         "bbox": last_bbox,
+        "diagnostics": diagnostics,
     }
 
 
@@ -441,7 +535,19 @@ async def enroll(
 
     recognizer = get_faceid()
 
-    roi, bbox = recognizer.cropper.crop_color(frame)
+    observation = recognizer.capture_observation(frame)
+    if observation is not None:
+        if not observation.quality.accepted:
+            return {
+                "success": False,
+                "message": f"Face quality rejected: {observation.quality.reason}",
+                "quality": observation.quality.to_dict(),
+            }
+        roi = observation.aligned_face
+        quality = observation.quality.to_dict()
+    else:
+        roi, _ = recognizer.cropper.crop_color(frame)
+        quality = None
 
     if roi is None:
         return {"success": False, "message": "No face detected"}
@@ -458,20 +564,16 @@ async def enroll(
     label_id = ensure_label(labels, driver_name)
 
     rec = train_lbph(labels)
-    if rec is None:
+    templates_built = build_sface_templates(labels)
+    if RECOGNIZER_MODE == "sface" and not templates_built:
         return {
             "success": False,
-            "message": "Training failed (dataset not enough)",
+            "message": "SFace template build failed",
             "saved_path": str(out_path),
         }
 
     reload_faceid()
     reload_recognizer()
-    background_tasks.add_task(
-        rebuild_embeddings_background,
-        dict(labels),
-        f"single enroll {driver_name}",
-    )
 
     logger.info("[/enroll] success: %s -> %s", driver_name, out_path)
 
@@ -481,7 +583,10 @@ async def enroll(
         "driver_name": driver_name,
         "label_id": label_id,
         "saved_path": str(out_path),
-        "embeddings_building": True,
+        "quality": quality,
+        "recognizer": RECOGNIZER_MODE,
+        "lbph_rollback_ready": rec is not None,
+        "embeddings_building": False,
     }
 
 
@@ -514,22 +619,28 @@ async def enroll_live_burst(
 
         logger.info("[/enroll_live_burst] saved_paths count = %s", len(saved_paths))
 
-        if len(saved_paths) == 0:
+        if len(saved_paths) < ENROLL_MIN_SAMPLES:
             return {
                 "success": False,
-                "message": "No face samples captured from live camera",
+                "message": (
+                    "Not enough quality face samples captured "
+                    f"({len(saved_paths)}/{ENROLL_MIN_SAMPLES})"
+                ),
                 "driver_name": driver_name,
-                "saved_count": 0,
+                "saved_count": len(saved_paths),
+                "required_count": ENROLL_MIN_SAMPLES,
+                "enrollment_status": dict(enrollment_status_state),
             }
 
         label_id = ensure_label(labels, driver_name)
         rec = train_lbph(labels)
         logger.info("[/enroll_live_burst] train_lbph result = %s", rec)
+        templates_built = build_sface_templates(labels)
 
-        if rec is None:
+        if RECOGNIZER_MODE == "sface" and not templates_built:
             return {
                 "success": False,
-                "message": "Training failed after burst capture",
+                "message": "SFace template build failed after burst capture",
                 "driver_name": driver_name,
                 "saved_count": len(saved_paths),
                 "saved_paths": saved_paths,
@@ -537,11 +648,6 @@ async def enroll_live_burst(
 
         reload_faceid()
         reload_recognizer()
-        background_tasks.add_task(
-            rebuild_embeddings_background,
-            dict(labels),
-            f"live burst enroll {driver_name}",
-        )
 
         logger.info(
             "[/enroll_live_burst] success | name=%s, saved_count=%s",
@@ -556,7 +662,10 @@ async def enroll_live_burst(
             "label_id": label_id,
             "saved_count": len(saved_paths),
             "saved_paths": saved_paths,
-            "embeddings_building": True,
+            "recognizer": RECOGNIZER_MODE,
+            "lbph_rollback_ready": rec is not None,
+            "enrollment_status": dict(enrollment_status_state),
+            "embeddings_building": False,
         }
 
     except Exception as e:
@@ -567,3 +676,4 @@ async def enroll_live_burst(
         }
     finally:
         set_enrollment_active(False)
+        enrollment_status_state["active"] = False

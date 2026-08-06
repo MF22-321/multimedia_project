@@ -10,7 +10,16 @@ import 'package:frontend/features/auth/presentation/widget/guest_button.dart';
 import '../../../boot/presentation/widget/dotted_background.dart';
 
 class DriverSelectPage extends StatefulWidget {
-  const DriverSelectPage({super.key});
+  const DriverSelectPage({
+    super.key,
+    this.loadDrivers = FaceIdApi.getDrivers,
+    this.loadDriverStatus = FaceIdApi.getDriverStatus,
+    this.detectionInterval = const Duration(milliseconds: 500),
+  });
+
+  final Future<List<String>> Function() loadDrivers;
+  final Future<Map<String, dynamic>> Function() loadDriverStatus;
+  final Duration detectionInterval;
 
   @override
   State<DriverSelectPage> createState() => _DriverSelectPageState();
@@ -41,7 +50,7 @@ class _DriverSelectPageState extends State<DriverSelectPage> {
   /// ================= LOAD DRIVER =================
   Future<void> _loadDrivers() async {
     try {
-      final result = await FaceIdApi.getDrivers();
+      final result = await widget.loadDrivers();
 
       setState(() {
         drivers = result;
@@ -61,9 +70,9 @@ class _DriverSelectPageState extends State<DriverSelectPage> {
 
     _isDetecting = true;
 
-    _timer = Timer.periodic(const Duration(milliseconds: 500), (_) async {
+    _timer = Timer.periodic(widget.detectionInterval, (_) async {
       try {
-        final result = await FaceIdApi.getDriverStatus();
+        final result = await widget.loadDriverStatus();
 
         final recognized = result["recognized"] == true;
         final name = result["driver"];

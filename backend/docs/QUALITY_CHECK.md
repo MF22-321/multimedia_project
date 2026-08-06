@@ -41,9 +41,15 @@ gabungan turun di bawah **90%**. Dependency pengembangan dapat dipasang dengan:
 
 ## Hasil Eksekusi
 
-Eksekusi automated test pada 3 Agustus 2026: **45 test lulus, 0 gagal**.
-Coverage area FaceID/identity, drowsiness, dan mood: **100%** (1009 dari 1009
+Eksekusi automated test pada 6 Agustus 2026: **72 test lulus, 0 gagal**.
+Coverage area FaceID/identity, drowsiness, dan mood: **100%** (1353 dari 1353
 statement). Target minimum yang dikunci oleh quality gate adalah **90%**.
+Enam belas test journey tambahan memverifikasi health, daftar driver, registrasi
+satu foto/live burst, login dikenal/tidak dikenal, penghapusan akun, serta siklus
+start-status-stop drowsiness, status enrollment, adaptive template, dan kegagalan
+runtime. Test SFace baru memverifikasi YuNet, alignment, quality gate, multi-template,
+threshold/margin, liveness, adaptive update, dan fallback backend. Seluruh file dan
+model memakai mock atau temporary directory.
 Pengujian kamera fisik tetap berstatus manual karena device kamera tidak tersedia
 di environment QC.
 

@@ -78,6 +78,13 @@ driver_status = {
     "recognized": False,
     "confidence": 0.0,
     "bbox": None,
+    "model": "unknown",
+    "reason": "initializing",
+    "quality": None,
+    "liveness_passed": False,
+    "liveness_score": 0.0,
+    "score_margin": 0.0,
+    "adaptive_update_available": False,
 }
 
 drowsiness_status = {
@@ -371,6 +378,12 @@ def clear_driver_status(driver_name=None):
     driver_status["recognized"] = False
     driver_status["confidence"] = 0.0
     driver_status["bbox"] = None
+    driver_status["reason"] = "cleared"
+    driver_status["quality"] = None
+    driver_status["liveness_passed"] = False
+    driver_status["liveness_score"] = 0.0
+    driver_status["score_margin"] = 0.0
+    driver_status["adaptive_update_available"] = False
 
 
 def set_enrollment_active(active: bool):
@@ -764,6 +777,19 @@ def camera_loop():
 
             raw_name = recognizer.last_raw_name
             raw_conf = recognizer.last_raw_conf
+            diagnostics = recognizer.last_diagnostics
+            driver_status.update(
+                model=diagnostics.get("model", "unknown"),
+                reason=diagnostics.get("reason", "unknown"),
+                quality=diagnostics.get("quality"),
+                liveness_passed=diagnostics.get("liveness_passed", False),
+                liveness_score=diagnostics.get("liveness_score", 0.0),
+                second_score=diagnostics.get("second_score", -1.0),
+                score_margin=diagnostics.get("score_margin", 0.0),
+                adaptive_update_available=diagnostics.get(
+                    "adaptive_update_available", False
+                ),
+            )
 
             preview = frame.copy() if DRAW_CAMERA_OVERLAY else frame
 

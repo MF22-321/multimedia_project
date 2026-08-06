@@ -1,20 +1,20 @@
 import type { ProtoTypes } from '../../proto/index'
 import type { SessionConfig } from '../Session'
 
-const ORIG_DEBUG = process.env.DEBUG
+const ORIG_DEBUG = process.env.AA_RECEIVER_DEBUG
 
 type BuilderModule = typeof import('../ServiceDiscoveryBuilder')
 let buildServiceDiscoveryResponse: BuilderModule['buildServiceDiscoveryResponse']
 
 beforeAll(async () => {
-  process.env.DEBUG = '1'
+  process.env.AA_RECEIVER_DEBUG = '1'
   vi.resetModules()
   ;({ buildServiceDiscoveryResponse } = await import('../ServiceDiscoveryBuilder'))
 })
 
 afterAll(() => {
-  if (ORIG_DEBUG === undefined) delete process.env.DEBUG
-  else process.env.DEBUG = ORIG_DEBUG
+  if (ORIG_DEBUG === undefined) delete process.env.AA_RECEIVER_DEBUG
+  else process.env.AA_RECEIVER_DEBUG = ORIG_DEBUG
   vi.resetModules()
 })
 

@@ -4,6 +4,13 @@ backend/models/arcface.onnx
 backend/models/lbph_model.yml
 backend/models/*.onnx
 backend/models/*.yml
+backend/models/*.engine
+
+# Private biometric enrollment data (never commit/push)
+backend/dataset/
+backend/models/labels.json
+backend/models/face_embeddings.json
+backend/profiles/
 
 # Local logs
 backend.log
