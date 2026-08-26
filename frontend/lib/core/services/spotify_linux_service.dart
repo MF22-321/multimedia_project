@@ -7,6 +7,8 @@ class SpotifyDBusService {
   static const String path = '/org/mpris/MediaPlayer2';
 
   DBusClient? _client;
+  DateTime? _metadataRetryAt;
+  DateTime? _lastMetadataErrorAt;
 
   DBusClient get _sessionClient {
     _client ??= DBusClient.session();
@@ -47,6 +49,10 @@ class SpotifyDBusService {
   }
 
   Future<Map<String, dynamic>> getMetadata() async {
+    final now = DateTime.now();
+    if (_metadataRetryAt?.isAfter(now) ?? false) {
+      return _emptyMetadata();
+    }
     try {
       final playerObject = await _playerObject();
       final properties = await playerObject.getAllProperties(
@@ -73,6 +79,7 @@ class SpotifyDBusService {
 
       final trackId = _readTrackId(map['mpris:trackid']);
 
+      _metadataRetryAt = null;
       return {
         'title': title,
         'artist': artist,
@@ -83,19 +90,25 @@ class SpotifyDBusService {
         'isPlaying': playback?.asString() == 'Playing',
       };
     } catch (e) {
-      AppLogger.error("DBUS ERROR => $e");
-
-      return {
-        'title': '',
-        'artist': '',
-        'albumArt': '',
-        'position': Duration.zero,
-        'duration': Duration.zero,
-        'trackId': '',
-        'isPlaying': false,
-      };
+      _metadataRetryAt = now.add(const Duration(seconds: 5));
+      if (_lastMetadataErrorAt == null ||
+          now.difference(_lastMetadataErrorAt!).inSeconds >= 30) {
+        _lastMetadataErrorAt = now;
+        AppLogger.error("DBUS ERROR => $e (retry in 5s)");
+      }
+      return _emptyMetadata();
     }
   }
+
+  Map<String, dynamic> _emptyMetadata() => {
+    'title': '',
+    'artist': '',
+    'albumArt': '',
+    'position': Duration.zero,
+    'duration': Duration.zero,
+    'trackId': '',
+    'isPlaying': false,
+  };
 
   Future<void> playPause() async {
     final playerObject = await _playerObject();

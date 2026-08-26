@@ -80,6 +80,16 @@ class MusicProvider extends ChangeNotifier {
 
   bool? _commandedPlaying;
 
+  String _lastLoggedMusicState = '';
+
+  DateTime? _logUnavailableUntil;
+
+  DateTime? _lastLogModified;
+
+  _SpotifydLogState? _cachedLogState;
+
+  bool _fetchInProgress = false;
+
   /// =========================
   /// START LISTENING
   /// =========================
@@ -101,8 +111,13 @@ class MusicProvider extends ChangeNotifier {
   /// FETCH MUSIC
   /// =========================
   Future<void> _fetchMusic() async {
+    if (_fetchInProgress) return;
+    _fetchInProgress = true;
     try {
       final now = DateTime.now();
+      final previousState =
+          '$title\u0000$artist\u0000$albumArt\u0000$isPlaying\u0000'
+          '${currentPosition.inSeconds}\u0000${totalDuration.inSeconds}';
 
       final data = await _service.getMetadata();
       final logState = await _readSpotifydLogState();
@@ -193,7 +208,13 @@ class MusicProvider extends ChangeNotifier {
           (_lastLyricsFetchAt == null ||
               DateTime.now().difference(_lastLyricsFetchAt!).inSeconds >= 20);
 
-      if ((_lastSongKey != currentSongKey || shouldRetryLyrics) &&
+      final hasSong = title != 'No Song Playing' && artist != 'Unknown Artist';
+      if (!hasSong && _lastSongKey != currentSongKey) {
+        _lastSongKey = currentSongKey;
+        _lyricsUnavailable = false;
+        lyrics = [LyricLine(time: Duration.zero, text: '♪ No song playing ♪')];
+      } else if (hasSong &&
+          (_lastSongKey != currentSongKey || shouldRetryLyrics) &&
           !_isFetchingLyrics) {
         _lastSongKey = currentSongKey;
 
@@ -226,16 +247,20 @@ class MusicProvider extends ChangeNotifier {
       /// =========================
       /// DEBUG
       /// =========================
-      AppLogger.info('\n========== MUSIC ==========');
-      AppLogger.info('TITLE      : $title');
-      AppLogger.info('ARTIST     : $artist');
-      AppLogger.info('ALBUM ART  : $albumArt');
-      AppLogger.info('PLAYING    : $isPlaying');
-      AppLogger.info('===========================\n');
+      final loggedState = '$title\u0000$artist\u0000$isPlaying';
+      if (loggedState != _lastLoggedMusicState) {
+        _lastLoggedMusicState = loggedState;
+        AppLogger.info('MUSIC: $title - $artist | playing=$isPlaying');
+      }
 
-      notifyListeners();
+      final nextState =
+          '$title\u0000$artist\u0000$albumArt\u0000$isPlaying\u0000'
+          '${currentPosition.inSeconds}\u0000${totalDuration.inSeconds}';
+      if (nextState != previousState) notifyListeners();
     } catch (e) {
       debugPrint('MUSIC PROVIDER ERROR => $e');
+    } finally {
+      _fetchInProgress = false;
     }
   }
 
@@ -464,6 +489,8 @@ class MusicProvider extends ChangeNotifier {
 
   Future<_SpotifydLogState?> _readSpotifydLogState() async {
     try {
+      final now = DateTime.now();
+      if (_logUnavailableUntil?.isAfter(now) ?? false) return null;
       final env = Platform.environment;
       final candidates = [
         env['SPOTIFYD_LOG_PATH'],
@@ -482,13 +509,17 @@ class MusicProvider extends ChangeNotifier {
       }
 
       if (file == null) {
+        _logUnavailableUntil = now.add(const Duration(seconds: 10));
         return null;
       }
 
       final modified = await file.lastModified();
-      if (DateTime.now().difference(modified).inSeconds > 15) {
+      if (now.difference(modified).inSeconds > 15) {
+        _logUnavailableUntil = now.add(const Duration(seconds: 5));
         return null;
       }
+      if (_lastLogModified == modified) return _cachedLogState;
+      _lastLogModified = modified;
 
       final size = await file.length();
       final start = size > 131072 ? size - 131072 : 0;
@@ -536,7 +567,11 @@ class MusicProvider extends ChangeNotifier {
         return null;
       }
 
-      return _SpotifydLogState(isPlaying: playing, position: position);
+      _cachedLogState = _SpotifydLogState(
+        isPlaying: playing,
+        position: position,
+      );
+      return _cachedLogState;
     } catch (_) {
       return null;
     }

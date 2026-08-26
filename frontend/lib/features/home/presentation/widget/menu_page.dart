@@ -4,6 +4,7 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:frontend/core/themes/car_theme.dart';
+import 'package:frontend/core/widgets/vehicle_3d_viewer.dart';
 
 class MenuPage extends StatefulWidget {
   const MenuPage({super.key});
@@ -468,10 +469,9 @@ class _MenuPageState extends State<MenuPage> {
                               ],
                             ),
 
-                            child: Image.asset(
-                              "assets/images/veloz.png",
-
-                              fit: BoxFit.contain,
+                            child: const Vehicle3DViewer(
+                              showBadge: false,
+                              showResetButton: false,
                             ),
                           ),
                         ],

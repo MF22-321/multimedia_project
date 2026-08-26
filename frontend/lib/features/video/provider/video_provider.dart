@@ -18,7 +18,11 @@ class VideoProvider extends ChangeNotifier {
     Map<String, dynamic> command,
   ) async {
     final rawAction = (command['action'] ?? '').toString().trim().toLowerCase();
-    final normalizedAction = rawAction.replaceAll(RegExp(r'[ -]+'), '_');
+    final normalizedAction = rawAction
+        .replaceAll('-', ' ')
+        .split(' ')
+        .where((part) => part.isNotEmpty)
+        .join('_');
     final overlay = VideoOverlayService();
 
     if (normalizedAction == 'stop') {
@@ -54,6 +58,7 @@ class VideoProvider extends ChangeNotifier {
 
   @override
   void dispose() {
+    VideoOverlayService().hide();
     _videoMqttService.dispose();
     super.dispose();
   }

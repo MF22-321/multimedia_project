@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:frontend/core/localization/app_strings.dart';
 import 'package:frontend/core/themes/car_theme.dart';
+import 'package:frontend/core/widgets/vehicle_3d_viewer.dart';
 
 class CarInfoContent extends StatefulWidget {
   const CarInfoContent({super.key});
@@ -496,19 +497,31 @@ class _CarInfoPageState extends State<CarInfoContent>
 
                                         SizedBox(height: 18.h),
 
-                                        _tireTile(AppStrings.frontLeft, '32 PSI'),
+                                        _tireTile(
+                                          AppStrings.frontLeft,
+                                          '32 PSI',
+                                        ),
 
                                         SizedBox(height: 12.h),
 
-                                        _tireTile(AppStrings.frontRight, '32 PSI'),
+                                        _tireTile(
+                                          AppStrings.frontRight,
+                                          '32 PSI',
+                                        ),
 
                                         SizedBox(height: 12.h),
 
-                                        _tireTile(AppStrings.rearLeft, '30 PSI'),
+                                        _tireTile(
+                                          AppStrings.rearLeft,
+                                          '30 PSI',
+                                        ),
 
                                         SizedBox(height: 12.h),
 
-                                        _tireTile(AppStrings.rearRight, '30 PSI'),
+                                        _tireTile(
+                                          AppStrings.rearRight,
+                                          '30 PSI',
+                                        ),
                                       ],
                                     ),
                                   ),
@@ -586,10 +599,9 @@ class _CarInfoPageState extends State<CarInfoContent>
                                                   ],
                                                 ),
 
-                                                child: Image.asset(
-                                                  "assets/images/veloz.png",
-
-                                                  fit: BoxFit.contain,
+                                                child: const Vehicle3DViewer(
+                                                  showBadge: true,
+                                                  showResetButton: true,
                                                 ),
                                               ),
 
@@ -612,7 +624,8 @@ class _CarInfoPageState extends State<CarInfoContent>
 
                                               /// SUBTITLE
                                               Text(
-                                                AppStrings.modernConnectedVehicle,
+                                                AppStrings
+                                                    .modernConnectedVehicle,
 
                                                 style: TextStyle(
                                                   color: Colors.white60,

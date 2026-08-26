@@ -50,8 +50,7 @@ class MultimediaThemeSection extends StatelessWidget {
         ? accentColor
         : theme.buttonColor;
 
-    return AnimatedContainer(
-      duration: const Duration(milliseconds: 400),
+    return Container(
       padding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 20.h),
       decoration: BoxDecoration(
         gradient: LinearGradient(
@@ -63,157 +62,153 @@ class MultimediaThemeSection extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-              /// TITLE
-              Text(
-                AppStrings.multimediaThemeSettings,
-                style: TextStyle(
-                  fontSize: 20.sp,
-                  color: theme.textColor,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
+          /// TITLE
+          Text(
+            AppStrings.multimediaThemeSettings,
+            style: TextStyle(
+              fontSize: 20.sp,
+              color: theme.textColor,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
 
-              SizedBox(height: 15.h),
+          SizedBox(height: 15.h),
 
-              /// CAROUSEL
-              CarouselSlider.builder(
-                itemCount: themeImages.length,
-                options: CarouselOptions(
-                  height: 140.h,
-                  enlargeCenterPage: true,
-                  viewportFraction: 0.38,
-                  enableInfiniteScroll: false,
-                  onPageChanged: (index, reason) {
-                    onThemeChanged(index);
-                  },
-                ),
+          /// CAROUSEL
+          CarouselSlider.builder(
+            itemCount: themeImages.length,
+            options: CarouselOptions(
+              height: 140.h,
+              enlargeCenterPage: true,
+              viewportFraction: 0.38,
+              enableInfiniteScroll: false,
+              onPageChanged: (index, reason) {
+                onThemeChanged(index);
+              },
+            ),
 
-                itemBuilder: (context, index, realIndex) {
-                  final bool selected = selectedTheme == index;
+            itemBuilder: (context, index, realIndex) {
+              final bool selected = selectedTheme == index;
 
-                  return GestureDetector(
-                    onTap: () => onThemeChanged(index),
+              return GestureDetector(
+                onTap: () => onThemeChanged(index),
 
-                    child: AnimatedScale(
-                      scale: selected ? 1.05 : 1.0,
-                      duration: const Duration(milliseconds: 200),
+                child: AnimatedScale(
+                  scale: selected ? 1.05 : 1.0,
+                  duration: const Duration(milliseconds: 200),
 
-                      child: AnimatedContainer(
-                        duration: const Duration(milliseconds: 250),
-                        margin: EdgeInsets.symmetric(vertical: 8.h),
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 250),
+                    margin: EdgeInsets.symmetric(vertical: 8.h),
 
-                        decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(20.r),
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(20.r),
 
-                          border: Border.all(
-                            color: selected
-                                ? accentColor
-                                : Colors.transparent,
-                            width: 3,
+                      border: Border.all(
+                        color: selected ? accentColor : Colors.transparent,
+                        width: 3,
+                      ),
+
+                      boxShadow: selected
+                          ? [
+                              BoxShadow(
+                                color: accentColor.withValues(alpha: 0.5),
+                                blurRadius: 20,
+                              ),
+                            ]
+                          : [],
+                    ),
+
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(18.r),
+
+                      child: Stack(
+                        children: [
+                          /// IMAGE
+                          Positioned.fill(
+                            child: Image.asset(
+                              themeImages[index],
+                              fit: BoxFit.cover,
+                              cacheWidth: 512,
+                              cacheHeight: 288,
+                              filterQuality: FilterQuality.low,
+                            ),
                           ),
 
-                          boxShadow: selected
-                              ? [
-                                  BoxShadow(
-                                    color: accentColor.withValues(alpha: 0.5),
-                                    blurRadius: 20,
-                                  ),
-                                ]
-                              : [],
-                        ),
-
-                        child: ClipRRect(
-                          borderRadius: BorderRadius.circular(18.r),
-
-                          child: Stack(
-                            children: [
-                              /// IMAGE
-                              Positioned.fill(
-                                child: Image.asset(
-                                  themeImages[index],
-                                  fit: BoxFit.cover,
+                          /// CHECK ICON
+                          if (selected)
+                            Positioned(
+                              top: 10.h,
+                              right: 10.w,
+                              child: Container(
+                                padding: EdgeInsets.all(6.r),
+                                decoration: BoxDecoration(
+                                  color: accentColor,
+                                  shape: BoxShape.circle,
+                                ),
+                                child: Icon(
+                                  Icons.check,
+                                  size: 16.sp,
+                                  color: Colors.white,
                                 ),
                               ),
-
-                              /// CHECK ICON
-                              if (selected)
-                                Positioned(
-                                  top: 10.h,
-                                  right: 10.w,
-                                  child: Container(
-                                    padding: EdgeInsets.all(6.r),
-                                    decoration: BoxDecoration(
-                                      color: accentColor,
-                                      shape: BoxShape.circle,
-                                    ),
-                                    child: Icon(
-                                      Icons.check,
-                                      size: 16.sp,
-                                      color: Colors.white,
-                                    ),
-                                  ),
-                                ),
-                            ],
-                          ),
-                        ),
-                      ),
-                    ),
-                  );
-                },
-              ),
-
-              SizedBox(height: 15.h),
-
-              /// CUSTOM THEME BUTTON
-              Center(
-                child: GestureDetector(
-                  onTap: () async {
-                    final customTheme = await Navigator.push<CarThemeData>(
-                      context,
-                      MaterialPageRoute<CarThemeData>(
-                        builder: (_) => CustomThemePage(
-                          initialTheme:
-                              customThemeData ?? CarThemes.customTheme.value,
-                        ),
-                      ),
-                    );
-
-                    if (customTheme == null) return;
-
-                    if (onCustomThemeSaved != null) {
-                      onCustomThemeSaved!(customTheme);
-                    } else {
-                      CarThemes.customTheme.value = customTheme;
-                    }
-
-                    onThemeChanged(CarThemeType.custom.index);
-                  },
-                  child: Container(
-                    padding: EdgeInsets.symmetric(
-                      horizontal: 40.w,
-                      vertical: 10.h,
-                    ),
-                    decoration: BoxDecoration(
-                      color: buttonColor,
-                      borderRadius: BorderRadius.circular(25.r),
-                    ),
-                    child: Text(
-                      AppStrings.customTheme,
-                      style: TextStyle(
-                        fontSize: 16.sp,
-                        fontWeight: FontWeight.bold,
-                        color:
-                            ThemeData.estimateBrightnessForColor(
-                                  buttonColor,
-                                ) ==
-                                Brightness.dark
-                            ? Colors.white
-                            : Colors.black,
+                            ),
+                        ],
                       ),
                     ),
                   ),
                 ),
+              );
+            },
+          ),
+
+          SizedBox(height: 15.h),
+
+          /// CUSTOM THEME BUTTON
+          Center(
+            child: GestureDetector(
+              onTap: () async {
+                final customTheme = await Navigator.push<CarThemeData>(
+                  context,
+                  MaterialPageRoute<CarThemeData>(
+                    builder: (_) => CustomThemePage(
+                      initialTheme:
+                          customThemeData ?? CarThemes.customTheme.value,
+                    ),
+                  ),
+                );
+
+                if (customTheme == null) return;
+
+                if (onCustomThemeSaved != null) {
+                  onCustomThemeSaved!(customTheme);
+                } else {
+                  CarThemes.customTheme.value = customTheme;
+                }
+
+                onThemeChanged(CarThemeType.custom.index);
+              },
+              child: Container(
+                padding: EdgeInsets.symmetric(horizontal: 40.w, vertical: 10.h),
+                decoration: BoxDecoration(
+                  color: buttonColor,
+                  borderRadius: BorderRadius.circular(25.r),
+                ),
+                child: Text(
+                  AppStrings.customTheme,
+                  style: TextStyle(
+                    fontSize: 16.sp,
+                    fontWeight: FontWeight.bold,
+                    color:
+                        ThemeData.estimateBrightnessForColor(buttonColor) ==
+                            Brightness.dark
+                        ? Colors.white
+                        : Colors.black,
+                  ),
+                ),
               ),
+            ),
+          ),
         ],
       ),
     );

@@ -1,19 +1,22 @@
 import 'dart:math';
 import 'package:flutter/material.dart';
+import 'package:frontend/core/themes/ambient_motion_control.dart';
 
 class PlayfulParticlesBackground extends StatefulWidget {
-  const PlayfulParticlesBackground({super.key});
+  const PlayfulParticlesBackground({super.key, this.inspectionLayer = false});
+
+  final bool inspectionLayer;
 
   @override
   State<PlayfulParticlesBackground> createState() =>
       _PlayfulParticlesBackgroundState();
 }
 
-class _PlayfulParticlesBackgroundState extends State<PlayfulParticlesBackground>
-    with SingleTickerProviderStateMixin {
-  late AnimationController controller;
+class _PlayfulParticlesBackgroundState
+    extends State<PlayfulParticlesBackground> {
+  late final AmbientFrameClock controller;
 
-  final Random random = Random();
+  final Random random = Random(43);
 
   final List<_Bubble> bubbles = [];
 
@@ -21,40 +24,40 @@ class _PlayfulParticlesBackgroundState extends State<PlayfulParticlesBackground>
   void initState() {
     super.initState();
 
-    for (int i = 0; i < 35; i++) {
+    for (int i = 0; i < 24; i++) {
       bubbles.add(
         _Bubble(
           x: random.nextDouble(),
           y: random.nextDouble(),
           size: random.nextDouble() * 40 + 20,
-          speed: random.nextDouble() * 0.0005 + 0.0003,
+          // Normalized screen distance per second, matching the old visual
+          // speed while allowing display-synchronised 60 Hz animation.
+          speed: random.nextDouble() * 0.018 + 0.0108,
           opacity: random.nextDouble() * 0.25 + 0.05,
         ),
       );
     }
 
-    controller =
-        AnimationController(vsync: this, duration: const Duration(days: 1))
-          ..addListener(updateBubbles)
-          ..repeat();
-  }
-
-  void updateBubbles() {
-    for (final b in bubbles) {
-      b.y -= b.speed;
-
-      if (b.y < -0.1) {
-        b.y = 1.1;
-        b.x = random.nextDouble();
-      }
-    }
-
-    setState(() {});
+    controller = AmbientFrameClock(
+      cycle: const Duration(days: 1),
+      inspectionLayer: widget.inspectionLayer,
+    )..enabled = true;
   }
 
   @override
   Widget build(BuildContext context) {
-    return CustomPaint(painter: _PlayfulPainter(bubbles), size: Size.infinite);
+    return RepaintBoundary(
+      child: CustomPaint(
+        painter: _PlayfulPainter(
+          bubbles,
+          animation: controller,
+          repaint: controller,
+        ),
+        size: Size.infinite,
+        isComplex: true,
+        willChange: controller.motionEnabled,
+      ),
+    );
   }
 
   @override
@@ -65,11 +68,11 @@ class _PlayfulParticlesBackgroundState extends State<PlayfulParticlesBackground>
 }
 
 class _Bubble {
-  double x;
-  double y;
-  double size;
-  double speed;
-  double opacity;
+  final double x;
+  final double y;
+  final double size;
+  final double speed;
+  final double opacity;
 
   _Bubble({
     required this.x,
@@ -82,8 +85,13 @@ class _Bubble {
 
 class _PlayfulPainter extends CustomPainter {
   final List<_Bubble> bubbles;
+  final AmbientFrameClock animation;
 
-  _PlayfulPainter(this.bubbles);
+  _PlayfulPainter(
+    this.bubbles, {
+    required this.animation,
+    required Listenable repaint,
+  }) : super(repaint: repaint);
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -91,7 +99,8 @@ class _PlayfulPainter extends CustomPainter {
 
     for (final b in bubbles) {
       final x = b.x * size.width;
-      final y = b.y * size.height;
+      final travel = (b.y - animation.elapsedSeconds * b.speed + 0.1) % 1.2;
+      final y = (travel - 0.1) * size.height;
 
       paint.color = const Color(0xFFFFB8A8).withValues(alpha: b.opacity);
 
@@ -100,5 +109,6 @@ class _PlayfulPainter extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => true;
+  bool shouldRepaint(covariant _PlayfulPainter oldDelegate) =>
+      oldDelegate.bubbles != bubbles;
 }

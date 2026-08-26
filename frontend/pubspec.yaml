@@ -86,6 +86,7 @@ flutter:
     - assets/images/
     - assets/themes/
     - assets/
+    - assets/models/
     - assets/video_sdr/
   #   - images/a_dot_burr.jpeg
   #   - images/a_dot_ham.jpeg

@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:io';
 import 'dart:ui';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:frontend/core/model/fragrance_feedback.dart';
@@ -27,6 +28,7 @@ import 'package:frontend/widgets/fragrance_feedback_overlay.dart';
 import 'package:provider/provider.dart';
 
 import 'package:frontend/core/navigation/app_navigation.dart';
+import 'package:frontend/core/themes/ambient_motion_control.dart';
 import 'package:frontend/core/themes/car_theme.dart';
 import 'package:frontend/core/themes/futuristic_particle_background.dart';
 import 'package:frontend/core/themes/playful_background.dart';
@@ -53,10 +55,16 @@ class HomePage extends StatefulWidget {
   State<HomePage> createState() => _HomePageState();
 }
 
-class _HomePageState extends State<HomePage> {
+class _HomePageState extends State<HomePage>
+    with SingleTickerProviderStateMixin {
   final MqttAvatarService _avatarService = MqttAvatarService();
   final MusicMqttService _musicMqttService = MusicMqttService();
+  final Map<int, Widget> _navigationPages = <int, Widget>{};
   late final FragranceAiMqttService _fragranceAiMqttService;
+  late final AnimationController _pageTransitionController;
+  late final Animation<double> _pageTransition;
+  int _lastNavigationIndex = AppNavigation.currentIndex.value;
+  double _navigationDirection = 1;
 
   bool isReady = false;
 
@@ -78,6 +86,17 @@ class _HomePageState extends State<HomePage> {
 
     DriverSession.currentDriver.addListener(_onDriverChanged);
     DrowsinessControl.enabled.addListener(_onDrowsinessSettingChanged);
+    AppNavigation.currentIndex.addListener(_onNavigationChanged);
+    _pageTransitionController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 220),
+      value: 1,
+    );
+    _pageTransition = CurvedAnimation(
+      parent: _pageTransitionController,
+      curve: Curves.easeOutCubic,
+    );
+    _navigationPages[2] = _HomeContent(onPagePreview: _prewarmNavigationPage);
     _fragranceAiMqttService = FragranceAiMqttService(
       onFeedback: _showFragranceOverlay,
     );
@@ -97,6 +116,8 @@ class _HomePageState extends State<HomePage> {
   void dispose() {
     DriverSession.currentDriver.removeListener(_onDriverChanged);
     DrowsinessControl.enabled.removeListener(_onDrowsinessSettingChanged);
+    AppNavigation.currentIndex.removeListener(_onNavigationChanged);
+    _pageTransitionController.dispose();
     _drowsyTimer?.cancel();
     _fragranceOffTimer?.cancel();
     _fragranceFeedbackTimer?.cancel();
@@ -104,6 +125,60 @@ class _HomePageState extends State<HomePage> {
     _musicMqttService.dispose();
     _fragranceAiMqttService.dispose();
     super.dispose();
+  }
+
+  void _onNavigationChanged() {
+    final nextIndex = AppNavigation.currentIndex.value;
+    if (nextIndex == _lastNavigationIndex) return;
+    _navigationPages.putIfAbsent(
+      nextIndex,
+      () => _createNavigationPage(nextIndex),
+    );
+    _navigationDirection = nextIndex > _lastNavigationIndex ? 1 : -1;
+    _lastNavigationIndex = nextIndex;
+    AmbientMotionControl.suspendFor(const Duration(milliseconds: 420));
+    _pageTransitionController.forward(from: 0);
+  }
+
+  void _prewarmNavigationPage(int index) {
+    if (_navigationPages.containsKey(index)) return;
+    setState(() {
+      _navigationPages[index] = _createNavigationPage(index);
+    });
+  }
+
+  Widget _createNavigationPage(int index) {
+    return switch (index) {
+      0 => const MusicPage(),
+      1 => const PhoneContent(),
+      2 => _HomeContent(onPagePreview: _prewarmNavigationPage),
+      3 => const MenuContent(),
+      4 => const SettingsContent(),
+      _ => _HomeContent(onPagePreview: _prewarmNavigationPage),
+    };
+  }
+
+  Widget _buildNavigationStack(int index) {
+    _navigationPages.putIfAbsent(index, () => _createNavigationPage(index));
+    final entries = _navigationPages.entries.toList(growable: false);
+    final activePage = entries.indexWhere((entry) => entry.key == index);
+
+    // Retain pages after their first visit. Recreating Home used to rebuild
+    // the map, native 3D view and its services every time the user returned,
+    // causing several high-CPU frames. TickerMode prevents hidden pages from
+    // spending frame budget while their state remains warm for the next tap.
+    return IndexedStack(
+      index: activePage,
+      sizing: StackFit.expand,
+      children: <Widget>[
+        for (final entry in entries)
+          TickerMode(
+            key: ValueKey<int>(entry.key),
+            enabled: entry.key == index,
+            child: RepaintBoundary(child: entry.value),
+          ),
+      ],
+    );
   }
 
   void _showFragranceOverlay(FragranceFeedback feedback) {
@@ -244,11 +319,13 @@ class _HomePageState extends State<HomePage> {
         final ear = result["ear"];
         final earRatio = result["ear_ratio"];
 
-        debugPrint(
-          "📊 STATUS: $status | mood=$mood | raw=$rawMood | "
-          "match=$driverMatch | ear=$ear | ratio=$earRatio | "
-          "closed=${eyeClosedElapsed}s | reason=$alertReason",
-        );
+        if (kDebugMode) {
+          debugPrint(
+            "📊 STATUS: $status | mood=$mood | raw=$rawMood | "
+            "match=$driverMatch | ear=$ear | ratio=$earRatio | "
+            "closed=${eyeClosedElapsed}s | reason=$alertReason",
+          );
+        }
 
         if (status == "drowsy") {
           if (!_dialogShown) {
@@ -383,7 +460,7 @@ class _HomePageState extends State<HomePage> {
     _markSafetyPopupShown();
     _activePopup = _HomePopup.drowsy;
 
-    final autoCloseTimer = Timer(const Duration(seconds: 5),() {
+    final autoCloseTimer = Timer(const Duration(seconds: 5), () {
       if (mounted && _activePopup == _HomePopup.drowsy) {
         Navigator.of(context).pop();
       }
@@ -418,8 +495,7 @@ class _HomePageState extends State<HomePage> {
               _fragranceOffTimer = Timer(const Duration(seconds: 15), () {
                 debugPrint("🌸 Fragrance OFF (auto)");
                 unawaited(
-                  SmartFragranceMqttService.instance
-                      .selectShortcutCartridge(0),
+                  SmartFragranceMqttService.instance.selectShortcutCartridge(0),
                 );
               });
               Navigator.of(context).pop();
@@ -464,10 +540,7 @@ class _HomePageState extends State<HomePage> {
                       gradient: LinearGradient(
                         begin: Alignment.topCenter,
                         end: Alignment.bottomCenter,
-                        colors: [
-                          Color(0xFF061017),
-                          Color(0xFF010407),
-                        ],
+                        colors: [Color(0xFF061017), Color(0xFF010407)],
                       ),
                     ),
                   ),
@@ -540,24 +613,26 @@ class _HomePageState extends State<HomePage> {
                     child: ValueListenableBuilder(
                       valueListenable: AppNavigation.currentIndex,
                       builder: (context, index, _) {
-                        switch (index) {
-                          case 0:
-                            return const MusicPage();
-                          case 1:
-                            return const PhoneContent();
-                          case 2:
-                            return const _HomeContent();
-                          case 3:
-                            return const MenuContent();
-                          case 4:
-                            return const SettingsContent();
-                          default:
-                            return const _HomeContent();
-                        }
+                        return AnimatedBuilder(
+                          animation: _pageTransition,
+                          child: _buildNavigationStack(index),
+                          builder: (context, child) {
+                            final remaining = 1 - _pageTransition.value;
+                            return ClipRect(
+                              child: Transform.translate(
+                                offset: Offset(
+                                  _navigationDirection * 10.w * remaining,
+                                  0,
+                                ),
+                                child: child,
+                              ),
+                            );
+                          },
+                        );
                       },
                     ),
                   ),
-                  const SideMenu(),
+                  SideMenu(onPagePreview: _prewarmNavigationPage),
                 ],
               ),
 
@@ -875,7 +950,9 @@ class _DialogActionButton extends StatelessWidget {
 
 /// ================= HOME CONTENT =================
 class _HomeContent extends StatelessWidget {
-  const _HomeContent();
+  const _HomeContent({required this.onPagePreview});
+
+  final ValueChanged<int> onPagePreview;
 
   @override
   Widget build(BuildContext context) {
@@ -908,7 +985,7 @@ class _HomeContent extends StatelessWidget {
                     children: [
                       const CarStatusCard(),
                       SizedBox(height: 25.h),
-                      const QuickActionGrid(),
+                      QuickActionGrid(onPagePreview: onPagePreview),
                     ],
                   ),
                 ),

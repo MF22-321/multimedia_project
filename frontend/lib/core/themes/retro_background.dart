@@ -1,32 +1,36 @@
 import 'dart:math';
 import 'package:flutter/material.dart';
+import 'package:frontend/core/themes/ambient_motion_control.dart';
 
 class RetroParticlesBackground extends StatefulWidget {
-  const RetroParticlesBackground({super.key});
+  const RetroParticlesBackground({super.key, this.inspectionLayer = false});
+
+  final bool inspectionLayer;
 
   @override
   State<RetroParticlesBackground> createState() =>
       _RetroParticlesBackgroundState();
 }
 
-class _RetroParticlesBackgroundState extends State<RetroParticlesBackground>
-    with SingleTickerProviderStateMixin {
-  late AnimationController controller;
+class _RetroParticlesBackgroundState extends State<RetroParticlesBackground> {
+  late final AmbientFrameClock controller;
 
   final List<_RetroParticle> particles = [];
-  final Random random = Random();
+  final Random random = Random(27);
 
   @override
   void initState() {
     super.initState();
 
     /// generate particles sekali
-    for (int i = 0; i < 120; i++) {
+    for (int i = 0; i < 70; i++) {
       particles.add(
         _RetroParticle(
           x: random.nextDouble(),
           y: random.nextDouble(),
-          speed: random.nextDouble() * 0.002 + 0.001,
+          // Normalized screen distance per second. Motion is time-based so it
+          // keeps the same speed at 60 Hz and never jumps after a slow frame.
+          speed: random.nextDouble() * 0.072 + 0.036,
           height: random.nextDouble() * 12 + 4,
           opacity: random.nextDouble() * 0.6 + 0.3,
           color: [
@@ -38,32 +42,26 @@ class _RetroParticlesBackgroundState extends State<RetroParticlesBackground>
       );
     }
 
-    controller =
-        AnimationController(
-            vsync: this,
-            duration: const Duration(days: 1), // hampir infinite
-          )
-          ..addListener(updateParticles)
-          ..repeat();
-  }
-
-  void updateParticles() {
-    for (final p in particles) {
-      p.y += p.speed;
-
-      /// kalau sudah keluar layar spawn lagi dari atas
-      if (p.y > 1) {
-        p.y = -0.02;
-        p.x = random.nextDouble();
-      }
-    }
-
-    setState(() {});
+    controller = AmbientFrameClock(
+      cycle: const Duration(days: 1),
+      inspectionLayer: widget.inspectionLayer,
+    )..enabled = true;
   }
 
   @override
   Widget build(BuildContext context) {
-    return CustomPaint(painter: _RetroPainter(particles), size: Size.infinite);
+    return RepaintBoundary(
+      child: CustomPaint(
+        painter: _RetroPainter(
+          particles,
+          animation: controller,
+          repaint: controller,
+        ),
+        size: Size.infinite,
+        isComplex: true,
+        willChange: controller.motionEnabled,
+      ),
+    );
   }
 
   @override
@@ -74,12 +72,12 @@ class _RetroParticlesBackgroundState extends State<RetroParticlesBackground>
 }
 
 class _RetroParticle {
-  double x;
-  double y;
-  double speed;
-  double height;
-  double opacity;
-  Color color;
+  final double x;
+  final double y;
+  final double speed;
+  final double height;
+  final double opacity;
+  final Color color;
 
   _RetroParticle({
     required this.x,
@@ -93,8 +91,13 @@ class _RetroParticle {
 
 class _RetroPainter extends CustomPainter {
   final List<_RetroParticle> particles;
+  final AmbientFrameClock animation;
 
-  _RetroPainter(this.particles);
+  _RetroPainter(
+    this.particles, {
+    required this.animation,
+    required Listenable repaint,
+  }) : super(repaint: repaint);
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -102,7 +105,8 @@ class _RetroPainter extends CustomPainter {
 
     for (final p in particles) {
       final x = p.x * size.width;
-      final y = p.y * size.height;
+      final normalizedY = (p.y + animation.elapsedSeconds * p.speed) % 1.04;
+      final y = (normalizedY - 0.02) * size.height;
 
       paint.color = p.color.withValues(alpha: p.opacity);
 
@@ -117,5 +121,6 @@ class _RetroPainter extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => true;
+  bool shouldRepaint(covariant _RetroPainter oldDelegate) =>
+      oldDelegate.particles != particles;
 }

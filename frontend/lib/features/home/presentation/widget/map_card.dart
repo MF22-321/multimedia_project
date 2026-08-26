@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:frontend/core/model/pothole.dart';
+import 'package:frontend/core/navigation/hmi_page_route.dart';
 import 'package:frontend/core/navigation/pothole_detection_control.dart';
 import 'package:frontend/core/provider/gps_provider.dart';
 import 'package:frontend/core/provider/pothole_provider.dart';
@@ -407,27 +408,9 @@ class _MapCardState extends State<MapCard> {
   }
 
   void _openMapDetail() {
-    Navigator.of(context).push(
-      PageRouteBuilder(
-        transitionDuration: const Duration(milliseconds: 420),
-        reverseTransitionDuration: const Duration(milliseconds: 280),
-        pageBuilder: (_, __, ___) => const MapDetailPage(),
-        transitionsBuilder: (_, animation, __, child) {
-          final curved = CurvedAnimation(
-            parent: animation,
-            curve: Curves.easeOutCubic,
-          );
-
-          return FadeTransition(
-            opacity: curved,
-            child: ScaleTransition(
-              scale: Tween<double>(begin: 0.96, end: 1).animate(curved),
-              child: child,
-            ),
-          );
-        },
-      ),
-    );
+    Navigator.of(
+      context,
+    ).push(HmiPageRoute(builder: (_) => const MapDetailPage()));
   }
 
   @override

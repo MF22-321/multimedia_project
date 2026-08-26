@@ -7,6 +7,7 @@
 
 #include "flutter/generated_plugin_registrant.h"
 #include "projection_plugin/projection_plugin.h"
+#include "vehicle_3d_plugin/vehicle_3d_plugin.h"
 
 struct _MyApplication {
   GtkApplication parent_instance;
@@ -65,7 +66,28 @@ static void my_application_activate(GApplication* application) {
   gdk_rgba_parse(&background_color, "#000000");
   fl_view_set_background_color(view, &background_color);
   gtk_widget_show(GTK_WIDGET(view));
-  gtk_container_add(GTK_CONTAINER(window), GTK_WIDGET(view));
+  GtkWidget* overlay = gtk_overlay_new();
+  gtk_widget_set_hexpand(overlay, TRUE);
+  gtk_widget_set_vexpand(overlay, TRUE);
+  gtk_container_add(GTK_CONTAINER(window), overlay);
+  gtk_container_add(GTK_CONTAINER(overlay), GTK_WIDGET(view));
+
+  // A direct GtkGLArea is composited in the same application window above
+  // Flutter. It provides a real depth buffer for the Home vehicle without the
+  // external Texture path that corrupts frames on Jetson/NVIDIA.
+  GtkWidget* vehicle_layer = gtk_fixed_new();
+  gtk_widget_set_halign(vehicle_layer, GTK_ALIGN_FILL);
+  gtk_widget_set_valign(vehicle_layer, GTK_ALIGN_FILL);
+  gtk_widget_set_hexpand(vehicle_layer, TRUE);
+  gtk_widget_set_vexpand(vehicle_layer, TRUE);
+  gtk_overlay_add_overlay(GTK_OVERLAY(overlay), vehicle_layer);
+  // This native layer only paints. Flutter remains the single input surface
+  // for both the car gestures and all surrounding HMI controls.
+  gtk_overlay_set_overlay_pass_through(GTK_OVERLAY(overlay), vehicle_layer,
+                                       TRUE);
+  gtk_widget_show(vehicle_layer);
+  gtk_widget_show(overlay);
+  vehicle_3d_plugin_set_overlay(vehicle_layer);
 
   // Show the window when Flutter renders.
   // Requires the view to be realized so we can start rendering.
@@ -78,6 +100,11 @@ static void my_application_activate(GApplication* application) {
       fl_plugin_registry_get_registrar_for_plugin(
           FL_PLUGIN_REGISTRY(view), "ProjectionPlugin");
   projection_plugin_register_with_registrar(projection_registrar);
+
+  g_autoptr(FlPluginRegistrar) vehicle_3d_registrar =
+      fl_plugin_registry_get_registrar_for_plugin(
+          FL_PLUGIN_REGISTRY(view), "Vehicle3DPlugin");
+  vehicle_3d_plugin_register_with_registrar(vehicle_3d_registrar);
 
   gtk_widget_grab_focus(GTK_WIDGET(view));
 }

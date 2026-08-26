@@ -10,6 +10,8 @@ class GPSProvider extends ChangeNotifier {
 
   StreamSubscription? _subscription;
   StreamSubscription<String>? _statusSubscription;
+  Timer? _telemetryNotifyTimer;
+  bool _disposed = false;
 
   bool isConnected = false;
   bool hasFix = false;
@@ -51,7 +53,7 @@ class GPSProvider extends ChangeNotifier {
             ? "GPS Connected ($satellites sat)"
             : "USB Connected - Waiting GPS Fix ($satellites sat)";
 
-        notifyListeners();
+        _scheduleTelemetryNotification();
       },
       onError: (_) {
         isConnected = false;
@@ -72,6 +74,16 @@ class GPSProvider extends ChangeNotifier {
     );
   }
 
+  void _scheduleTelemetryNotification() {
+    if (_disposed || _telemetryNotifyTimer?.isActive == true) return;
+    // The ESP32 can publish around 10 packets/second. Updating the stored GPS
+    // value immediately but rebuilding map/home consumers at most 5 FPS keeps
+    // telemetry current without competing with 3D gestures and Flutter layout.
+    _telemetryNotifyTimer = Timer(const Duration(milliseconds: 200), () {
+      if (!_disposed) notifyListeners();
+    });
+  }
+
   void clearGPS() {
     current = null;
     hasFix = false;
@@ -82,6 +94,8 @@ class GPSProvider extends ChangeNotifier {
 
   @override
   void dispose() {
+    _disposed = true;
+    _telemetryNotifyTimer?.cancel();
     _subscription?.cancel();
     _statusSubscription?.cancel();
     serialService.dispose();

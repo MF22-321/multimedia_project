@@ -73,8 +73,7 @@ class ProfileSettingsPanel extends StatelessWidget {
 
     return Padding(
       padding: const EdgeInsets.only(top: 20).w,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 400),
+      child: Container(
         decoration: BoxDecoration(
           gradient: LinearGradient(
             colors: theme.backgroundGradient,
@@ -90,78 +89,76 @@ class ProfileSettingsPanel extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-                /// HEADER
-                SizedBox(height: 43.h),
+            /// HEADER
+            SizedBox(height: 43.h),
 
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 20).w,
-                  child: Text(
-                    AppStrings.profileSettings,
-                    style: TextStyle(
-                      fontSize: 26.sp,
-                      fontWeight: FontWeight.bold,
-                      color: theme.textColor,
-                    ),
-                  ),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20).w,
+              child: Text(
+                AppStrings.profileSettings,
+                style: TextStyle(
+                  fontSize: 26.sp,
+                  fontWeight: FontWeight.bold,
+                  color: theme.textColor,
                 ),
+              ),
+            ),
 
-                SizedBox(height: 21.h),
+            SizedBox(height: 21.h),
 
-                Divider(color: accentColor, thickness: 2.h, height: 2.h),
+            Divider(color: accentColor, thickness: 2.h, height: 2.h),
 
-                /// CONTENT
-                Expanded(
-                  child: SingleChildScrollView(
-                    physics: const BouncingScrollPhysics(),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        /// SMART FRAGRANCE
-                        SmartFragranceSection(
-                          selectedCartridge: selectedCartridge,
-                          onSelect: onCartridgeChanged,
-                          previewThemeType: themeType,
-                          previewTheme: theme,
-                        ),
-
-                        Divider(
-                          color: accentColor,
-                          thickness: 2.h,
-                          height: 0.h,
-                        ),
-
-                        /// FAN TEMP
-                        FanTemperatureSection(
-                          fanLevel: fanLevel,
-                          temperature: temperature,
-                          onFanPlus: onFanPlus,
-                          onFanMinus: onFanMinus,
-                          onTempPlus: onTempPlus,
-                          onTempMinus: onTempMinus,
-                          previewThemeType: themeType,
-                          previewTheme: theme,
-                        ),
-
-                        Divider(
-                          color: accentColor,
-                          thickness: 2.h,
-                          height: 0.h,
-                        ),
-
-                        /// THEME
-                        MultimediaThemeSection(
-                          selectedTheme: selectedTheme,
-                          themeImages: themeImages,
-                          onThemeChanged: onThemeChanged,
-                          previewThemeType: themeType,
-                          previewTheme: theme,
-                          customThemeData: customThemeData,
-                          onCustomThemeSaved: onCustomThemeSaved,
-                        ),
-                      ],
+            /// CONTENT
+            Expanded(
+              child: SingleChildScrollView(
+                physics: const ClampingScrollPhysics(),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    /// SMART FRAGRANCE
+                    RepaintBoundary(
+                      child: SmartFragranceSection(
+                        selectedCartridge: selectedCartridge,
+                        onSelect: onCartridgeChanged,
+                        previewThemeType: themeType,
+                        previewTheme: theme,
+                      ),
                     ),
-                  ),
+
+                    Divider(color: accentColor, thickness: 2.h, height: 0.h),
+
+                    /// FAN TEMP
+                    RepaintBoundary(
+                      child: FanTemperatureSection(
+                        fanLevel: fanLevel,
+                        temperature: temperature,
+                        onFanPlus: onFanPlus,
+                        onFanMinus: onFanMinus,
+                        onTempPlus: onTempPlus,
+                        onTempMinus: onTempMinus,
+                        previewThemeType: themeType,
+                        previewTheme: theme,
+                      ),
+                    ),
+
+                    Divider(color: accentColor, thickness: 2.h, height: 0.h),
+
+                    /// THEME
+                    RepaintBoundary(
+                      child: MultimediaThemeSection(
+                        selectedTheme: selectedTheme,
+                        themeImages: themeImages,
+                        onThemeChanged: onThemeChanged,
+                        previewThemeType: themeType,
+                        previewTheme: theme,
+                        customThemeData: customThemeData,
+                        onCustomThemeSaved: onCustomThemeSaved,
+                      ),
+                    ),
+                  ],
                 ),
+              ),
+            ),
           ],
         ),
       ),

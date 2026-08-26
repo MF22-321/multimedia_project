@@ -27,8 +27,8 @@ class AiAssistantOverlay extends StatefulWidget {
 
 class _AiAssistantOverlayState extends State<AiAssistantOverlay>
     with TickerProviderStateMixin {
-  late final Player _player;
-  late final VideoController _videoController;
+  Player? _player;
+  VideoController? _videoController;
   late final AnimationController _pulseController;
   late final AnimationController _typingController;
 
@@ -42,30 +42,34 @@ class _AiAssistantOverlayState extends State<AiAssistantOverlay>
   void initState() {
     super.initState();
 
-    _player = Player(
+    _pulseController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1800),
+    );
+
+    _typingController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 900),
+    );
+
+    widget.service.addListener(_handleServiceChanged);
+    _handleServiceChanged();
+  }
+
+  void _ensureVideoResources() {
+    if (_player != null) return;
+    final player = Player(
       configuration: const PlayerConfiguration(bufferSize: 8 * 1024 * 1024),
     );
+    _player = player;
     _videoController = VideoController(
-      _player,
+      player,
       configuration: VideoControllerConfiguration(
         width: JetsonPerformance.assistantVideoWidth,
         height: JetsonPerformance.assistantVideoHeight,
         enableHardwareAcceleration: JetsonPerformance.videoHardwareAcceleration,
       ),
     );
-
-    _pulseController = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 1800),
-    )..repeat();
-
-    _typingController = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 900),
-    )..repeat();
-
-    widget.service.addListener(_handleServiceChanged);
-    _handleServiceChanged();
   }
 
   @override
@@ -82,6 +86,22 @@ class _AiAssistantOverlayState extends State<AiAssistantOverlay>
 
   void _handleServiceChanged() {
     final state = widget.service.state;
+
+    // The overlay is idle for most of a drive. Do not keep two vsync tickers
+    // alive behind a SizedBox.shrink; start them only while the assistant is
+    // actually on screen.
+    if (state.isVisible) {
+      // Creating media_kit's VideoController immediately registers a Linux
+      // external texture even while this widget is hidden. On Jetson/NVIDIA
+      // that texture can black out the first Home frame. Allocate it only
+      // when the assistant is genuinely requested.
+      _ensureVideoResources();
+      if (!_pulseController.isAnimating) _pulseController.repeat();
+      if (!_typingController.isAnimating) _typingController.repeat();
+    } else {
+      _pulseController.stop();
+      _typingController.stop();
+    }
 
     if (state != _lastState) {
       _lastState = state;
@@ -104,21 +124,24 @@ class _AiAssistantOverlayState extends State<AiAssistantOverlay>
       _currentVideoAsset = null;
       await Future<void>.delayed(Duration.zero);
       if (generation != _videoSyncGeneration) return;
-      await _player.stop();
+      await _player?.stop();
       return;
     }
+
+    _ensureVideoResources();
+    final player = _player!;
 
     final asset = state == AvatarState.thinking
         ? widget.thinkingVideo
         : widget.answeringVideo;
 
-    if (_currentVideoAsset == asset && _player.state.playing) return;
+    if (_currentVideoAsset == asset && player.state.playing) return;
 
     _currentVideoAsset = asset;
-    await _player.setPlaylistMode(PlaylistMode.single);
-    await _player.setVolume(100);
+    await player.setPlaylistMode(PlaylistMode.single);
+    await player.setVolume(100);
     if (generation != _videoSyncGeneration) return;
-    await _player.open(Media('asset:///$asset'), play: true);
+    await player.open(Media('asset:///$asset'), play: true);
   }
 
   void _scheduleSubtitleScroll() {
@@ -141,7 +164,7 @@ class _AiAssistantOverlayState extends State<AiAssistantOverlay>
     _subtitleScrollController.dispose();
     _pulseController.dispose();
     _typingController.dispose();
-    _player.dispose();
+    _player?.dispose();
     super.dispose();
   }
 
@@ -150,54 +173,49 @@ class _AiAssistantOverlayState extends State<AiAssistantOverlay>
     final state = widget.service.state;
     final visible = state.isVisible;
 
+    // Do not keep media_kit's external video Texture inside an OpacityLayer
+    // while the assistant is idle. On Flutter Linux/NVIDIA this hidden native
+    // texture can still participate in composition and intermittently disturb
+    // the framebuffer used by the Home scene.
+    if (!visible) return const SizedBox.shrink();
+    final videoController = _videoController;
+    if (videoController == null) return const SizedBox.shrink();
+
     return Positioned.fill(
-      child: IgnorePointer(
-        ignoring: !visible,
-        child: AnimatedOpacity(
-          opacity: visible ? 1 : 0,
-          duration: const Duration(milliseconds: 220),
-          curve: Curves.easeOutCubic,
-          child: AnimatedScale(
-            scale: visible ? 1 : 0.98,
-            duration: const Duration(milliseconds: 260),
-            curve: Curves.easeOutCubic,
-            child: RepaintBoundary(
-              child: Stack(
-                children: [
-                  Positioned.fill(
-                    child: DecoratedBox(
-                      decoration: BoxDecoration(
-                        color: const Color(0xFF02070B),
-                        gradient: RadialGradient(
-                          center: Alignment.center,
-                          radius: 0.86,
-                          colors: [
-                            const Color(0xFF062631),
-                            const Color(0xFF02070B),
-                            Colors.black,
-                          ],
-                          stops: const [0, 0.62, 1],
-                        ),
-                      ),
-                    ),
+      child: RepaintBoundary(
+        child: Stack(
+          children: [
+            Positioned.fill(
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  color: const Color(0xFF02070B),
+                  gradient: RadialGradient(
+                    center: Alignment.center,
+                    radius: 0.86,
+                    colors: [
+                      const Color(0xFF062631),
+                      const Color(0xFF02070B),
+                      Colors.black,
+                    ],
+                    stops: const [0, 0.62, 1],
                   ),
-                  Center(
-                    child: RepaintBoundary(
-                      child: _AssistantCard(
-                        state: state,
-                        subtitle: widget.service.subtitle,
-                        isConnected: widget.service.isConnected,
-                        pulse: _pulseController,
-                        typing: _typingController,
-                        videoController: _videoController,
-                        subtitleScrollController: _subtitleScrollController,
-                      ),
-                    ),
-                  ),
-                ],
+                ),
               ),
             ),
-          ),
+            Center(
+              child: RepaintBoundary(
+                child: _AssistantCard(
+                  state: state,
+                  subtitle: widget.service.subtitle,
+                  isConnected: widget.service.isConnected,
+                  pulse: _pulseController,
+                  typing: _typingController,
+                  videoController: videoController,
+                  subtitleScrollController: _subtitleScrollController,
+                ),
+              ),
+            ),
+          ],
         ),
       ),
     );

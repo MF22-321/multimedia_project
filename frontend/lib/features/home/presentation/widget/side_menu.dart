@@ -7,7 +7,9 @@ import 'package:frontend/core/themes/car_theme.dart';
 import 'package:frontend/core/navigation/app_navigation.dart';
 
 class SideMenu extends StatelessWidget {
-  const SideMenu({super.key});
+  const SideMenu({super.key, this.onPagePreview});
+
+  final ValueChanged<int>? onPagePreview;
 
   Widget buildButton(
     BuildContext context,
@@ -34,6 +36,7 @@ class SideMenu extends StatelessWidget {
           CarAnimationController.menuActive.value = false;
         }
       },
+      onTapDown: (_) => onPagePreview?.call(index),
 
       child: Padding(
         padding: EdgeInsets.symmetric(vertical: 15.h),

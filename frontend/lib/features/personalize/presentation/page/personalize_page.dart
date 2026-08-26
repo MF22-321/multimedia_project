@@ -36,6 +36,7 @@ class _PersonalizePageState extends State<PersonalizePage> {
 
   String? driverName;
   Map<String, dynamic>? _adaptiveCandidate;
+  bool _checkingAdaptiveCandidate = false;
 
   @override
   void initState() {
@@ -113,7 +114,9 @@ class _PersonalizePageState extends State<PersonalizePage> {
     }
   }
 
-  Future<void> _loadAdaptiveCandidate() async {
+  Future<void> _loadAdaptiveCandidate({bool showFeedback = false}) async {
+    if (_checkingAdaptiveCandidate) return;
+    if (mounted) setState(() => _checkingAdaptiveCandidate = true);
     try {
       final result = await FaceIdApi.getAdaptiveCandidate();
       if (!mounted) return;
@@ -127,8 +130,19 @@ class _PersonalizePageState extends State<PersonalizePage> {
             ? result
             : null;
       });
+      if (showFeedback && _adaptiveCandidate == null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              'Belum ada sampel wajah baru. Coba lagi setelah Face ID mengenali Anda pada kondisi cahaya atau sudut yang berbeda.',
+            ),
+          ),
+        );
+      }
     } catch (_) {
       // Optional improvement must never block personalization.
+    } finally {
+      if (mounted) setState(() => _checkingAdaptiveCandidate = false);
     }
   }
 
@@ -277,8 +291,7 @@ class _PersonalizePageState extends State<PersonalizePage> {
           /// ================= BACKGROUND =================
           Stack(
             children: [
-              AnimatedContainer(
-                duration: const Duration(milliseconds: 400),
+              Container(
                 decoration: BoxDecoration(
                   gradient: LinearGradient(
                     colors: previewTheme.backgroundGradient,
@@ -649,8 +662,12 @@ class _PersonalizePageState extends State<PersonalizePage> {
                                         ),
                                         if (activeDriver != null)
                                           GestureDetector(
-                                            onTap: _adaptiveCandidate == null
-                                                ? _loadAdaptiveCandidate
+                                            onTap: _checkingAdaptiveCandidate
+                                                ? null
+                                                : _adaptiveCandidate == null
+                                                ? () => _loadAdaptiveCandidate(
+                                                    showFeedback: true,
+                                                  )
                                                 : _approveAdaptiveCandidate,
                                             child: AnimatedContainer(
                                               duration: const Duration(
@@ -674,14 +691,19 @@ class _PersonalizePageState extends State<PersonalizePage> {
                                                 mainAxisSize: MainAxisSize.min,
                                                 children: [
                                                   Icon(
-                                                    Icons
-                                                        .face_retouching_natural,
+                                                    _checkingAdaptiveCandidate
+                                                        ? Icons.sync
+                                                        : Icons
+                                                              .face_retouching_natural,
                                                     color: Colors.greenAccent,
                                                     size: 20.sp,
                                                   ),
                                                   SizedBox(width: 8.w),
                                                   Text(
-                                                    _adaptiveCandidate == null
+                                                    _checkingAdaptiveCandidate
+                                                        ? "Checking Face ID…"
+                                                        : _adaptiveCandidate ==
+                                                              null
                                                         ? "Check Face ID Update"
                                                         : "Improve Face ID",
                                                     style: TextStyle(

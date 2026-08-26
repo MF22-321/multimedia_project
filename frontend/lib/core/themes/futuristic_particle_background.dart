@@ -1,8 +1,14 @@
 import 'dart:math';
 import 'package:flutter/material.dart';
+import 'package:frontend/core/themes/ambient_motion_control.dart';
 
 class FuturisticParticlesBackground extends StatefulWidget {
-  const FuturisticParticlesBackground({super.key});
+  const FuturisticParticlesBackground({
+    super.key,
+    this.inspectionLayer = false,
+  });
+
+  final bool inspectionLayer;
 
   @override
   State<FuturisticParticlesBackground> createState() =>
@@ -10,9 +16,8 @@ class FuturisticParticlesBackground extends StatefulWidget {
 }
 
 class _FuturisticParticlesBackgroundState
-    extends State<FuturisticParticlesBackground>
-    with SingleTickerProviderStateMixin {
-  late AnimationController controller;
+    extends State<FuturisticParticlesBackground> {
+  late final AmbientFrameClock controller;
 
   final List<_Particle> particles = [];
   bool initialized = false;
@@ -21,20 +26,25 @@ class _FuturisticParticlesBackgroundState
   void initState() {
     super.initState();
 
-    controller = AnimationController(
-      vsync: this,
-      duration: const Duration(seconds: 4),
-    )..repeat();
+    // Home can be inserted while its cached navigation stack still reports a
+    // disabled TickerMode during the login transition. AmbientFrameClock has
+    // its own lifecycle and interaction pause gates, so enable it for the
+    // lifetime of this visible background instead of inheriting that stale
+    // navigation value.
+    controller = AmbientFrameClock(inspectionLayer: widget.inspectionLayer)
+      ..enabled = true;
   }
 
   void _generateParticles(Size size) {
     final random = Random(10);
 
-    const gridSpacing = 18.0;
+    // Keep the field visibly alive on a 2560x1600 display without forcing more
+    // than a few hundred decorative draw calls per ambient frame.
+    const gridSpacing = 64.0;
 
     for (double x = 0; x < size.width; x += gridSpacing) {
       for (double y = 0; y < size.height; y += gridSpacing) {
-        if (random.nextDouble() > 0.7) continue;
+        if (random.nextDouble() > 0.35) continue;
 
         particles.add(_Particle(Offset(x, y), random.nextDouble()));
       }
@@ -53,14 +63,13 @@ class _FuturisticParticlesBackgroundState
           _generateParticles(size);
         }
 
-        return AnimatedBuilder(
-          animation: controller,
-          builder: (context, child) {
-            return CustomPaint(
-              painter: _DigitalParticlePainter(particles, controller.value),
-              size: Size.infinite,
-            );
-          },
+        return RepaintBoundary(
+          child: CustomPaint(
+            painter: _DigitalParticlePainter(particles, controller),
+            size: Size.infinite,
+            isComplex: true,
+            willChange: controller.motionEnabled,
+          ),
         );
       },
     );
@@ -82,9 +91,10 @@ class _Particle {
 
 class _DigitalParticlePainter extends CustomPainter {
   final List<_Particle> particles;
-  final double animation;
+  final AmbientFrameClock animation;
 
-  _DigitalParticlePainter(this.particles, this.animation);
+  _DigitalParticlePainter(this.particles, this.animation)
+    : super(repaint: animation);
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -93,9 +103,9 @@ class _DigitalParticlePainter extends CustomPainter {
     final paint = Paint()..style = PaintingStyle.fill;
 
     for (final p in particles) {
-      final brightness = (sin(animation * 2 * pi + p.phase * 6) + 1) / 2;
+      final brightness = (sin(animation.value * 2 * pi + p.phase * 6) + 1) / 2;
 
-      paint.color = particleColor.withValues(alpha: brightness);
+      paint.color = particleColor.withValues(alpha: 0.18 + brightness * 0.55);
 
       canvas.drawRect(
         Rect.fromCenter(center: p.position, width: 3, height: 3),
@@ -105,5 +115,6 @@ class _DigitalParticlePainter extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => true;
+  bool shouldRepaint(covariant _DigitalParticlePainter oldDelegate) =>
+      oldDelegate.particles != particles || oldDelegate.animation != animation;
 }

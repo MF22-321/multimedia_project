@@ -4,6 +4,7 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:frontend/core/localization/app_strings.dart';
 import 'package:frontend/core/navigation/app_language_control.dart';
 import 'package:frontend/core/navigation/driver_session.dart';
+import 'package:frontend/core/navigation/hmi_page_route.dart';
 import 'package:frontend/core/services/drive_pref_service.dart';
 import 'package:frontend/features/personalize/presentation/page/personalize_page.dart';
 import 'package:intl/intl.dart';
@@ -80,27 +81,9 @@ class _TopBarState extends State<TopBar> {
     return InkWell(
       borderRadius: BorderRadius.circular(40.r),
       onTap: () {
-        Navigator.of(context).push(
-          PageRouteBuilder(
-            opaque: false,
-            transitionDuration: const Duration(milliseconds: 450),
-            pageBuilder: (context, animation, secondaryAnimation) {
-              return const PersonalizePage();
-            },
-            transitionsBuilder: (context, animation, secondaryAnimation, child) {
-              final fade = Tween(begin: 0.0, end: 1.0).animate(animation);
-
-              final scale = Tween(begin: 0.95, end: 1.0).animate(
-                CurvedAnimation(parent: animation, curve: Curves.easeOutCubic),
-              );
-
-              return FadeTransition(
-                opacity: fade,
-                child: ScaleTransition(scale: scale, child: child),
-              );
-            },
-          ),
-        );
+        Navigator.of(
+          context,
+        ).push(HmiPageRoute(builder: (_) => const PersonalizePage()));
       },
       child: Container(
         padding: EdgeInsets.symmetric(horizontal: 14.w, vertical: 8.h),

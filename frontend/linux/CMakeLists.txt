@@ -58,6 +58,7 @@ pkg_check_modules(X11 REQUIRED IMPORTED_TARGET x11)
 # Project-local receiver bridge. It is kept outside generated plugin files so
 # Flutter upgrades do not overwrite the Android Auto / CarPlay integration.
 add_subdirectory("projection_plugin")
+add_subdirectory("vehicle_3d_plugin")
 
 # Application build; see runner/CMakeLists.txt.
 add_subdirectory("runner")

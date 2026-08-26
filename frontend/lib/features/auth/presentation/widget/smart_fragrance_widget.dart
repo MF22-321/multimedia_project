@@ -73,8 +73,7 @@ class _SmartFragranceSectionState extends State<SmartFragranceSection> {
         ? accentColor
         : theme.buttonColor;
 
-    return AnimatedContainer(
-      duration: const Duration(milliseconds: 400),
+    return Container(
       padding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 30.h),
       decoration: BoxDecoration(
         gradient: LinearGradient(

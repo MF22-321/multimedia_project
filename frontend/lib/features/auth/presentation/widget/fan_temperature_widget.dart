@@ -43,8 +43,7 @@ class FanTemperatureSection extends StatelessWidget {
   Widget _buildContent(CarThemeType themeType, CarThemeData theme) {
     final accentColor = getMusicAccentColor(themeType, theme);
 
-    return AnimatedContainer(
-      duration: const Duration(milliseconds: 400),
+    return Container(
       padding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 30.h),
       decoration: BoxDecoration(
         gradient: LinearGradient(
@@ -97,11 +96,7 @@ class FanTemperatureSection extends StatelessWidget {
                     children: [
                       IconButton(
                         onPressed: onFanPlus,
-                        icon: Icon(
-                          Icons.add,
-                          size: 30.sp,
-                          color: accentColor,
-                        ),
+                        icon: Icon(Icons.add, size: 30.sp, color: accentColor),
                       ),
                       IconButton(
                         onPressed: onFanMinus,
@@ -148,11 +143,7 @@ class FanTemperatureSection extends StatelessWidget {
                     children: [
                       IconButton(
                         onPressed: onTempPlus,
-                        icon: Icon(
-                          Icons.add,
-                          size: 30.sp,
-                          color: accentColor,
-                        ),
+                        icon: Icon(Icons.add, size: 30.sp, color: accentColor),
                       ),
                       IconButton(
                         onPressed: onTempMinus,

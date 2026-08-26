@@ -3,6 +3,8 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:frontend/core/localization/app_strings.dart';
 import 'package:frontend/core/navigation/app_language_control.dart';
 import 'package:frontend/core/navigation/app_navigation.dart';
+import 'package:frontend/core/navigation/hmi_page_route.dart';
+import 'package:frontend/core/themes/ambient_motion_control.dart';
 import 'package:frontend/core/themes/car_theme.dart';
 import 'package:frontend/features/home/presentation/widget/bluetooth_content.dart';
 import 'package:frontend/features/home/presentation/widget/car_info_content.dart';
@@ -13,26 +15,28 @@ import 'package:frontend/features/projection/domain/projection_models.dart';
 import 'package:frontend/features/projection/presentation/projection_page.dart';
 
 class QuickActionGrid extends StatelessWidget {
-  const QuickActionGrid({super.key});
+  const QuickActionGrid({super.key, required this.onPagePreview});
+
+  final ValueChanged<int> onPagePreview;
 
   @override
   Widget build(BuildContext context) {
     return ValueListenableBuilder(
       valueListenable: AppLanguageControl.languageCode,
       builder: (context, _, _) {
-        final actions = [
-          _ActionItem("tutorial", AppStrings.mToyota, Icons.car_rental),
-          _ActionItem("music", AppStrings.music, Icons.play_circle_fill),
-          _ActionItem("radio", AppStrings.radio, Icons.radio),
-          _ActionItem("bluetooth", AppStrings.bluetooth, Icons.bluetooth),
-          _ActionItem("car_status", AppStrings.carStatus, Icons.directions_car),
+        final actions = <_ActionItem>[
+          _ActionItem('tutorial', AppStrings.mToyota, Icons.car_rental),
+          _ActionItem('music', AppStrings.music, Icons.play_circle_fill),
+          _ActionItem('radio', AppStrings.radio, Icons.radio),
+          _ActionItem('bluetooth', AppStrings.bluetooth, Icons.bluetooth),
+          _ActionItem('car_status', AppStrings.carStatus, Icons.directions_car),
           _ActionItem(
-            "android_auto",
+            'android_auto',
             AppStrings.androidAuto,
             Icons.android_rounded,
           ),
-          _ActionItem("carplay", AppStrings.appleCarPlay, Icons.apple),
-          _ActionItem("info", AppStrings.info, Icons.info),
+          _ActionItem('carplay', AppStrings.appleCarPlay, Icons.apple),
+          _ActionItem('info', AppStrings.info, Icons.info),
         ];
 
         return ValueListenableBuilder(
@@ -46,365 +50,34 @@ class QuickActionGrid extends StatelessWidget {
                 return Expanded(
                   child: GridView.builder(
                     itemCount: actions.length,
-
                     gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
                       crossAxisCount: 4,
                       mainAxisSpacing: 20.h,
                       crossAxisSpacing: 20.w,
                       childAspectRatio: 1,
                     ),
-
                     itemBuilder: (context, index) {
                       final item = actions[index];
 
                       return GestureDetector(
-                        onTap: () {
-                          /// OPEN TUTORIAL PAGE
-                          if (item.key == "tutorial") {
-                            Navigator.push(
-                              context,
-
-                              PageRouteBuilder(
-                                transitionDuration: const Duration(
-                                  milliseconds: 450,
-                                ),
-
-                                reverseTransitionDuration: const Duration(
-                                  milliseconds: 350,
-                                ),
-
-                                pageBuilder:
-                                    (context, animation, secondaryAnimation) {
-                                      return const TutorialPage();
-                                    },
-
-                                transitionsBuilder:
-                                    (
-                                      context,
-                                      animation,
-                                      secondaryAnimation,
-                                      child,
-                                    ) {
-                                      final curved = CurvedAnimation(
-                                        parent: animation,
-
-                                        curve: Curves.easeInOutCubic,
-                                      );
-
-                                      return FadeTransition(
-                                        opacity: curved,
-
-                                        child: SlideTransition(
-                                          position: Tween<Offset>(
-                                            begin: const Offset(0.08, 0),
-
-                                            end: Offset.zero,
-                                          ).animate(curved),
-
-                                          child: child,
-                                        ),
-                                      );
-                                    },
-                              ),
-                            );
-                          } else if (item.key == "music") {
-                            AppNavigation.currentIndex.value = 0;
-                          } else if (item.key == "radio") {
-                            Navigator.push(
-                              context,
-
-                              PageRouteBuilder(
-                                transitionDuration: const Duration(
-                                  milliseconds: 450,
-                                ),
-
-                                reverseTransitionDuration: const Duration(
-                                  milliseconds: 350,
-                                ),
-
-                                pageBuilder:
-                                    (context, animation, secondaryAnimation) {
-                                      return const RadioContent();
-                                    },
-
-                                transitionsBuilder:
-                                    (
-                                      context,
-                                      animation,
-                                      secondaryAnimation,
-                                      child,
-                                    ) {
-                                      final curved = CurvedAnimation(
-                                        parent: animation,
-
-                                        curve: Curves.easeInOutCubic,
-                                      );
-
-                                      return FadeTransition(
-                                        opacity: curved,
-
-                                        child: SlideTransition(
-                                          position: Tween<Offset>(
-                                            begin: const Offset(0.08, 0),
-
-                                            end: Offset.zero,
-                                          ).animate(curved),
-
-                                          child: child,
-                                        ),
-                                      );
-                                    },
-                              ),
-                            );
-                          } else if (item.key == "bluetooth") {
-                            Navigator.push(
-                              context,
-
-                              PageRouteBuilder(
-                                transitionDuration: const Duration(
-                                  milliseconds: 450,
-                                ),
-
-                                reverseTransitionDuration: const Duration(
-                                  milliseconds: 350,
-                                ),
-
-                                pageBuilder:
-                                    (context, animation, secondaryAnimation) {
-                                      return const BluetoothContent();
-                                    },
-
-                                transitionsBuilder:
-                                    (
-                                      context,
-                                      animation,
-                                      secondaryAnimation,
-                                      child,
-                                    ) {
-                                      final curved = CurvedAnimation(
-                                        parent: animation,
-
-                                        curve: Curves.easeInOutCubic,
-                                      );
-
-                                      return FadeTransition(
-                                        opacity: curved,
-
-                                        child: SlideTransition(
-                                          position: Tween<Offset>(
-                                            begin: const Offset(0.08, 0),
-
-                                            end: Offset.zero,
-                                          ).animate(curved),
-
-                                          child: child,
-                                        ),
-                                      );
-                                    },
-                              ),
-                            );
-                          } else if (item.key == "android_auto") {
-                            Navigator.push(
-                              context,
-
-                              PageRouteBuilder(
-                                transitionDuration: const Duration(
-                                  milliseconds: 450,
-                                ),
-
-                                reverseTransitionDuration: const Duration(
-                                  milliseconds: 350,
-                                ),
-
-                                pageBuilder:
-                                    (context, animation, secondaryAnimation) {
-                                      return const ProjectionPage(
-                                        initialTarget:
-                                            ProjectionTarget.androidAuto,
-                                      );
-                                    },
-
-                                transitionsBuilder:
-                                    (
-                                      context,
-                                      animation,
-                                      secondaryAnimation,
-                                      child,
-                                    ) {
-                                      final curved = CurvedAnimation(
-                                        parent: animation,
-
-                                        curve: Curves.easeInOutCubic,
-                                      );
-
-                                      return FadeTransition(
-                                        opacity: curved,
-
-                                        child: SlideTransition(
-                                          position: Tween<Offset>(
-                                            begin: const Offset(0.08, 0),
-
-                                            end: Offset.zero,
-                                          ).animate(curved),
-
-                                          child: child,
-                                        ),
-                                      );
-                                    },
-                              ),
-                            );
-                          } else if (item.key == "car_status") {
-                            Navigator.push(
-                              context,
-
-                              PageRouteBuilder(
-                                transitionDuration: const Duration(
-                                  milliseconds: 450,
-                                ),
-
-                                reverseTransitionDuration: const Duration(
-                                  milliseconds: 350,
-                                ),
-
-                                pageBuilder:
-                                    (context, animation, secondaryAnimation) {
-                                      return const CarInfoContent();
-                                    },
-
-                                transitionsBuilder:
-                                    (
-                                      context,
-                                      animation,
-                                      secondaryAnimation,
-                                      child,
-                                    ) {
-                                      final curved = CurvedAnimation(
-                                        parent: animation,
-
-                                        curve: Curves.easeInOutCubic,
-                                      );
-
-                                      return FadeTransition(
-                                        opacity: curved,
-
-                                        child: SlideTransition(
-                                          position: Tween<Offset>(
-                                            begin: const Offset(0.08, 0),
-
-                                            end: Offset.zero,
-                                          ).animate(curved),
-
-                                          child: child,
-                                        ),
-                                      );
-                                    },
-                              ),
-                            );
-                          } else if (item.key == "info") {
-                            Navigator.push(
-                              context,
-
-                              PageRouteBuilder(
-                                transitionDuration: const Duration(
-                                  milliseconds: 450,
-                                ),
-
-                                reverseTransitionDuration: const Duration(
-                                  milliseconds: 350,
-                                ),
-
-                                pageBuilder:
-                                    (context, animation, secondaryAnimation) {
-                                      return const InfoContent();
-                                    },
-
-                                transitionsBuilder:
-                                    (
-                                      context,
-                                      animation,
-                                      secondaryAnimation,
-                                      child,
-                                    ) {
-                                      final curved = CurvedAnimation(
-                                        parent: animation,
-
-                                        curve: Curves.easeInOutCubic,
-                                      );
-
-                                      return FadeTransition(
-                                        opacity: curved,
-
-                                        child: SlideTransition(
-                                          position: Tween<Offset>(
-                                            begin: const Offset(0.08, 0),
-
-                                            end: Offset.zero,
-                                          ).animate(curved),
-
-                                          child: child,
-                                        ),
-                                      );
-                                    },
-                              ),
-                            );
-                          } else if (item.key == "carplay") {
-                            Navigator.push(
-                              context,
-
-                              PageRouteBuilder(
-                                transitionDuration: const Duration(
-                                  milliseconds: 450,
-                                ),
-
-                                reverseTransitionDuration: const Duration(
-                                  milliseconds: 350,
-                                ),
-
-                                pageBuilder:
-                                    (context, animation, secondaryAnimation) {
-                                      return const ProjectionPage(
-                                        initialTarget: ProjectionTarget.carPlay,
-                                      );
-                                    },
-
-                                transitionsBuilder:
-                                    (
-                                      context,
-                                      animation,
-                                      secondaryAnimation,
-                                      child,
-                                    ) {
-                                      final curved = CurvedAnimation(
-                                        parent: animation,
-
-                                        curve: Curves.easeInOutCubic,
-                                      );
-
-                                      return FadeTransition(
-                                        opacity: curved,
-
-                                        child: SlideTransition(
-                                          position: Tween<Offset>(
-                                            begin: const Offset(0.08, 0),
-
-                                            end: Offset.zero,
-                                          ).animate(curved),
-
-                                          child: child,
-                                        ),
-                                      );
-                                    },
-                              ),
+                        onTapDown: (_) {
+                          if (item.key == 'music') {
+                            // Build the cached tab during the touch-down frame,
+                            // before its transition begins on pointer-up.
+                            onPagePreview(0);
+                          } else {
+                            // Stop decorative full-screen painting before the
+                            // Navigator starts compositing two route layers.
+                            AmbientMotionControl.suspendFor(
+                              const Duration(milliseconds: 300),
                             );
                           }
                         },
-
+                        onTap: () => _openAction(context, item.key),
                         child: AnimatedContainer(
                           duration: const Duration(milliseconds: 400),
-
                           decoration: BoxDecoration(
                             borderRadius: BorderRadius.circular(22.r),
-
                             gradient: LinearGradient(
                               colors: [
                                 theme.backgroundGradient.last.withValues(
@@ -415,12 +88,10 @@ class QuickActionGrid extends StatelessWidget {
                               begin: Alignment.topLeft,
                               end: Alignment.bottomRight,
                             ),
-
                             border: Border.all(
                               color: theme.accentColor.withValues(alpha: 0.4),
                               width: 1.5,
                             ),
-
                             boxShadow: [
                               BoxShadow(
                                 color: theme.accentColor.withValues(
@@ -431,7 +102,6 @@ class QuickActionGrid extends StatelessWidget {
                               ),
                             ],
                           ),
-
                           child: Column(
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
@@ -440,9 +110,7 @@ class QuickActionGrid extends StatelessWidget {
                                 size: 40.sp,
                                 color: theme.accentColor,
                               ),
-
                               SizedBox(height: 8.h),
-
                               Text(
                                 item.label,
                                 style: TextStyle(
@@ -465,12 +133,51 @@ class QuickActionGrid extends StatelessWidget {
       },
     );
   }
+
+  void _openAction(BuildContext context, String key) {
+    switch (key) {
+      case 'music':
+        AppNavigation.currentIndex.value = 0;
+        return;
+      case 'tutorial':
+        _openPage(context, const TutorialPage());
+        return;
+      case 'radio':
+        _openPage(context, const RadioContent());
+        return;
+      case 'bluetooth':
+        _openPage(context, const BluetoothContent());
+        return;
+      case 'car_status':
+        _openPage(context, const CarInfoContent());
+        return;
+      case 'android_auto':
+        _openPage(
+          context,
+          const ProjectionPage(initialTarget: ProjectionTarget.androidAuto),
+        );
+        return;
+      case 'carplay':
+        _openPage(
+          context,
+          const ProjectionPage(initialTarget: ProjectionTarget.carPlay),
+        );
+        return;
+      case 'info':
+        _openPage(context, const InfoContent());
+        return;
+    }
+  }
+
+  void _openPage(BuildContext context, Widget page) {
+    Navigator.push(context, HmiPageRoute(builder: (_) => page));
+  }
 }
 
 class _ActionItem {
+  const _ActionItem(this.key, this.label, this.icon);
+
   final String key;
   final String label;
   final IconData icon;
-
-  _ActionItem(this.key, this.label, this.icon);
 }

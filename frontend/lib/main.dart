@@ -4,6 +4,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:frontend/core/navigation/app_routes.dart';
+import 'package:frontend/core/navigation/hmi_page_route.dart';
+import 'package:frontend/core/navigation/vehicle_3d_route_observer.dart';
 import 'package:frontend/core/provider/gps_provider.dart';
 import 'package:frontend/core/provider/music_provider.dart';
 import 'package:frontend/core/provider/pothole_provider.dart';
@@ -26,7 +28,7 @@ import 'features/boot/presentation/pages/boot_page.dart';
 
 import 'package:frontend/features/video/provider/video_provider.dart';
 
-Future<void> main() async {
+Future<void> main(List<String> args) async {
   WidgetsFlutterBinding.ensureInitialized();
   MediaKit.ensureInitialized();
 
@@ -34,7 +36,13 @@ Future<void> main() async {
       int.tryParse(Platform.environment['MULTIMEDIA_TCP_PORT'] ?? '') ?? 5050;
   await MultimediaTcpServer.instance.start(port: tcpPort);
 
-  await Hive.initFlutter();
+  final isolatedDataPath = Platform.environment['HMI_ISOLATED_DATA_PATH'];
+  if (isolatedDataPath != null && isolatedDataPath.isNotEmpty) {
+    await Directory(isolatedDataPath).create(recursive: true);
+    Hive.init(isolatedDataPath);
+  } else {
+    await Hive.initFlutter();
+  }
   await Hive.openBox('drivers');
 
   await windowManager.ensureInitialized();
@@ -72,14 +80,22 @@ Future<void> main() async {
     MyApp(
       projectionAutostart:
           Platform.environment['PROJECTION_AUTOSTART_ANDROID_AUTO'] == '1',
+      homeAutostart:
+          Platform.environment['HMI_AUTOSTART_HOME'] == '1' ||
+          args.contains('--hmi-autostart-home'),
     ),
   );
 }
 
 class MyApp extends StatelessWidget {
-  const MyApp({super.key, this.projectionAutostart = false});
+  const MyApp({
+    super.key,
+    this.projectionAutostart = false,
+    this.homeAutostart = false,
+  });
 
   final bool projectionAutostart;
+  final bool homeAutostart;
 
   @override
   Widget build(BuildContext context) {
@@ -107,6 +123,7 @@ class MyApp extends StatelessWidget {
           return MaterialApp(
             debugShowCheckedModeBanner: false,
             title: "Toyota Multimedia System",
+            navigatorObservers: [vehicle3DRouteObserver, hmiNavigationObserver],
 
             builder: (context, child) {
               return MediaQuery(
@@ -122,14 +139,28 @@ class MyApp extends StatelessWidget {
               scaffoldBackgroundColor: Colors.black,
               fontFamily: 'Roboto',
               useMaterial3: true,
+              pageTransitionsTheme: const PageTransitionsTheme(
+                builders: <TargetPlatform, PageTransitionsBuilder>{
+                  TargetPlatform.linux: HmiPageTransitionsBuilder(),
+                },
+              ),
             ),
 
-            initialRoute: projectionAutostart
-                ? AppRoutes.projection
-                : AppRoutes.boot,
+            // Keep the initial route at "/". Flutter expands a named initial
+            // route such as "/home" into both "/" and "/home"; that left the
+            // hidden BootPage timer alive and it replaced Home with Warning
+            // six seconds later during automated smoke tests/autostart.
+            initialRoute: AppRoutes.boot,
 
             routes: {
-              AppRoutes.boot: (context) => const BootPage(),
+              AppRoutes.boot: (context) => projectionAutostart
+                  ? const ProjectionPage(
+                      autoStartAndroidAuto: true,
+                      initialTarget: ProjectionTarget.androidAuto,
+                    )
+                  : homeAutostart
+                  ? const HomePage()
+                  : const BootPage(),
               AppRoutes.warning: (context) => const WarningPage(),
               AppRoutes.oddEven: (context) => const OddEvenPage(),
               AppRoutes.driverSelect: (context) => const DriverSelectPage(),

@@ -3,6 +3,7 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:frontend/core/localization/app_strings.dart';
 import 'package:frontend/core/navigation/app_language_control.dart';
 import 'package:frontend/core/navigation/app_navigation.dart';
+import 'package:frontend/core/navigation/hmi_page_route.dart';
 import 'package:frontend/core/themes/car_theme.dart';
 import 'package:frontend/features/home/presentation/widget/ambient_light_content.dart';
 import 'package:frontend/features/home/presentation/widget/bluetooth_content.dart';
@@ -168,31 +169,7 @@ class MenuContent extends StatelessWidget {
   }
 
   void _openPage(BuildContext context, Widget page) {
-    Navigator.push(
-      context,
-      PageRouteBuilder(
-        transitionDuration: const Duration(milliseconds: 420),
-        reverseTransitionDuration: const Duration(milliseconds: 300),
-        pageBuilder: (context, animation, secondaryAnimation) => page,
-        transitionsBuilder: (context, animation, secondaryAnimation, child) {
-          final curved = CurvedAnimation(
-            parent: animation,
-            curve: Curves.easeOutCubic,
-          );
-
-          return FadeTransition(
-            opacity: curved,
-            child: SlideTransition(
-              position: Tween<Offset>(
-                begin: const Offset(0.04, 0),
-                end: Offset.zero,
-              ).animate(curved),
-              child: child,
-            ),
-          );
-        },
-      ),
-    );
+    Navigator.push(context, HmiPageRoute(builder: (_) => page));
   }
 
   Color _accentFor(CarThemeType themeType, CarThemeData theme) {

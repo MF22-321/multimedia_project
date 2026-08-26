@@ -5,7 +5,7 @@ Last reviewed: 2026-08-06
 ## Hasil Eksekusi 6 Agustus 2026
 
 - `flutter analyze`: **lulus, 0 issue**.
-- `flutter test --no-pub`: **91 test lulus, 0 gagal**.
+- `flutter test --no-pub`: **94 test lulus, 0 gagal**.
 - Test lama bawaan template counter diganti dengan test fitur aplikasi.
 - Test otomatis tidak menghubungi backend produksi, broker MQTT, atau Pothole API.
 
@@ -46,6 +46,9 @@ Jalankan ulang dari folder `frontend`:
 | FE-024 | Face enrollment | Poll status fase dan sampel | Arahan dan jumlah sampel terbaca |
 | FE-025 | Adaptive Face ID | Check, approve, dan reject kandidat | Method dan endpoint sesuai kontrak |
 | FE-026 | Face ID error | Backend quality endpoint gagal | Error diteruskan, tidak dianggap sukses |
+| FE-027 | Vehicle 3D | Inisialisasi direct GPU view dan texture fallback | Metadata renderer serta status tersedia terbaca |
+| FE-028 | Vehicle 3D | Bounds, visibility, drag, zoom, active, dan reset | Kontrak method channel terkirim benar |
+| FE-029 | Vehicle 3D | Native renderer gagal | UI tetap aman memakai fallback PNG |
 
 ## Skenario Integrasi Manual
 
@@ -64,6 +67,10 @@ Jalankan ulang dari folder `frontend`:
 | FE-111 | User | Pilih driver, restart aplikasi | Preference driver yang sama termuat |
 | FE-112 | Theme | Preview lalu back tanpa save | Tema global tidak berubah |
 | FE-113 | Theme | Save custom theme lalu masuk Home | Warna/background tersimpan dan diterapkan |
+| FE-114 | Vehicle 3D | Buka Home dan halaman detail kendaraan | Direct OpenGL tampil transparan tanpa kotak atau dot hitam |
+| FE-115 | Vehicle 3D | Drag dan pinch melalui sudut depan/samping/belakang | Sudut/zoom berubah tanpa panel tembus atau retak segitiga |
+| FE-117 | Vehicle 3D | Stress drag delapan detik lalu reset | Z-buffer stabil, tepi MSAA halus, dan reset berhasil |
+| FE-116 | Vehicle 3D | Jalankan bersama musik dan Android Auto | UI responsif dan audio tidak terganggu |
 
 Perilaku overlay hazard terbaru:
 

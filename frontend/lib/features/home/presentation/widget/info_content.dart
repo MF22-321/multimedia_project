@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:frontend/core/localization/app_strings.dart';
 import 'package:frontend/core/themes/car_theme.dart';
+import 'package:frontend/core/widgets/vehicle_3d_viewer.dart';
 
 class InfoContent extends StatefulWidget {
   const InfoContent({super.key});
@@ -339,10 +340,9 @@ class _InfoContentState extends State<InfoContent> {
                                       ],
                                     ),
 
-                                    child: Image.asset(
-                                      "assets/images/veloz.png",
-
-                                      fit: BoxFit.contain,
+                                    child: const Vehicle3DViewer(
+                                      showBadge: false,
+                                      showResetButton: false,
                                     ),
                                   ),
 
@@ -547,19 +547,31 @@ class _InfoContentState extends State<InfoContent> {
 
                                   child: Column(
                                     children: [
-                                      _systemTile(AppStrings.platform, 'Flutter Linux'),
+                                      _systemTile(
+                                        AppStrings.platform,
+                                        'Flutter Linux',
+                                      ),
 
                                       SizedBox(height: 14.h),
 
-                                      _systemTile(AppStrings.device, 'Jetson Orin Nano'),
+                                      _systemTile(
+                                        AppStrings.device,
+                                        'Jetson Orin Nano',
+                                      ),
 
                                       SizedBox(height: 14.h),
 
-                                      _systemTile(AppStrings.mediaEngine, 'Ready'),
+                                      _systemTile(
+                                        AppStrings.mediaEngine,
+                                        'Ready',
+                                      ),
 
                                       SizedBox(height: 14.h),
 
-                                      _systemTile(AppStrings.gpuRendering, AppStrings.active),
+                                      _systemTile(
+                                        AppStrings.gpuRendering,
+                                        AppStrings.active,
+                                      ),
                                     ],
                                   ),
                                 ),

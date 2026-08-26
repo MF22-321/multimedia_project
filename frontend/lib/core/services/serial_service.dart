@@ -24,6 +24,8 @@ class SerialService {
   String? _currentPort;
   List<String> _lastPorts = [];
   String? _lastStatus;
+  bool _serialLibraryUnavailable = false;
+  bool _serialLibraryErrorLogged = false;
 
   void _emitStatus(String status) {
     if (_disposed || status == _lastStatus) return;
@@ -52,6 +54,7 @@ class SerialService {
   void _scanPorts() {
     if (_disposed) return;
     if (_connected) return;
+    if (_serialLibraryUnavailable) return;
 
     try {
       final ports = _availablePorts();
@@ -79,7 +82,20 @@ class SerialService {
         _emitStatus("ESP32 USB port busy or unavailable");
       }
     } catch (e) {
-      AppLogger.error("SCAN ERROR: $e");
+      final message = e.toString();
+      if (message.contains('libserialport.so') ||
+          message.contains('Failed to load dynamic library')) {
+        _serialLibraryUnavailable = true;
+        _scanTimer?.cancel();
+        _scanTimer = null;
+        _emitStatus('Serial library unavailable - restart after install');
+        if (!_serialLibraryErrorLogged) {
+          _serialLibraryErrorLogged = true;
+          AppLogger.error("SCAN DISABLED: $e");
+        }
+      } else {
+        AppLogger.error("SCAN ERROR: $e");
+      }
     }
   }
 
